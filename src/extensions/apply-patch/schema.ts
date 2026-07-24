@@ -1,10 +1,13 @@
 import { type Static, Type } from "typebox";
 
-export const applyPatchSchema = Type.Object({
-  input: Type.String({
-    description: "Patch text wrapped in *** Begin Patch / *** End Patch.",
-  }),
-});
+export const applyPatchSchema = Type.Object(
+  {
+    input: Type.String({
+      description: "Patch text wrapped in *** Begin Patch / *** End Patch.",
+    }),
+  },
+  { additionalProperties: false }
+);
 
 export type ApplyPatchInput = Static<typeof applyPatchSchema>;
 

@@ -6,23 +6,26 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
 export const KILL_GRACE_MS = 2000;
 export const DRAIN_GRACE_MS = 1000;
 
-export const bashSchema = Type.Object({
-  command: Type.String({
-    description: "Runs via bash -lc, so login shell init applies.",
-  }),
-  cwd: Type.Optional(
-    Type.String({
-      description:
-        "Working directory for the command — an absolute path (a `~` prefix is expanded to the home directory). Defaults to the workspace root. Prefer passing `cwd` over prefixing the command with `cd … &&`.",
-    })
-  ),
-  timeoutMs: Type.Optional(
-    Type.Integer({
-      minimum: 1,
-      description: `Timeout in milliseconds. Default is ${DEFAULT_TIMEOUT_MS} (${DEFAULT_TIMEOUT_MS / 1000}s) — raise it for long-running commands like builds, test suites, training runs, or installs.`,
-    })
-  ),
-});
+export const bashSchema = Type.Object(
+  {
+    command: Type.String({
+      description: "Runs via bash -lc, so login shell init applies.",
+    }),
+    cwd: Type.Optional(
+      Type.String({
+        description:
+          "Working directory for the command — an absolute path (a `~` prefix is expanded to the home directory). Defaults to the workspace root. Prefer passing `cwd` over prefixing the command with `cd … &&`.",
+      })
+    ),
+    timeoutMs: Type.Optional(
+      Type.Integer({
+        minimum: 1,
+        description: `Timeout in milliseconds. Default is ${DEFAULT_TIMEOUT_MS} (${DEFAULT_TIMEOUT_MS / 1000}s) — raise it for long-running commands like builds, test suites, training runs, or installs.`,
+      })
+    ),
+  },
+  { additionalProperties: false }
+);
 export type BashInput = Static<typeof bashSchema>;
 
 export type CapturedStream = {

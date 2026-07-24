@@ -49,6 +49,18 @@ export class Tools {
             `Validation failed for tool "${def.name}":\n${lines}`
           );
         }
+        // Check for unknown top-level keys before running the schema
+        // validator: when a tool's schema sets `additionalProperties: false`
+        // (required for strict-mode function calling), the validator would
+        // otherwise reject typos like `headlimit` with a generic "must not
+        // have additional properties" error instead of this friendlier,
+        // typo-aware one.
+        const unknownKeys = findUnknownTopLevelKeys(schema, cleaned);
+        if (unknownKeys.length > 0) {
+          throw new Error(
+            formatUnknownKeysError(def.name, schema, unknownKeys)
+          );
+        }
         let validated: Static<TParams>;
         try {
           validated = validateToolArguments(
@@ -63,12 +75,6 @@ export class Tools {
         } catch (err) {
           throw new Error(
             Tools.rewriteValidationError(def.name, schema, err, cleaned)
-          );
-        }
-        const unknownKeys = findUnknownTopLevelKeys(schema, validated);
-        if (unknownKeys.length > 0) {
-          throw new Error(
-            formatUnknownKeysError(def.name, schema, unknownKeys)
           );
         }
         return validated;
