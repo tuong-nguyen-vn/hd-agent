@@ -9,6 +9,7 @@ import {
   applyOutputCap,
   childToolNames,
   resolveSubagentModel,
+  resolveSubagentModelCandidates,
   runSubagent,
   SubagentEventCapture,
   type SubagentSession,
@@ -148,6 +149,55 @@ describe("resolveSubagentModel", () => {
         source: "project",
       })
     ).toThrow('Unknown model "missing-model"');
+  });
+
+  test("a bare model id shared by multiple providers yields every authenticated candidate, current provider first", () => {
+    const proxyFlash = { provider: "proxy", id: "flash" } as never;
+    const devinFlash = { provider: "devin", id: "flash" } as never;
+    const unauthedFlash = { provider: "other", id: "flash" } as never;
+    const authedProviders = new Set(["proxy", "devin"]);
+    const ctx2 = {
+      model: { provider: "devin", id: "parent-model" } as never,
+      modelRegistry: {
+        getAll: () => [proxyFlash, devinFlash, unauthedFlash],
+        hasConfiguredAuth: (m: { provider: string }) =>
+          authedProviders.has(m.provider),
+      },
+    } as unknown as ExtensionContext;
+
+    const candidates = resolveSubagentModelCandidates(ctx2, {
+      name: "Search",
+      description: "Search",
+      tools: undefined,
+      model: "flash",
+      systemPrompt: "",
+      source: "bundled",
+    });
+
+    expect(candidates).toEqual([devinFlash, proxyFlash]);
+  });
+
+  test("comma-separated model list is tried in the declared order", () => {
+    const geminiFlash = { provider: "proxy", id: "gemini-3.6-flash" } as never;
+    const swe = { provider: "devin", id: "swe-1-7" } as never;
+    const ctx2 = {
+      model: { provider: "proxy", id: "parent-model" } as never,
+      modelRegistry: {
+        getAll: () => [geminiFlash, swe],
+        hasConfiguredAuth: () => true,
+      },
+    } as unknown as ExtensionContext;
+
+    const candidates = resolveSubagentModelCandidates(ctx2, {
+      name: "Search",
+      description: "Search",
+      tools: undefined,
+      model: "gemini-3.6-flash, swe-1-7",
+      systemPrompt: "",
+      source: "bundled",
+    });
+
+    expect(candidates).toEqual([geminiFlash, swe]);
   });
 });
 

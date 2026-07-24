@@ -19,6 +19,8 @@ export type AgentConfig = {
   readonly name: string;
   readonly description: string;
   readonly tools: readonly string[] | undefined;
+  // A single "model" or "provider/model" reference, or a comma-separated
+  // list of references tried in order (first working one wins).
   readonly model: string | undefined;
   readonly systemPrompt: string;
   readonly source: AgentSource;

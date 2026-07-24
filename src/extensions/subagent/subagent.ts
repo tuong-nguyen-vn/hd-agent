@@ -118,43 +118,84 @@ export async function createSdkSubagentSession(
   return session;
 }
 
-export function resolveSubagentModel(
+// Resolves the model candidates for a single "model" reference (no commas).
+// When the reference names an id without a provider and that id is exposed
+// by several providers, all authenticated candidates are returned (preferring
+// the parent's current provider first) instead of failing, so callers can
+// fall back across providers if the first candidate errors out.
+function resolveModelReference(
   parentCtx: ExtensionContext,
-  agent: AgentConfig | undefined
-): Model<any> | undefined {
-  const reference = agent?.model?.trim();
-  if (!reference) {
-    return parentCtx.model;
-  }
-
+  reference: string,
+  agentLabel: string
+): readonly Model<any>[] {
   const normalized = reference.toLowerCase();
-  const agentLabel = agent?.name ?? "configured";
   const models = parentCtx.modelRegistry.getAll();
   const canonical = models.filter(
     (model) => `${model.provider}/${model.id}`.toLowerCase() === normalized
   );
-  if (canonical.length === 1) {
-    return canonical[0];
+  if (canonical.length > 0) {
+    return canonical;
   }
 
   const byId = models.filter((model) => model.id.toLowerCase() === normalized);
-  if (byId.length === 1) {
-    return byId[0];
-  }
-  if (byId.length > 1) {
-    const authenticated = byId.filter((model) =>
-      parentCtx.modelRegistry.hasConfiguredAuth(model)
-    );
-    if (authenticated.length === 1) {
-      return authenticated[0];
-    }
+  if (byId.length === 0) {
     throw new Error(
-      `Ambiguous model "${reference}" for subagent "${agentLabel}". Use provider/model.`
+      `Unknown model "${reference}" for subagent "${agentLabel}". Use an exact model id or provider/model.`
     );
   }
-  throw new Error(
-    `Unknown model "${reference}" for subagent "${agentLabel}". Use an exact model id or provider/model.`
+
+  const authenticated = byId.filter((model) =>
+    parentCtx.modelRegistry.hasConfiguredAuth(model)
   );
+  const candidates = authenticated.length > 0 ? authenticated : byId;
+  const currentProvider = parentCtx.model?.provider;
+  return [...candidates].sort((a, b) => {
+    const aCurrent = a.provider === currentProvider ? 0 : 1;
+    const bCurrent = b.provider === currentProvider ? 0 : 1;
+    return aCurrent - bCurrent;
+  });
+}
+
+// Resolves the ordered list of model candidates to try for a subagent.
+// The agent's "model" config may list multiple comma-separated references
+// (e.g. "swe-1-7, gemini-3.6-flash"); each is tried in the declared order,
+// and each reference itself may expand to several provider candidates when
+// it names a bare model id shared by multiple authenticated providers.
+export function resolveSubagentModelCandidates(
+  parentCtx: ExtensionContext,
+  agent: AgentConfig | undefined
+): readonly Model<any>[] {
+  const raw = agent?.model?.trim();
+  if (!raw) {
+    return parentCtx.model ? [parentCtx.model] : [];
+  }
+
+  const agentLabel = agent?.name ?? "configured";
+  const references = raw
+    .split(",")
+    .map((ref) => ref.trim())
+    .filter((ref) => ref.length > 0);
+
+  const seen = new Set<string>();
+  const candidates: Model<any>[] = [];
+  for (const reference of references) {
+    for (const model of resolveModelReference(parentCtx, reference, agentLabel)) {
+      const key = `${model.provider}/${model.id}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      candidates.push(model);
+    }
+  }
+  return candidates;
+}
+
+export function resolveSubagentModel(
+  parentCtx: ExtensionContext,
+  agent: AgentConfig | undefined
+): Model<any> | undefined {
+  return resolveSubagentModelCandidates(parentCtx, agent)[0];
 }
 
 function resolveAgent(
@@ -194,83 +235,131 @@ export async function runSubagent(
     const agent = agentName
       ? resolveAgent(agentName, await discoverAgents(parentCtx.cwd))
       : undefined;
-    const model = resolveSubagentModel(parentCtx, agent);
+    const candidates = resolveSubagentModelCandidates(parentCtx, agent);
+    const models = candidates.length > 0 ? candidates : [undefined];
 
-    const capture = new SubagentEventCapture(onUpdate, {
-      contextWindow: model?.contextWindow,
-      model: model?.id,
-    });
-    let session: SubagentSession | undefined;
-    let thrown: unknown;
-    let abortRequested = false;
-    let abortPromise: Promise<void> | undefined;
-    let unsubscribe: (() => void) | undefined;
-
-    const ensureAbort = (): Promise<void> => {
-      if (!session) {
-        return Promise.resolve();
-      }
-      abortPromise ??= session.abort().catch(() => {});
-      return abortPromise;
-    };
-
-    const onAbort = () => {
-      abortRequested = true;
-      void ensureAbort();
-    };
-
-    try {
-      if (signal?.aborted) {
-        abortRequested = true;
-        throw new Error("subagent aborted before start");
-      }
-      signal?.addEventListener("abort", onAbort, { once: true });
-      session = await createSession(parentCtx, activeToolNames, agent, model);
-      unsubscribe = session.subscribe((event) => capture.handle(event));
-      if (abortRequested) {
-        await ensureAbort();
-        throw new Error("subagent aborted before start");
-      }
-      await session.prompt(promptFor(prompt, agent));
-      if (abortRequested && capture.snapshot().stopReason !== "aborted") {
-        capture.markAborted();
-      }
-    } catch (err) {
-      thrown = err;
-    } finally {
-      signal?.removeEventListener("abort", onAbort);
-      if (abortRequested) {
-        await ensureAbort();
-      }
-      unsubscribe?.();
-      session?.dispose();
-    }
-
-    const snapshot = capture.snapshot();
-    if (thrown !== undefined) {
-      throw makeFailureError(
-        thrownMessage(thrown),
-        undefined,
-        snapshot.finalOutput
+    for (let i = 0; i < models.length; i++) {
+      const model = models[i];
+      const attempt = await runSubagentAttempt(
+        prompt,
+        parentCtx,
+        agent,
+        model,
+        signal,
+        onUpdate,
+        createSession,
+        activeToolNames
       );
-    }
-    if (snapshot.stopReason === "error" || snapshot.stopReason === "aborted") {
-      throw makeFailureError(
-        snapshot.stopReason,
-        snapshot.errorMessage,
-        snapshot.finalOutput
-      );
+
+      const failedBeforeAnyProgress =
+        attempt.snapshot.toolCalls.length === 0 &&
+        attempt.snapshot.usage.turns === 0 &&
+        (attempt.thrown !== undefined || attempt.snapshot.stopReason === "error");
+      const hasMoreCandidates = i < models.length - 1;
+
+      if (!failedBeforeAnyProgress || !hasMoreCandidates || signal?.aborted) {
+        return finalizeAttempt(attempt);
+      }
     }
 
-    const details = capture.details();
-    const text =
-      details.returnedOutput ||
-      "[subagent tool: completed with no text output.]";
-    return {
-      content: [{ type: "text", text }],
-      details,
-    };
+    // Unreachable: models always has at least one entry and the loop returns
+    // on its last iteration.
+    throw new Error("subagent: no model candidates to try");
   });
+}
+
+type SubagentAttemptResult = {
+  readonly thrown: unknown;
+  readonly snapshot: SubagentSnapshot;
+  readonly capture: SubagentEventCapture;
+};
+
+async function runSubagentAttempt(
+  prompt: string,
+  parentCtx: ExtensionContext,
+  agent: AgentConfig | undefined,
+  model: Model<any> | undefined,
+  signal: AbortSignal | undefined,
+  onUpdate: AgentToolUpdateCallback<SubagentDetails> | undefined,
+  createSession: CreateSubagentSession,
+  activeToolNames: readonly string[] | undefined
+): Promise<SubagentAttemptResult> {
+  const capture = new SubagentEventCapture(onUpdate, {
+    contextWindow: model?.contextWindow,
+    model: model?.id,
+  });
+  let session: SubagentSession | undefined;
+  let thrown: unknown;
+  let abortRequested = false;
+  let abortPromise: Promise<void> | undefined;
+  let unsubscribe: (() => void) | undefined;
+
+  const ensureAbort = (): Promise<void> => {
+    if (!session) {
+      return Promise.resolve();
+    }
+    abortPromise ??= session.abort().catch(() => {});
+    return abortPromise;
+  };
+
+  const onAbort = () => {
+    abortRequested = true;
+    void ensureAbort();
+  };
+
+  try {
+    if (signal?.aborted) {
+      abortRequested = true;
+      throw new Error("subagent aborted before start");
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+    session = await createSession(parentCtx, activeToolNames, agent, model);
+    unsubscribe = session.subscribe((event) => capture.handle(event));
+    if (abortRequested) {
+      await ensureAbort();
+      throw new Error("subagent aborted before start");
+    }
+    await session.prompt(promptFor(prompt, agent));
+    if (abortRequested && capture.snapshot().stopReason !== "aborted") {
+      capture.markAborted();
+    }
+  } catch (err) {
+    thrown = err;
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    if (abortRequested) {
+      await ensureAbort();
+    }
+    unsubscribe?.();
+    session?.dispose();
+  }
+
+  return { thrown, snapshot: capture.snapshot(), capture };
+}
+
+function finalizeAttempt(
+  attempt: SubagentAttemptResult
+): AgentToolResult<SubagentDetails> {
+  const { thrown, snapshot, capture } = attempt;
+  if (thrown !== undefined) {
+    throw makeFailureError(thrownMessage(thrown), undefined, snapshot.finalOutput);
+  }
+  if (snapshot.stopReason === "error" || snapshot.stopReason === "aborted") {
+    throw makeFailureError(
+      snapshot.stopReason,
+      snapshot.errorMessage,
+      snapshot.finalOutput
+    );
+  }
+
+  const details = capture.details();
+  const text =
+    details.returnedOutput ||
+    "[subagent tool: completed with no text output.]";
+  return {
+    content: [{ type: "text", text }],
+    details,
+  };
 }
 
 export class SubagentEventCapture {

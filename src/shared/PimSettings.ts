@@ -43,6 +43,8 @@ const Schema = Type.Object({
     },
     { default: {} }
   ),
+  // Per-agent model override: a single "model"/"provider/model" reference,
+  // or a comma-separated list of references tried in order as fallbacks.
   agents: Type.Record(Type.String(), Type.String(), { default: {} }),
 });
 
