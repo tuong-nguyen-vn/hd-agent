@@ -55,7 +55,10 @@ export class Paths {
    * different from `baseCwd`. Returns an empty string when `cwd` is unset or
    * equal to `baseCwd`, so callers can append it unconditionally.
    */
-  public static cwdSuffix(cwd: string | undefined, baseCwd: string): string {
+  public static cwdSuffix(
+    cwd: string | null | undefined,
+    baseCwd: string
+  ): string {
     if (!cwd) {
       return "";
     }

@@ -16,12 +16,15 @@ export const editSchema = Type.Object(
             description:
               "Replacement text. Empty string deletes the matched range.",
           }),
-          replaceAll: Type.Optional(
+          // Nullable-but-required (not `Type.Optional`): strict-mode JSON
+          // Schema requires every property in `required`; pass `null` to omit.
+          replaceAll: Type.Union([
             Type.Boolean({
               description:
                 "If true, replaces every occurrence of oldString. Defaults to false.",
-            })
-          ),
+            }),
+            Type.Null(),
+          ]),
         },
         { additionalProperties: false }
       ),
@@ -37,4 +40,12 @@ export const editSchema = Type.Object(
 
 export type EditInput = Static<typeof editSchema>;
 
-export type RawEdit = EditInput["edits"][number];
+// Hand-declared rather than derived from `EditInput["edits"][number]`: the
+// wire schema makes `replaceAll` required-but-nullable for strict-mode JSON
+// Schema compliance, but internal callers (and tests) should still be able
+// to omit it, matching the `raw.replaceAll ?? false` default below.
+export type RawEdit = {
+  readonly oldString: string;
+  readonly newString: string;
+  readonly replaceAll?: boolean | null;
+};

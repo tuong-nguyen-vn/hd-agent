@@ -11,18 +11,23 @@ export const bashSchema = Type.Object(
     command: Type.String({
       description: "Runs via bash -lc, so login shell init applies.",
     }),
-    cwd: Type.Optional(
+    // Nullable-but-required (not `Type.Optional`) so the JSON Schema stays
+    // strict-mode compliant: OpenAI's strict function calling requires every
+    // property to appear in `required`; the model passes `null` to omit it.
+    cwd: Type.Union([
       Type.String({
         description:
           "Working directory for the command — an absolute path (a `~` prefix is expanded to the home directory). Defaults to the workspace root. Prefer passing `cwd` over prefixing the command with `cd … &&`.",
-      })
-    ),
-    timeoutMs: Type.Optional(
+      }),
+      Type.Null(),
+    ]),
+    timeoutMs: Type.Union([
       Type.Integer({
         minimum: 1,
         description: `Timeout in milliseconds. Default is ${DEFAULT_TIMEOUT_MS} (${DEFAULT_TIMEOUT_MS / 1000}s) — raise it for long-running commands like builds, test suites, training runs, or installs.`,
-      })
-    ),
+      }),
+      Type.Null(),
+    ]),
   },
   { additionalProperties: false }
 );
