@@ -35,8 +35,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
         compat: {
           forceAdaptiveThinking: true,
-          supportsTemperature: false,
-          supportsStrictTools: true,
+          supportsTemperature: false
         },
       },
       {
@@ -50,7 +49,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         contextWindow: 1000000,
         maxTokens: 128000,
         thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
-        compat: { forceAdaptiveThinking: true, supportsStrictTools: true },
+        compat: { forceAdaptiveThinking: true },
       },
       {
         id: "glm-5.2",
@@ -158,8 +157,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
         compat: {
           forceAdaptiveThinking: true,
-          supportsTemperature: false,
-          supportsStrictTools: true,
+          supportsTemperature: false
         },
       },
       {
@@ -173,7 +171,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         contextWindow: 300000,
         maxTokens: 128000,
         thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
-        compat: { forceAdaptiveThinking: true, supportsStrictTools: true },
+        compat: { forceAdaptiveThinking: true },
       },
       {
         id: "gemini-3.6-flash",
