@@ -96,6 +96,28 @@ class FakeSession implements SubagentSession {
   }
 }
 
+// A FakeSession whose prompt() never resolves on its own, simulating a
+// hung nested session (e.g. blocked on network I/O during setup). abort()
+// unblocks the pending prompt, matching how a real session's abort tears
+// down an in-flight run.
+class StuckSession extends FakeSession {
+  private finishPrompt: (() => void) | undefined;
+
+  public constructor() {
+    super(
+      (session) =>
+        new Promise<void>((resolve) => {
+          (session as StuckSession).finishPrompt = resolve;
+        })
+    );
+  }
+
+  public override async abort(): Promise<void> {
+    await super.abort();
+    this.finishPrompt?.();
+  }
+}
+
 describe("childToolNames", () => {
   test("removes the subagent tool from a child's inherited allowlist", () => {
     expect(childToolNames(["read", "subagent", "bash"])).toEqual([
@@ -404,6 +426,27 @@ describe("runSubagent", () => {
     expect(fake.disposeCalls).toBe(1);
   });
 
+  test("a stalled attempt (no progress) aborts, tears down, and rejects without hanging", async () => {
+    const fake = new StuckSession();
+
+    await expect(
+      runSubagent(
+        "stuck",
+        ctx,
+        undefined,
+        undefined,
+        async () => fake,
+        undefined,
+        undefined,
+        5
+      )
+    ).rejects.toThrow("Subagent failed: stalled");
+
+    expect(fake.abortCalls).toBe(1);
+    expect(fake.disposeCalls).toBe(1);
+  });
+
+
   test("nested subagent calls are rejected by the async-local recursion ban", async () => {
     const outer = new FakeSession(async () => {
       const inner = new FakeSession(async () => {});
@@ -438,7 +481,28 @@ describe("runSubagent with a named agent", () => {
       ].join("\n"),
       "utf-8"
     );
-    projectCtx = { cwd: root } as ExtensionContext;
+    await writeFile(
+      join(agentsDir, "multimodel.md"),
+      [
+        "---",
+        "name: multimodel",
+        "description: Tries two models",
+        "model: proxy/a, proxy/b",
+        "---",
+        "Body.",
+      ].join("\n"),
+      "utf-8"
+    );
+    projectCtx = {
+      cwd: root,
+      modelRegistry: {
+        getAll: () => [
+          { provider: "proxy", id: "a" },
+          { provider: "proxy", id: "b" },
+        ],
+        hasConfiguredAuth: () => true,
+      },
+    } as unknown as ExtensionContext;
   });
 
   afterEach(async () => {
@@ -527,5 +591,29 @@ describe("runSubagent with a named agent", () => {
     );
 
     expect(receivedAgent?.name).toBe("reviewer");
+  });
+
+  test("a stalled attempt falls back to the next configured model candidate", async () => {
+    const stuck = new StuckSession();
+    const healthy = new FakeSession(async (session) => {
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({ type: "message_end", message: assistant(["recovered"]) });
+    });
+    const sessions = [stuck, healthy];
+
+    const result = await runSubagent(
+      "find bugs",
+      projectCtx,
+      undefined,
+      undefined,
+      async () => sessions.shift() as FakeSession,
+      undefined,
+      "multimodel",
+      5
+    );
+
+    expect(result.content).toEqual([{ type: "text", text: "recovered" }]);
+    expect(stuck.abortCalls).toBe(1);
+    expect(healthy.abortCalls).toBe(0);
   });
 });

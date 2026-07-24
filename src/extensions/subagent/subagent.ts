@@ -23,6 +23,14 @@ import { formatTopLine } from "./render";
 export const PER_TASK_OUTPUT_CAP = 32 * 1024;
 export const SUBAGENT_TOOL_NAME = "subagent";
 
+// A subagent attempt is considered stalled (and abandoned in favor of the
+// next model candidate) after this long without any observable progress
+// (session creation, a streamed message, or a tool call). This guards
+// against nested-session setup hanging indefinitely — e.g. a provider
+// extension's session_start hook blocking on a slow network call — which
+// would otherwise require the user to manually abort.
+export const STALL_TIMEOUT_MS = 60_000;
+
 const inSubagent = new AsyncLocalStorage<true>();
 
 export type SubagentUsage = {
@@ -224,7 +232,8 @@ export async function runSubagent(
   onUpdate?: AgentToolUpdateCallback<SubagentDetails>,
   createSession: CreateSubagentSession = createSdkSubagentSession,
   activeToolNames?: readonly string[],
-  agentName?: string
+  agentName?: string,
+  stallTimeoutMs: number = STALL_TIMEOUT_MS
 ): Promise<AgentToolResult<SubagentDetails>> {
   // Hard block against subagent recursion
   if (inSubagent.getStore()) {
@@ -248,13 +257,16 @@ export async function runSubagent(
         signal,
         onUpdate,
         createSession,
-        activeToolNames
+        activeToolNames,
+        stallTimeoutMs
       );
 
       const failedBeforeAnyProgress =
         attempt.snapshot.toolCalls.length === 0 &&
         attempt.snapshot.usage.turns === 0 &&
-        (attempt.thrown !== undefined || attempt.snapshot.stopReason === "error");
+        (attempt.thrown !== undefined ||
+          attempt.snapshot.stopReason === "error" ||
+          attempt.stalled);
       const hasMoreCandidates = i < models.length - 1;
 
       if (!failedBeforeAnyProgress || !hasMoreCandidates || signal?.aborted) {
@@ -272,6 +284,8 @@ type SubagentAttemptResult = {
   readonly thrown: unknown;
   readonly snapshot: SubagentSnapshot;
   readonly capture: SubagentEventCapture;
+  readonly stalled: boolean;
+  readonly stallTimeoutMs: number;
 };
 
 async function runSubagentAttempt(
@@ -282,7 +296,8 @@ async function runSubagentAttempt(
   signal: AbortSignal | undefined,
   onUpdate: AgentToolUpdateCallback<SubagentDetails> | undefined,
   createSession: CreateSubagentSession,
-  activeToolNames: readonly string[] | undefined
+  activeToolNames: readonly string[] | undefined,
+  stallTimeoutMs: number = STALL_TIMEOUT_MS
 ): Promise<SubagentAttemptResult> {
   const capture = new SubagentEventCapture(onUpdate, {
     contextWindow: model?.contextWindow,
@@ -291,20 +306,59 @@ async function runSubagentAttempt(
   let session: SubagentSession | undefined;
   let thrown: unknown;
   let abortRequested = false;
+  let stalled = false;
   let abortPromise: Promise<void> | undefined;
   let unsubscribe: (() => void) | undefined;
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
 
+  // ensureAbort must never let an exception escape synchronously: it's
+  // called from an 'abort' event listener (onAbort), and event listeners
+  // that throw synchronously are reported as uncaught exceptions rather
+  // than being caught by the caller. session.abort() is async and its
+  // rejections are already caught below, but the try/catch guards against
+  // any synchronous throw from calling it in the first place.
   const ensureAbort = (): Promise<void> => {
     if (!session) {
       return Promise.resolve();
     }
-    abortPromise ??= session.abort().catch(() => {});
+    if (!abortPromise) {
+      try {
+        abortPromise = session.abort().catch(() => {});
+      } catch {
+        abortPromise = Promise.resolve();
+      }
+    }
     return abortPromise;
   };
 
   const onAbort = () => {
-    abortRequested = true;
-    void ensureAbort();
+    try {
+      abortRequested = true;
+      void ensureAbort();
+    } catch {
+      // Never let the abort listener throw.
+    }
+  };
+
+  const clearStallTimer = () => {
+    if (stallTimer !== undefined) {
+      clearTimeout(stallTimer);
+      stallTimer = undefined;
+    }
+  };
+
+  // Restarts the inactivity watchdog. Called before session creation and
+  // after every session event, so a hung session (e.g. nested extension
+  // setup blocking on a network call before the first turn even starts)
+  // gets abandoned instead of hanging until the user manually aborts.
+  const resetStallTimer = () => {
+    clearStallTimer();
+    stallTimer = setTimeout(() => {
+      stalled = true;
+      abortRequested = true;
+      void ensureAbort();
+    }, stallTimeoutMs);
+    stallTimer.unref?.();
   };
 
   try {
@@ -313,11 +367,17 @@ async function runSubagentAttempt(
       throw new Error("subagent aborted before start");
     }
     signal?.addEventListener("abort", onAbort, { once: true });
+    resetStallTimer();
     session = await createSession(parentCtx, activeToolNames, agent, model);
-    unsubscribe = session.subscribe((event) => capture.handle(event));
+    unsubscribe = session.subscribe((event) => {
+      resetStallTimer();
+      capture.handle(event);
+    });
     if (abortRequested) {
       await ensureAbort();
-      throw new Error("subagent aborted before start");
+      throw new Error(
+        stalled ? "subagent stalled before start" : "subagent aborted before start"
+      );
     }
     await session.prompt(promptFor(prompt, agent));
     if (abortRequested && capture.snapshot().stopReason !== "aborted") {
@@ -326,6 +386,7 @@ async function runSubagentAttempt(
   } catch (err) {
     thrown = err;
   } finally {
+    clearStallTimer();
     signal?.removeEventListener("abort", onAbort);
     if (abortRequested) {
       await ensureAbort();
@@ -334,13 +395,20 @@ async function runSubagentAttempt(
     session?.dispose();
   }
 
-  return { thrown, snapshot: capture.snapshot(), capture };
+  return { thrown, snapshot: capture.snapshot(), capture, stalled, stallTimeoutMs };
 }
 
 function finalizeAttempt(
   attempt: SubagentAttemptResult
 ): AgentToolResult<SubagentDetails> {
-  const { thrown, snapshot, capture } = attempt;
+  const { thrown, snapshot, capture, stalled, stallTimeoutMs } = attempt;
+  if (stalled) {
+    throw makeFailureError(
+      "stalled",
+      `no progress within ${stallTimeoutMs}ms; aborted to avoid hanging`,
+      snapshot.finalOutput
+    );
+  }
   if (thrown !== undefined) {
     throw makeFailureError(thrownMessage(thrown), undefined, snapshot.finalOutput);
   }
