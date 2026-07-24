@@ -60,7 +60,7 @@ const DEVIN_MODEL_OVERRIDES: Record<
       medium: null,
       high: null,
       xhigh: null,
-      max: "max",
+      max: null,
     },
   },
 };
