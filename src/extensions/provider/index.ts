@@ -72,23 +72,6 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         compat: { forceAdaptiveThinking: true },
       },
       {
-        id: "gpt-5.5",
-        name: "GPT-5.5",
-        api: "openai-completions",
-        baseUrl: `${TUONGNGUYEN_PROXY_ROOT}/v1`,
-        reasoning: true,
-        input: ["text", "image"],
-        cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 0 },
-        contextWindow: 272000,
-        maxTokens: 128000,
-        thinkingLevelMap: { off: "none", minimal: null, xhigh: "xhigh" },
-        compat: {
-          supportsDeveloperRole: false,
-          supportsReasoningEffort: true,
-          maxTokensField: "max_tokens",
-        },
-      },
-      {
         id: "grok-4.5",
         name: "Grok 4.5",
         api: "openai-completions",
