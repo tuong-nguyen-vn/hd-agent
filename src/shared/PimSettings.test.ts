@@ -65,6 +65,7 @@ describe("PimSettings", () => {
       painter: {},
       viewMedia: {},
       agents: {},
+      thinkingLevels: {},
     });
 
     expect((await stat(testPimHomeDir!)).mode & 0o777).toBe(0o700);

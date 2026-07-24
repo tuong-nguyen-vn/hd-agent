@@ -46,6 +46,8 @@ const Schema = Type.Object({
   // Per-agent model override: a single "model"/"provider/model" reference,
   // or a comma-separated list of references tried in order as fallbacks.
   agents: Type.Record(Type.String(), Type.String(), { default: {} }),
+  // Last thinking level explicitly selected per model, keyed by "provider/id".
+  thinkingLevels: Type.Record(Type.String(), Type.String(), { default: {} }),
 });
 
 type Settings = Static<typeof Schema>;
@@ -127,6 +129,18 @@ export class PimSettings {
   ): Promise<string | undefined> {
     const agents = await PimSettings.get("agents");
     return PimSettings.normalize(agents[agentName]);
+  }
+
+  public static async getThinkingLevels(): Promise<Record<string, string>> {
+    return PimSettings.get("thinkingLevels");
+  }
+
+  public static async setThinkingLevel(
+    modelKey: string,
+    level: string
+  ): Promise<void> {
+    const current = await PimSettings.get("thinkingLevels");
+    await PimSettings.set("thinkingLevels", { ...current, [modelKey]: level });
   }
 
   private static normalize(value: string | undefined): string | undefined {
