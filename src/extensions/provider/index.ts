@@ -104,9 +104,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
           max: "max",
         },
         compat: {
-          supportsDeveloperRole: false,
           supportsReasoningEffort: true,
-          maxTokensField: "max_tokens",
         },
       },
       {
