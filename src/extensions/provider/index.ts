@@ -81,11 +81,6 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         contextWindow: 500000,
         maxTokens: 500000,
         thinkingLevelMap: { off: null, minimal: null },
-        compat: {
-          supportsDeveloperRole: false,
-          supportsReasoningEffort: true,
-          maxTokensField: "max_tokens",
-        },
       },
       {
         id: "gpt-5.6-sol",
@@ -102,9 +97,6 @@ export default async function (pi: ExtensionAPI): Promise<void> {
           minimal: null,
           xhigh: "xhigh",
           max: "max",
-        },
-        compat: {
-          supportsReasoningEffort: true,
         },
       },
       {
