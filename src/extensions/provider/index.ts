@@ -153,7 +153,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         reasoning: true,
         input: ["text", "image"],
         cost: { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 },
-        contextWindow: 1000000,
+        contextWindow: 300000,
         maxTokens: 128000,
         thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
         compat: {
@@ -170,7 +170,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         reasoning: true,
         input: ["text", "image"],
         cost: { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
-        contextWindow: 1000000,
+        contextWindow: 300000,
         maxTokens: 128000,
         thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
         compat: { forceAdaptiveThinking: true, supportsStrictTools: true },
