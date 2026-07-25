@@ -446,7 +446,6 @@ describe("runSubagent", () => {
     expect(fake.disposeCalls).toBe(1);
   });
 
-
   test("nested subagent calls are rejected by the async-local recursion ban", async () => {
     const outer = new FakeSession(async () => {
       const inner = new FakeSession(async () => {});

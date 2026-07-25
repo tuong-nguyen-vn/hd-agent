@@ -187,7 +187,11 @@ export function resolveSubagentModelCandidates(
   const seen = new Set<string>();
   const candidates: Model<any>[] = [];
   for (const reference of references) {
-    for (const model of resolveModelReference(parentCtx, reference, agentLabel)) {
+    for (const model of resolveModelReference(
+      parentCtx,
+      reference,
+      agentLabel
+    )) {
       const key = `${model.provider}/${model.id}`;
       if (seen.has(key)) {
         continue;
@@ -376,7 +380,9 @@ async function runSubagentAttempt(
     if (abortRequested) {
       await ensureAbort();
       throw new Error(
-        stalled ? "subagent stalled before start" : "subagent aborted before start"
+        stalled
+          ? "subagent stalled before start"
+          : "subagent aborted before start"
       );
     }
     await session.prompt(promptFor(prompt, agent));
@@ -395,7 +401,13 @@ async function runSubagentAttempt(
     session?.dispose();
   }
 
-  return { thrown, snapshot: capture.snapshot(), capture, stalled, stallTimeoutMs };
+  return {
+    thrown,
+    snapshot: capture.snapshot(),
+    capture,
+    stalled,
+    stallTimeoutMs,
+  };
 }
 
 function finalizeAttempt(
@@ -410,7 +422,11 @@ function finalizeAttempt(
     );
   }
   if (thrown !== undefined) {
-    throw makeFailureError(thrownMessage(thrown), undefined, snapshot.finalOutput);
+    throw makeFailureError(
+      thrownMessage(thrown),
+      undefined,
+      snapshot.finalOutput
+    );
   }
   if (snapshot.stopReason === "error" || snapshot.stopReason === "aborted") {
     throw makeFailureError(
@@ -422,8 +438,7 @@ function finalizeAttempt(
 
   const details = capture.details();
   const text =
-    details.returnedOutput ||
-    "[subagent tool: completed with no text output.]";
+    details.returnedOutput || "[subagent tool: completed with no text output.]";
   return {
     content: [{ type: "text", text }],
     details,

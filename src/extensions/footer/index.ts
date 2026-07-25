@@ -62,7 +62,7 @@ async function installAmpChrome(
   }));
   ctx.ui.setEditorComponent((tui, theme, keybindings) => {
     activeTui = tui;
-    StartupRender.release(tui);
+    setTimeout(() => StartupRender.release(tui), 0);
     return new AmpEditor(tui, theme, keybindings, {
       pi,
       ctx,
