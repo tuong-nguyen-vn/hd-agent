@@ -41,7 +41,7 @@ bun benchmarks/edit/run.ts
 
 # Target specific models and a single task, 5 reps:
 bun benchmarks/edit/run.ts \
-  --models anthropic/claude-opus-4-8,openai/gpt-5 --task rename-in-file --reps 5
+  --models anthropic/claude-opus-5,openai/gpt-5 --task rename-in-file --reps 5
 
 # Include the hashline lane (install the extension first, see below):
 pi install npm:pi-hashline-edit

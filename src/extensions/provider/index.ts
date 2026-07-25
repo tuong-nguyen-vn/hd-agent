@@ -23,8 +23,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     authHeader: true,
     models: [
       {
-        id: "claude-opus-4-8",
-        name: "Claude Opus 4.8",
+        id: "claude-opus-5",
+        name: "Claude Opus 5",
         api: "anthropic-messages",
         baseUrl: TUONGNGUYEN_PROXY_ROOT,
         reasoning: true,
@@ -145,8 +145,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     authHeader: true,
     models: [
       {
-        id: "claude-opus-4-8",
-        name: "Claude Opus 4.8",
+        id: "claude-opus-5",
+        name: "Claude Opus 5",
         api: "anthropic-messages",
         baseUrl: HDWEBSOFT_PROXY_ROOT,
         reasoning: true,
