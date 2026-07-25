@@ -131,14 +131,15 @@ if (mode === "telegram") {
 }
 
 const piCli = await findPiCli();
+const startupRenderPreload = join(import.meta.dir, "startup-render.ts");
 const proc = Bun.spawn({
-  cmd: [process.execPath, piCli, ...cliArgs],
+  cmd: [process.execPath, "--preload", startupRenderPreload, piCli, ...cliArgs],
   stdio: [
     promptViaStdin === undefined ? "inherit" : "pipe",
     "inherit",
     "inherit",
   ],
-  env: process.env,
+  env: { ...process.env, AMP_PI_CLI: piCli },
 });
 if (promptViaStdin !== undefined && proc.stdin) {
   proc.stdin.write(promptViaStdin);
