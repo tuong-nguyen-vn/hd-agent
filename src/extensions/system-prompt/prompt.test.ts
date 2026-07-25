@@ -33,6 +33,66 @@ describe("buildSystemPrompt", () => {
     expect(sysIdx).toBeLessThan(diaIdx);
     expect(diaIdx).toBeLessThan(envIdx);
   });
+
+  test("includes all behavioral blocks in a fixed order", () => {
+    const prompt = buildSystemPrompt({
+      cwd: "/repo",
+      contextFiles: [],
+      skillsBlock: "",
+      toolGuidelines: [],
+    });
+
+    const order = [
+      "</system_instructions>",
+      "<autonomy_and_persistence>",
+      "<investigate_before_acting>",
+      "<pragmatism_and_scope>",
+      "<verification>",
+      "<executing_actions_with_care>",
+      "<tool_use>",
+      "<output_efficiency>",
+      "<diagrams>",
+      "<environment>",
+    ];
+
+    let previous = -1;
+    for (const marker of order) {
+      const idx = prompt.indexOf(marker);
+      expect(idx).toBeGreaterThan(previous);
+      previous = idx;
+    }
+  });
+
+  test("bakes URL, emoji, and tool-call tone rules into system_instructions", () => {
+    const prompt = buildSystemPrompt({
+      cwd: "/repo",
+      contextFiles: [],
+      skillsBlock: "",
+      toolGuidelines: [],
+    });
+
+    expect(prompt).toContain("NEVER generate or guess URLs");
+    expect(prompt).toContain("Do not use emojis");
+    expect(prompt).toContain("`file_path:line_number`");
+    expect(prompt).toContain("Do not use a colon before tool calls");
+  });
+
+  test("still emits behavioral blocks when a customPrompt overrides system_instructions", () => {
+    const prompt = buildSystemPrompt({
+      cwd: "/repo",
+      contextFiles: [],
+      skillsBlock: "",
+      toolGuidelines: [],
+      customPrompt: "custom identity here",
+    });
+
+    expect(prompt).toContain("custom identity here");
+    expect(prompt).not.toContain("<system_instructions>");
+    expect(prompt).toContain("<autonomy_and_persistence>");
+    expect(prompt).toContain("<verification>");
+    expect(prompt).toContain("<tool_use>");
+    expect(prompt).toContain("<diagrams>");
+  });
 });
 
 describe("describeOs", () => {

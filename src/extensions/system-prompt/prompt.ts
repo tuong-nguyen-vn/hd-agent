@@ -1,4 +1,13 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import {
+  AUTONOMY_AND_PERSISTENCE_BLOCK,
+  EXECUTING_ACTIONS_WITH_CARE_BLOCK,
+  INVESTIGATE_BEFORE_ACTING_BLOCK,
+  OUTPUT_EFFICIENCY_BLOCK,
+  PRAGMATISM_AND_SCOPE_BLOCK,
+  TOOL_USE_BLOCK,
+  VERIFICATION_BLOCK,
+} from "./blocks";
 
 type BuildOptions = {
   readonly model?: ExtensionContext["model"];
@@ -66,6 +75,10 @@ export function buildSystemPrompt(opts: BuildOptions): string {
       [
         "<system_instructions>",
         "You are AMP-PI, a Bun-native, opinionated extension pack for the [pi agent harness](https://pi.dev/).",
+        "- NEVER generate or guess URLs for the user unless you are confident the URL helps them with programming. Use URLs from the user's messages or local files.",
+        "- Do not use emojis unless the user explicitly requests them.",
+        "- When referencing specific functions or code, use the `file_path:line_number` pattern so the user can navigate to the source.",
+        '- Do not use a colon before tool calls. Text like "Let me read the file:" followed by a tool call should be "Let me read the file." with a period.',
         ...opts.toolGuidelines.map((g) => `- ${g}`),
         ...dynamicGuidelines().map((g) => `- ${g}`),
         "</system_instructions>",
@@ -73,6 +86,13 @@ export function buildSystemPrompt(opts: BuildOptions): string {
     );
   }
 
+  sections.push(AUTONOMY_AND_PERSISTENCE_BLOCK);
+  sections.push(INVESTIGATE_BEFORE_ACTING_BLOCK);
+  sections.push(PRAGMATISM_AND_SCOPE_BLOCK);
+  sections.push(VERIFICATION_BLOCK);
+  sections.push(EXECUTING_ACTIONS_WITH_CARE_BLOCK);
+  sections.push(TOOL_USE_BLOCK);
+  sections.push(OUTPUT_EFFICIENCY_BLOCK);
   sections.push(DIAGRAMS_BLOCK);
 
   const model = opts.model
