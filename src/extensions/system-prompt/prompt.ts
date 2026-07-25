@@ -30,14 +30,17 @@ type OsDescriptionOptions = {
   readonly runCommand?: RunCommand;
 };
 
-function dynamicGuidelines(): ReadonlyArray<string> {
-  const guidelines: string[] = [];
-  if (Bun.which("gh")) {
-    guidelines.push(
-      "Always prefer `gh` CLI instead of raw API calls when viewing GitHub content (eg. PRs, issues, comments)."
-    );
-  }
-  return guidelines;
+const DYNAMIC_GUIDELINES = Bun.which("gh")
+  ? [
+      "Always prefer `gh` CLI instead of raw API calls when viewing GitHub content (eg. PRs, issues, comments).",
+    ]
+  : [];
+
+let cachedOsDescription: string | undefined;
+
+function defaultOsDescription(): string {
+  cachedOsDescription ??= describeOs();
+  return cachedOsDescription;
 }
 
 const DIAGRAMS_BLOCK = [
@@ -80,7 +83,7 @@ export function buildSystemPrompt(opts: BuildOptions): string {
         "- When referencing specific functions or code, use the `file_path:line_number` pattern so the user can navigate to the source.",
         '- Do not use a colon before tool calls. Text like "Let me read the file:" followed by a tool call should be "Let me read the file." with a period.',
         ...opts.toolGuidelines.map((g) => `- ${g}`),
-        ...dynamicGuidelines().map((g) => `- ${g}`),
+        ...DYNAMIC_GUIDELINES.map((g) => `- ${g}`),
         "</system_instructions>",
       ].join("\n")
     );
@@ -102,7 +105,7 @@ export function buildSystemPrompt(opts: BuildOptions): string {
     [
       "<environment>",
       `- cwd: ${opts.cwd}`,
-      `- os: ${opts.os ?? describeOs()}`,
+      `- os: ${opts.os ?? defaultOsDescription()}`,
       `- model: ${model}`,
       `- datetime: ${formatDatetime(new Date())}`,
       "</environment>",

@@ -27,4 +27,16 @@ describe("fitBorder", () => {
       expect(visibleWidth(rendered)).toBeLessThanOrEqual(width);
     }
   });
+
+  test("truncates long ANSI and wide-character labels in one pass", () => {
+    const rendered = fitBorder(
+      " context ",
+      ` \x1b[32m${"模型".repeat(100)}\x1b[39m `,
+      40,
+      (s) => s
+    );
+
+    expect(rendered).toStartWith("─ context ");
+    expect(visibleWidth(rendered)).toBe(40);
+  });
 });

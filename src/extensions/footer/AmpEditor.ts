@@ -40,34 +40,25 @@ export function fitBorder(
   let rightText = right;
   const fixedWidth = 2;
   const minimumGap = 3;
+  let leftWidth = visibleWidth(leftText);
+  let rightWidth = visibleWidth(rightText);
+  let overflow = fixedWidth + leftWidth + rightWidth + minimumGap - width;
 
-  while (
-    fixedWidth + visibleWidth(leftText) + visibleWidth(rightText) + minimumGap >
-      width &&
-    visibleWidth(rightText) > 0
-  ) {
+  if (overflow > 0 && rightWidth > 0) {
     rightText = truncateToWidth(
       rightText,
-      Math.max(0, visibleWidth(rightText) - 1),
+      Math.max(0, rightWidth - overflow),
       ""
     );
+    rightWidth = visibleWidth(rightText);
+    overflow = fixedWidth + leftWidth + rightWidth + minimumGap - width;
   }
-  while (
-    fixedWidth + visibleWidth(leftText) + visibleWidth(rightText) + minimumGap >
-      width &&
-    visibleWidth(leftText) > 0
-  ) {
-    leftText = truncateToWidth(
-      leftText,
-      Math.max(0, visibleWidth(leftText) - 1),
-      ""
-    );
+  if (overflow > 0 && leftWidth > 0) {
+    leftText = truncateToWidth(leftText, Math.max(0, leftWidth - overflow), "");
+    leftWidth = visibleWidth(leftText);
   }
 
-  const gap = Math.max(
-    0,
-    width - fixedWidth - visibleWidth(leftText) - visibleWidth(rightText)
-  );
+  const gap = Math.max(0, width - fixedWidth - leftWidth - rightWidth);
   return `${border("─")}${leftText}${border("─".repeat(gap))}${rightText}${border("─")}`;
 }
 
