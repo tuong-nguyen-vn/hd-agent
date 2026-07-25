@@ -48,7 +48,7 @@
     "@earendil-works/pi-coding-agent": ">=0.82.0"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.82.0",
+    "@earendil-works/pi-coding-agent": "^0.82.1",
     "@types/bun": "latest",
     "@typescript/native-preview": "^7.0.0-dev.20260612.1",
     "oxlint": "^1.69.0",
@@ -61,6 +61,6 @@
     "ignore": "^7.0.5",
     "ky": "^2.0.2",
     "pi-devin-auth": "^0.1.2",
-    "pi-mcp-adapter": "^2.11.0"
+    "pi-mcp-adapter": "^2.13.0"
   }
 }
