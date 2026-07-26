@@ -1,5 +1,4 @@
 import type { TUI as TuiType } from "@earendil-works/pi-tui";
-import { detectCapabilities, setCapabilities } from "@earendil-works/pi-tui";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -9,16 +8,6 @@ const STATE_KEY = Symbol.for("amp-pi.startup-render");
 const FAILSAFE_MS = 10_000;
 const piCli = process.env["AMP_PI_CLI"];
 const interactive = process.stdin.isTTY && process.stdout.isTTY;
-
-// pi-tui's terminal detection doesn't recognise herdr (herdr.dev) since it
-// isn't a terminal emulator and doesn't set TERM_PROGRAM/etc, so it falls
-// back to the conservative `hyperlinks: false` default — file-path links
-// never render as clickable OSC 8 links. Herdr does support opening OSC 8
-// links (via Ctrl-click) and always sets HERDR_ENV=1 for panes it spawns, so
-// seed the cache once at startup rather than special-casing every call site.
-if (process.env["HERDR_ENV"] === "1") {
-  setCapabilities({ ...detectCapabilities(), hyperlinks: true });
-}
 
 const powerlineEnabled = async (): Promise<boolean> => {
   const settingsPath = join(

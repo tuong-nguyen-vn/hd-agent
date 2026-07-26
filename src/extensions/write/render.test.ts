@@ -131,11 +131,21 @@ describe("DiffView.formatStats", () => {
 });
 
 describe("DiffView.renderDiffCall with write's opt-in styling", () => {
+  const originalHerdrEnv = process.env["HERDR_ENV"];
+
   beforeEach(() => {
+    // Renderer.renderFileLink treats HERDR_ENV=1 as a hyperlink-capable
+    // terminal regardless of setCapabilities(), so isolate it per test.
+    delete process.env["HERDR_ENV"];
     setCapabilities({ images: null, trueColor: true, hyperlinks: false });
   });
 
   afterEach(() => {
+    if (originalHerdrEnv === undefined) {
+      delete process.env["HERDR_ENV"];
+    } else {
+      process.env["HERDR_ENV"] = originalHerdrEnv;
+    }
     resetCapabilitiesCache();
   });
 

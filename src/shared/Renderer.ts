@@ -206,7 +206,13 @@ export class Renderer {
     if (!clickable) {
       return styled + Renderer.AUTO_LINK_BOUNDARY;
     }
-    if (!getCapabilities().hyperlinks) {
+    // pi-tui's terminal detection doesn't recognise herdr (herdr.dev), which
+    // isn't a terminal emulator itself and doesn't set TERM_PROGRAM/etc, so it
+    // falls through to the conservative `hyperlinks: false` default when the
+    // outer terminal's env vars aren't forwarded (e.g. over ssh). Herdr does
+    // render OSC 8 links (opened via Ctrl-click) and always sets HERDR_ENV=1
+    // for panes it spawns, so treat that as a positive signal too.
+    if (!getCapabilities().hyperlinks && process.env["HERDR_ENV"] !== "1") {
       return styled;
     }
     return hyperlink(styled, `file://${absolutePath}`) + Renderer.HARD_RESET;
