@@ -17,7 +17,8 @@
     "url": "git+https://github.com/AaronCQL/pim-agent.git"
   },
   "bin": {
-    "amp-pi": "bin/pim.ts"
+    "amp-pi": "bin/pim.ts",
+    "pi": "bin/pim.ts"
   },
   "files": [
     "bin/",

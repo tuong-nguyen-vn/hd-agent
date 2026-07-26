@@ -55,6 +55,8 @@ bun install -g github:tuong-nguyen-vn/pim-agent
 > [!IMPORTANT]
 > **Use `amp-pi` instead of `pi` after installing Pim.** The `amp-pi` command is a drop-in replacement for `pi` that [runs Pi via Bun](./bin/pim.ts), enabling Bun-specific APIs. Existing Pi behaviour and extensions should continue to work normally.
 
+The global install also registers a `pi` bin pointing at the same launcher, so tools that hardcode `pi` (e.g. [herdr](https://herdr.dev) resuming an agent pane with `pi --session <file>`) still get the Bun runtime. This only takes effect when Bun's global bin directory comes before Pi's own bin directory on your `PATH`; otherwise keep calling `amp-pi` directly. Pim skips its own bin when locating the real Pi CLI, so there is no recursion.
+
 If `amp-pi` cannot locate Pi, make sure `pi` is on your `PATH`, or set:
 
 ```sh

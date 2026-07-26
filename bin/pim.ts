@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { realpath } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 
 const PI_PACKAGE = "@earendil-works/pi-coding-agent";
 
@@ -39,20 +39,42 @@ async function resolveEnvPiCli(): Promise<string | null> {
   return (await isFile(candidate)) ? candidate : null;
 }
 
+// Pim also installs a `pi` bin, so the first `pi` on PATH may be this launcher.
+// Walk every PATH entry until one resolves into the real Pi package.
 async function resolvePathPiCli(): Promise<string | null> {
-  const piBin = Bun.which("pi");
-  if (!piBin) {
-    return null;
+  let searchDirs = (process.env["PATH"] ?? "").split(delimiter).filter(Boolean);
+
+  while (searchDirs.length > 0) {
+    const piBin = Bun.which("pi", { PATH: searchDirs.join(delimiter) });
+    if (!piBin) {
+      return null;
+    }
+
+    const cliPath = await resolveRealPath(piBin);
+    if (await isPiPackageCli(cliPath)) {
+      return cliPath;
+    }
+
+    const skipped = resolve(dirname(piBin));
+    const remaining = searchDirs.filter((dir) => resolve(dir) !== skipped);
+    // Bail out instead of looping forever if the rejected bin's directory
+    // cannot be traced back to a PATH entry.
+    if (remaining.length === searchDirs.length) {
+      return null;
+    }
+    searchDirs = remaining;
   }
 
-  const cliPath = await resolveRealPath(piBin);
-  const pkgPath = join(dirname(cliPath), "..", "package.json");
+  return null;
+}
 
+async function isPiPackageCli(cliPath: string): Promise<boolean> {
+  const pkgPath = join(dirname(cliPath), "..", "package.json");
   try {
     const pkg = (await Bun.file(pkgPath).json()) as { readonly name?: string };
-    return pkg.name === PI_PACKAGE ? cliPath : null;
+    return pkg.name === PI_PACKAGE;
   } catch {
-    return null;
+    return false;
   }
 }
 
