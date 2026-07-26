@@ -3,8 +3,10 @@ import type {
   ExtensionAPI,
   Theme,
 } from "@earendil-works/pi-coding-agent";
+import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
+import type { Api, Model } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
-import { ModelResolver } from "../../shared/ModelResolver";
+import { ModelResolver, type ResolvedModel } from "../../shared/ModelResolver";
 import { Paths } from "../../shared/Paths";
 import { PimSettings } from "../../shared/PimSettings";
 import {
@@ -103,22 +105,22 @@ function renderTitle(
 }
 
 async function callGenerate(
-  base: string,
-  key: string,
-  model: string,
+  resolved: ResolvedModel,
   prompt: string,
   size: string,
   quality: string,
   signal: AbortSignal | undefined
 ) {
-  const r = await fetch(`${base}/images/generations`, {
+  const { model, apiKey, headers } = resolved;
+  const r = await fetch(`${model.baseUrl}/images/generations`, {
     method: "POST",
     signal,
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${key}`,
+      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      ...headers,
     },
-    body: JSON.stringify({ model, prompt, n: 1, size, quality }),
+    body: JSON.stringify({ model: model.id, prompt, n: 1, size, quality }),
   });
   if (!r.ok) {
     const detail = await r.text().catch(() => "");
@@ -128,17 +130,16 @@ async function callGenerate(
 }
 
 async function callEdit(
-  base: string,
-  key: string,
-  model: string,
+  resolved: ResolvedModel,
   prompt: string,
   inputs: readonly string[],
   size: string,
   quality: string,
   signal: AbortSignal | undefined
 ) {
+  const { model, apiKey, headers } = resolved;
   const form = new FormData();
-  form.append("model", model);
+  form.append("model", model.id);
   form.append("prompt", prompt);
   form.append("size", size);
   form.append("quality", quality);
@@ -149,10 +150,13 @@ async function callEdit(
     const basename = Paths.toForwardSlashes(p).split("/").pop() ?? p;
     form.append(fieldName, new Blob([buf], { type: mime }), basename);
   }
-  const r = await fetch(`${base}/images/edits`, {
+  const r = await fetch(`${model.baseUrl}/images/edits`, {
     method: "POST",
     signal,
-    headers: { authorization: `Bearer ${key}` },
+    headers: {
+      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      ...headers,
+    },
     body: form,
   });
   if (!r.ok) {
@@ -160,6 +164,60 @@ async function callEdit(
     throw new Error(`edit ${r.status}: ${detail.slice(0, 400)}`);
   }
   return await r.json();
+}
+
+export type PainterFallbackResult = {
+  readonly json: unknown;
+  readonly usedModel: string | undefined;
+  readonly errors: readonly string[];
+};
+
+/**
+ * Tries each model candidate in order for image generation/edit, returning the
+ * first successful response. Exported for tests.
+ */
+export async function runPainterFallback(
+  registry: ModelRegistry,
+  candidates: readonly Model<Api>[],
+  mode: "generate" | "edit",
+  prompt: string,
+  inputs: readonly string[],
+  size: string,
+  quality: string,
+  signal: AbortSignal | undefined
+): Promise<PainterFallbackResult> {
+  const errors: string[] = [];
+  for (const candidate of candidates) {
+    let resolved: ResolvedModel;
+    try {
+      resolved = await ModelResolver.resolveAuth(registry, candidate);
+    } catch (err) {
+      errors.push(
+        `auth for "${candidate.provider}/${candidate.id}": ${err instanceof Error ? err.message : String(err)}`
+      );
+      continue;
+    }
+
+    try {
+      const json =
+        mode === "edit"
+          ? await callEdit(resolved, prompt, inputs, size, quality, signal)
+          : await callGenerate(resolved, prompt, size, quality, signal);
+      return {
+        json,
+        usedModel: `${candidate.provider}/${candidate.id}`,
+        errors,
+      };
+    } catch (err) {
+      errors.push(
+        `painter model "${candidate.provider}/${candidate.id}": ${requestError(err)}`
+      );
+      if (signal?.aborted) {
+        break;
+      }
+    }
+  }
+  return { json: undefined, usedModel: undefined, errors };
 }
 
 export default function (pi: ExtensionAPI): void {
@@ -216,17 +274,18 @@ export default function (pi: ExtensionAPI): void {
     async execute(_id, params, signal, _onUpdate, ctx) {
       const args = params as PainterInput;
 
-      const model = await PimSettings.getPainterModel();
-      const provider = await ModelResolver.resolveProvider(model);
-      if (!provider) {
+      const modelRef = await PimSettings.getPainterModel();
+      const candidates = (
+        await ModelResolver.resolveCandidates(
+          ctx.modelRegistry,
+          modelRef,
+          ctx.model?.provider
+        )
+      ).filter((m) => m.api === "openai-completions");
+      if (candidates.length === 0) {
         return errResult(
-          `painter: model "${model}" not found in any provider in ~/.pi/agent/models.json. ` +
-            `Set painter.model in ~/.pim/settings.json to an available model.`
-        );
-      }
-      if (provider.api !== "openai-completions") {
-        return errResult(
-          `painter: model "${model}" must use api "openai-completions" in ~/.pi/agent/models.json.`
+          `painter: no model "${modelRef}" using api "openai-completions" found in any configured provider. ` +
+            `Set painter.model in ~/.pim/settings.json to an available image model.`
         );
       }
 
@@ -258,32 +317,22 @@ export default function (pi: ExtensionAPI): void {
       }
       const activeSignal = requestSignal(signal);
 
-      let json: unknown;
-      try {
-        json =
-          mode === "edit"
-            ? await callEdit(
-                provider.baseUrl,
-                provider.apiKey,
-                model,
-                prompt,
-                inputs,
-                size,
-                quality,
-                activeSignal
-              )
-            : await callGenerate(
-                provider.baseUrl,
-                provider.apiKey,
-                model,
-                prompt,
-                size,
-                quality,
-                activeSignal
-              );
-      } catch (err) {
-        return errResult(`painter: ${requestError(err)}`);
+      const outcome = await runPainterFallback(
+        ctx.modelRegistry,
+        candidates,
+        mode,
+        prompt,
+        inputs,
+        size,
+        quality,
+        activeSignal
+      );
+      if (outcome.json === undefined) {
+        return errResult(
+          `painter: all model candidates failed. ${outcome.errors.join(" | ")}`
+        );
       }
+      const json = outcome.json;
 
       const item = (
         json as { data?: Array<{ b64_json?: string; url?: string }> }
@@ -338,7 +387,7 @@ export default function (pi: ExtensionAPI): void {
           size,
           quality,
           bytes: bytes.length,
-          model,
+          model: outcome.usedModel,
         } satisfies PainterDetails,
       };
     },

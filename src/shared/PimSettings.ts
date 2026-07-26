@@ -33,12 +33,16 @@ const Schema = Type.Object({
   ),
   painter: Type.Object(
     {
+      // A single model id, "provider/model", or a comma-separated list tried
+      // in order as fallbacks (mirrors subagent agent model config).
       model: Type.Optional(Type.String()),
     },
     { default: {} }
   ),
   viewMedia: Type.Object(
     {
+      // A single model id, "provider/model", or a comma-separated list tried
+      // in order as fallbacks (mirrors subagent agent model config).
       model: Type.Optional(Type.String()),
     },
     { default: {} }

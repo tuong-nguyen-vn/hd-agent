@@ -4,10 +4,11 @@ import type {
   Theme,
 } from "@earendil-works/pi-coding-agent";
 import { convertToPng } from "@earendil-works/pi-coding-agent";
-import type { Api } from "@earendil-works/pi-ai";
+import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
+import type { Api, Model } from "@earendil-works/pi-ai";
 import { getCapabilities, Image } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { ModelResolver } from "../../shared/ModelResolver";
+import { ModelResolver, type ResolvedModel } from "../../shared/ModelResolver";
 import { Paths } from "../../shared/Paths";
 import { PimSettings } from "../../shared/PimSettings";
 import {
@@ -116,15 +117,15 @@ function renderTitle(
 }
 
 async function describeWithVision(
-  base: string,
-  key: string,
-  api: Api,
-  model: string,
+  resolved: ResolvedModel,
   base64: string,
   mimeType: string,
   question: string,
   signal: AbortSignal | undefined
 ): Promise<{ description: string; model: string }> {
+  const { model, apiKey, headers } = resolved;
+  const api = model.api;
+  const base = model.baseUrl;
   const prompt =
     question?.trim() ||
     "Describe this image concisely: key objects, text (OCR), colors, layout. Be factual and specific.";
@@ -132,23 +133,25 @@ async function describeWithVision(
   if (api === "google-generative-ai") {
     return await describeWithGoogle(
       base,
-      key,
-      model,
+      apiKey,
+      model.id,
       base64,
       mimeType,
       prompt,
-      signal
+      signal,
+      headers
     );
   }
   if (api === "anthropic-messages") {
     return await describeWithAnthropic(
       base,
-      key,
-      model,
+      apiKey,
+      model.id,
       base64,
       mimeType,
       prompt,
-      signal
+      signal,
+      headers
     );
   }
   if (api !== "openai-completions") {
@@ -162,10 +165,11 @@ async function describeWithVision(
     signal,
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${key}`,
+      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      ...headers,
     },
     body: JSON.stringify({
-      model,
+      model: model.id,
       max_tokens: 1024,
       messages: [
         {
@@ -185,7 +189,7 @@ async function describeWithVision(
   if (!resp.ok) {
     const detail = await resp.text().catch(() => "");
     throw new Error(
-      `vision fallback model "${model}" at ${base}/chat/completions returned ${resp.status}: ${detail.slice(0, 300)}`
+      `vision fallback model "${model.id}" at ${base}/chat/completions returned ${resp.status}: ${detail.slice(0, 300)}`
     );
   }
 
@@ -204,17 +208,18 @@ async function describeWithVision(
         .join("\n")
         .trim()
     : (typeof content === "string" ? content : "").trim();
-  return { description, model };
+  return { description, model: model.id };
 }
 
 async function describeWithGoogle(
   base: string,
-  key: string,
+  key: string | undefined,
   model: string,
   base64: string,
   mimeType: string,
   prompt: string,
-  signal: AbortSignal | undefined
+  signal: AbortSignal | undefined,
+  extraHeaders?: Record<string, string>
 ): Promise<{ description: string; model: string }> {
   const endpoint = `${base}/models/${encodeURIComponent(model)}:generateContent`;
   const resp = await fetch(endpoint, {
@@ -222,8 +227,8 @@ async function describeWithGoogle(
     signal,
     headers: {
       "content-type": "application/json",
-      "x-goog-api-key": key,
-      authorization: `Bearer ${key}`,
+      ...(key ? { "x-goog-api-key": key, authorization: `Bearer ${key}` } : {}),
+      ...extraHeaders,
     },
     body: JSON.stringify({
       contents: [
@@ -256,12 +261,13 @@ async function describeWithGoogle(
 
 async function describeWithAnthropic(
   base: string,
-  key: string,
+  key: string | undefined,
   model: string,
   base64: string,
   mimeType: string,
   prompt: string,
-  signal: AbortSignal | undefined
+  signal: AbortSignal | undefined,
+  extraHeaders?: Record<string, string>
 ): Promise<{ description: string; model: string }> {
   const endpoint = `${base.endsWith("/v1") ? base : `${base}/v1`}/messages`;
   const resp = await fetch(endpoint, {
@@ -270,8 +276,8 @@ async function describeWithAnthropic(
     headers: {
       "content-type": "application/json",
       "anthropic-version": "2023-06-01",
-      "x-api-key": key,
-      authorization: `Bearer ${key}`,
+      ...(key ? { "x-api-key": key, authorization: `Bearer ${key}` } : {}),
+      ...extraHeaders,
     },
     body: JSON.stringify({
       model,
@@ -307,6 +313,61 @@ async function describeWithAnthropic(
   return { description, model };
 }
 
+/**
+ * Tries each model candidate in order, returning a vision-fallback result for
+ * the first one that succeeds. Returns undefined when no candidate is
+ * usable (so the caller can fall back to the main model). Exported for tests.
+ */
+export async function runVisionFallback(
+  registry: ModelRegistry,
+  candidates: readonly Model<Api>[],
+  base64: string,
+  mimeType: string,
+  bytes: number,
+  question: string,
+  signal: AbortSignal | undefined,
+  _modelRef: string
+): Promise<AgentToolResult<ViewMediaDetails> | undefined> {
+  for (const candidate of candidates) {
+    if (!candidate.input.includes("image")) {
+      continue;
+    }
+    let resolved: ResolvedModel;
+    try {
+      resolved = await ModelResolver.resolveAuth(registry, candidate);
+    } catch {
+      continue;
+    }
+
+    try {
+      const { description, model: visionModel } = await describeWithVision(
+        resolved,
+        base64,
+        mimeType,
+        question,
+        signal
+      );
+      const preview = await buildPreview(base64, mimeType);
+      return {
+        content: [{ type: "text" as const, text: description }],
+        details: {
+          mimeType,
+          bytes,
+          source: "vision-fallback" as const,
+          visionModel,
+          previewData: preview.data,
+          previewMimeType: preview.mimeType,
+        } satisfies ViewMediaDetails,
+      };
+    } catch {
+      if (signal?.aborted) {
+        break;
+      }
+    }
+  }
+  return undefined;
+}
+
 export default function (pi: ExtensionAPI): void {
   Tools.register(pi, {
     name: "view_media",
@@ -314,7 +375,7 @@ export default function (pi: ExtensionAPI): void {
     description:
       "View an image file. Renders it inline in the terminal and returns a description. " +
       "Use this for screenshots, diagrams, photos, mockups, or any image the user references. " +
-      "Always uses the configured view_media model to describe the image; falls back to the current model if that fails.",
+      "Uses the configured view_media model to describe the image; tries comma-separated fallback models then falls back to the current model if all fail.",
     promptSnippet: "View an image file",
     parameters: Type.Object({
       path: Type.String({
@@ -397,48 +458,30 @@ export default function (pi: ExtensionAPI): void {
         };
       };
 
-      const model = await PimSettings.getViewMediaModel();
-      const provider = await ModelResolver.resolveProvider(model);
-      if (!provider) {
-        return await fallbackToMainModel(
-          `configured view_media model "${model}" not found in any provider in ~/.pi/agent/models.json.`
-        );
-      }
-      if (!provider.api) {
-        return await fallbackToMainModel(
-          `provider "${provider.providerName}" for model "${model}" is missing \`api\` in ~/.pi/agent/models.json.`
-        );
+      const modelRef = await PimSettings.getViewMediaModel();
+      const candidates = await ModelResolver.resolveCandidates(
+        ctx.modelRegistry,
+        modelRef,
+        ctx.model?.provider
+      );
+
+      const result = await runVisionFallback(
+        ctx.modelRegistry,
+        candidates,
+        base64,
+        mimeType,
+        buffer.length,
+        args.question ?? "",
+        signal,
+        modelRef
+      );
+      if (result !== undefined) {
+        return result;
       }
 
-      try {
-        const { description, model: visionModel } = await describeWithVision(
-          provider.baseUrl,
-          provider.apiKey,
-          provider.api,
-          model,
-          base64,
-          mimeType,
-          args.question ?? "",
-          signal
-        );
-        const preview = await buildPreview(base64, mimeType);
-        return {
-          content: [{ type: "text" as const, text: description }],
-          details: {
-            mimeType,
-            bytes: buffer.length,
-            source: "vision-fallback" as const,
-            visionModel,
-            previewData: preview.data,
-            previewMimeType: preview.mimeType,
-          } satisfies ViewMediaDetails,
-        };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return await fallbackToMainModel(
-          `view_media model "${model}" failed: ${msg}.`
-        );
-      }
+      return await fallbackToMainModel(
+        `view_media: configured model "${modelRef}" not found in any provider in ~/.pi/agent/models.json.`
+      );
     },
     renderCall(args, theme, context) {
       return renderTitle(
