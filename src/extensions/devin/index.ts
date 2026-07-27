@@ -1,9 +1,25 @@
 import type {
+  AssistantMessageEventStream,
+  Model,
+  Api,
+  Context,
+  SimpleStreamOptions,
+} from "@earendil-works/pi-ai";
+import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
+import type {
   ExtensionAPI,
   ProviderModelConfig,
 } from "@earendil-works/pi-coding-agent";
 
 type DevinAuthExtension = (pi: ExtensionAPI) => Promise<void> | void;
+
+type StreamSimpleFn = NonNullable<
+  Parameters<ExtensionAPI["registerProvider"]>[1] extends infer C
+    ? C extends { streamSimple?: infer F }
+      ? F
+      : never
+    : never
+>;
 
 const DEVIN_PROVIDER_ID = "devin";
 
@@ -77,12 +93,83 @@ function filterDevinModels(
 }
 
 /**
+ * Wrap a devin `streamSimple` so the final assistant message's
+ * `usage.totalTokens` reflects the full context window occupancy
+ * (input + cacheRead + cacheWrite + output) instead of pi-devin-auth's
+ * input+output-only total. pi's context-usage bar reads `totalTokens`
+ * when truthy; without cacheRead it stays pinned at ~0% on long cached
+ * conversations (e.g. 73K cached tokens counted as 653).
+ */
+function wrapDevinStreamSimple(
+  streamSimple: StreamSimpleFn | undefined
+): StreamSimpleFn | undefined {
+  if (!streamSimple) {
+    return streamSimple;
+  }
+  return (
+    model: Model<Api>,
+    context: Context,
+    options?: SimpleStreamOptions
+  ): AssistantMessageEventStream => {
+    const upstream = streamSimple(model, context, options);
+    const out = createAssistantMessageEventStream();
+    void (async () => {
+      try {
+        for await (const ev of upstream) {
+          if (ev.type === "done" || ev.type === "error") {
+            const msg = ev.type === "done" ? ev.message : ev.error;
+            const u = msg.usage;
+            if (u && u.totalTokens <= u.input + u.output) {
+              u.totalTokens = u.input + u.output + u.cacheRead + u.cacheWrite;
+            }
+          }
+          out.push(ev);
+        }
+        out.end();
+      } catch (err) {
+        out.push({
+          type: "error",
+          reason: "error",
+          error: {
+            role: "assistant",
+            content: [],
+            api: model.api,
+            provider: model.provider,
+            model: model.id,
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            },
+            stopReason: "error",
+            timestamp: Date.now(),
+            errorMessage: err instanceof Error ? err.message : String(err),
+          },
+        });
+        out.end();
+      }
+    })();
+    return out;
+  };
+}
+
+/**
  * Wrap `pi.registerProvider` so any call registering the "devin" provider
  * (pi-devin-auth calls this once with fallback models, then again after
  * login/session_start with the live Cognition catalog) gets its `models`
- * filtered down to {@link DEVIN_MODEL_ALLOWLIST} and stamped with
- * {@link DEVIN_MODEL_OVERRIDES}. Calls for any other provider id pass
- * through untouched.
+ * filtered down to {@link DEVIN_MODEL_ALLOWLIST}, stamped with
+ * {@link DEVIN_MODEL_OVERRIDES}, and its `streamSimple` wrapped by
+ * {@link wrapDevinStreamSimple} to fix context-usage accounting.
+ * Calls for any other provider id pass through untouched.
  */
 function withDevinModelFilter(pi: ExtensionAPI): ExtensionAPI {
   const registerProvider = pi.registerProvider.bind(pi);
@@ -99,6 +186,7 @@ function withDevinModelFilter(pi: ExtensionAPI): ExtensionAPI {
       registerProvider(name, {
         ...config,
         models: filterDevinModels(config.models),
+        streamSimple: wrapDevinStreamSimple(config.streamSimple),
       });
       return;
     }
