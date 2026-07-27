@@ -109,4 +109,12 @@ export default async function (pi: ExtensionAPI): Promise<void> {
       await ctx.newSession();
     },
   });
+
+  pi.registerCommand("exit", {
+    description: "Exit AMP-Pi (alias: /quit)",
+    handler: async (_args, ctx) => {
+      await ctx.waitForIdle();
+      ctx.shutdown();
+    },
+  });
 }
