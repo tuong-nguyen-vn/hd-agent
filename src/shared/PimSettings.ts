@@ -47,6 +47,14 @@ const Schema = Type.Object({
     },
     { default: {} }
   ),
+  readSession: Type.Object(
+    {
+      // A single model id, "provider/model", or a comma-separated list tried
+      // in order as fallbacks (mirrors subagent agent model config).
+      model: Type.Optional(Type.String()),
+    },
+    { default: {} }
+  ),
   // Per-agent model override: a single "model"/"provider/model" reference,
   // or a comma-separated list of references tried in order as fallbacks.
   agents: Type.Record(Type.String(), Type.String(), { default: {} }),
@@ -124,6 +132,13 @@ export class PimSettings {
   public static async getViewMediaModel(): Promise<string> {
     return (
       PimSettings.normalize((await PimSettings.get("viewMedia")).model) ??
+      "gemini-3.6-flash"
+    );
+  }
+
+  public static async getReadSessionModel(): Promise<string> {
+    return (
+      PimSettings.normalize((await PimSettings.get("readSession")).model) ??
       "gemini-3.6-flash"
     );
   }

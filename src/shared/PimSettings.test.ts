@@ -64,6 +64,7 @@ describe("PimSettings", () => {
       jina: { apiKey: "jina-test" },
       painter: {},
       viewMedia: {},
+      readSession: {},
       agents: {},
       thinkingLevels: {},
     });
