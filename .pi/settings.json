@@ -1,6 +1,7 @@
 {
   "packages": [".."],
   "quietStartup": true,
+  "hideThinkingBlock": true,
   "markdown": {
     "codeBlockIndent": ""
   }

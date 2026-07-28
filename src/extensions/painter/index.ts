@@ -68,6 +68,19 @@ function errResult(text: string): AgentToolResult<PainterDetails> {
   };
 }
 
+function authHeaders(
+  apiKey: string | undefined,
+  headers: Record<string, string> | undefined
+): Record<string, string> {
+  const hasAuth = Object.keys(headers ?? {}).some(
+    (k) => k.toLowerCase() === "authorization"
+  );
+  return {
+    ...(apiKey && !hasAuth ? { authorization: `Bearer ${apiKey}` } : {}),
+    ...headers,
+  };
+}
+
 function requestSignal(signal: AbortSignal | undefined): AbortSignal {
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
@@ -117,8 +130,7 @@ async function callGenerate(
     signal,
     headers: {
       "content-type": "application/json",
-      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
-      ...headers,
+      ...authHeaders(apiKey, headers),
     },
     body: JSON.stringify({ model: model.id, prompt, n: 1, size, quality }),
   });
@@ -153,10 +165,7 @@ async function callEdit(
   const r = await fetch(`${model.baseUrl}/images/edits`, {
     method: "POST",
     signal,
-    headers: {
-      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
-      ...headers,
-    },
+    headers: authHeaders(apiKey, headers),
     body: form,
   });
   if (!r.ok) {
