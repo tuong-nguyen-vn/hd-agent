@@ -41,7 +41,11 @@ export class Tools {
         const prepared = def.prepareArguments
           ? def.prepareArguments(rawArgs)
           : (rawArgs as Static<TParams>);
-        const cleaned = coerceQuotedEnums(prepared, schema) as Static<TParams>;
+        const coerced = coerceQuotedEnums(prepared, schema);
+        const cleaned = backfillNullableDefaults(
+          coerced,
+          schema
+        ) as Static<TParams>;
         const strictIssues = checkStrictTypes(cleaned, schema, "");
         if (strictIssues.length > 0) {
           const lines = strictIssues.map((s) => `  - ${s}`).join("\n");
@@ -574,6 +578,65 @@ function checkStrictTypes(
   }
 
   return [];
+}
+
+/**
+ * Some schemas mark a field required-but-nullable (`Type.Union([T, Type.Null()])`
+ * without `Type.Optional`) so strict-mode JSON Schema function calling — which
+ * requires every property to appear in `required` — still lets a model "omit"
+ * an optional argument by passing `null`. Models that aren't using strict
+ * sampling (or don't support it) commonly leave the property out entirely
+ * instead, which is semantically the same intent but fails schema validation
+ * with a "missing required property" error. Since omitted and explicit-null
+ * mean the same thing for these fields, backfill missing nullable properties
+ * with `null` before validation so both forms are accepted.
+ */
+function backfillNullableDefaults(value: unknown, schema: JsonSchema): unknown {
+  if (schema.type === "object" && schema.properties && isRecord(value)) {
+    let result = value;
+    for (const [key, subSchema] of Object.entries(schema.properties)) {
+      if (!(key in result)) {
+        if (isNullable(subSchema)) {
+          result = result === value ? { ...value } : result;
+          result[key] = null;
+        }
+        continue;
+      }
+      const next = backfillNullableDefaults(result[key], subSchema);
+      if (next !== result[key]) {
+        result = result === value ? { ...value } : result;
+        result[key] = next;
+      }
+    }
+    return result;
+  }
+
+  if (Array.isArray(value)) {
+    const itemsField = schema.items;
+    if (!itemsField || Array.isArray(itemsField)) {
+      return value;
+    }
+    const itemSchema = itemsField as JsonSchema;
+    let mutated: unknown[] | undefined;
+    for (let i = 0; i < value.length; i++) {
+      const next = backfillNullableDefaults(value[i], itemSchema);
+      if (next !== value[i]) {
+        mutated ??= [...value];
+        mutated[i] = next;
+      }
+    }
+    return mutated ?? value;
+  }
+
+  return value;
+}
+
+function isNullable(schema: JsonSchema): boolean {
+  if (schema.type === "null") {
+    return true;
+  }
+  const branches = schema.anyOf ?? schema.oneOf;
+  return branches ? branches.some(isNullable) : false;
 }
 
 function collectSchemaTypes(schema: JsonSchema): string[] {

@@ -9,6 +9,28 @@ import { type EditInput, editSchema } from "./schema";
 const ERROR_PREVIEW_LINES = 12;
 const DIFF_PREVIEW_LINES = 20;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Models occasionally emit a single edit flattened at the top level
+ * (`{path, oldString, newString, replaceAll}`), mirroring the common
+ * old_str/new_str convention from other editing tools instead of this
+ * tool's batched `edits: [...]` array. Rewrap that shape before validation
+ * instead of rejecting it outright.
+ */
+function normalizeFlatEdit(rawArgs: unknown): unknown {
+  if (!isRecord(rawArgs) || "edits" in rawArgs) {
+    return rawArgs;
+  }
+  const { path, oldString, newString, replaceAll, ...rest } = rawArgs;
+  if (oldString === undefined && newString === undefined) {
+    return rawArgs;
+  }
+  return { path, edits: [{ oldString, newString, replaceAll }], ...rest };
+}
+
 export default function (pi: ExtensionAPI): void {
   Tools.register(pi, {
     name: "edit",
@@ -20,6 +42,7 @@ export default function (pi: ExtensionAPI): void {
     renderShell: "self",
     executionMode: "sequential",
     constrainedSampling: { type: "json_schema", strict: "prefer" },
+    prepareArguments: normalizeFlatEdit,
     async execute(_id, params, signal, _onUpdate, ctx) {
       const { path, edits } = params as EditInput;
 

@@ -31,7 +31,8 @@ export const editSchema = Type.Object(
       {
         minItems: 1,
         description:
-          "Non-empty atomic batch of edits. Batched edits resolve against the initial file state and must not overlap. For sequential transformations where edit 2 depends on edit 1's result, use separate tool calls.",
+          "Non-empty atomic batch of edits, even for a single change — wrap it as `edits: [{ oldString, newString }]`, not top-level `oldString`/`newString` fields. " +
+          "Batched edits resolve against the initial file state and must not overlap. For sequential transformations where edit 2 depends on edit 1's result, use separate tool calls.",
       }
     ),
   },
