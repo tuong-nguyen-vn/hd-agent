@@ -224,7 +224,7 @@ describe("subagent render formatting", () => {
     expect(lines.at(-1)).toContain("$0.23 ");
   });
 
-  test("active tool spinner animates across invalidate ticks", () => {
+  test("title and active tool share one spinner frame", () => {
     const runningDetails: SubagentDetails = {
       ...baseDetails,
       toolCalls: [],
@@ -233,11 +233,19 @@ describe("subagent render formatting", () => {
       topLine: "$0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn ⬝ read",
     };
 
-    let renderCount = 0;
-    const invalidate = () => {
-      renderCount++;
+    const state: {
+      spinnerIndex: number;
+      spinnerTimer?: ReturnType<typeof setInterval>;
+    } = { spinnerIndex: 0 };
+    const context = {
+      lastComponent: undefined,
+      isPartial: true,
+      isError: false,
+      invalidate: () => {},
+      state,
     };
-
+    const title = renderCall({ prompt: "investigate" }, stubTheme, context);
+    const sharedTimer = state.spinnerTimer;
     const component = renderResult(
       {
         content: [{ type: "text", text: "ignored" }],
@@ -245,32 +253,26 @@ describe("subagent render formatting", () => {
       },
       { expanded: false, isPartial: true },
       stubTheme,
-      {
-        lastComponent: undefined,
-        isPartial: true,
-        isError: false,
-        invalidate,
-      }
+      context
     );
+    expect(state.spinnerTimer).toBe(sharedTimer);
 
-    // First render: spinner shows the initial frame
-    const frame0 = component.render(80)[0]!;
-    expect(frame0).toContain("⣿");
+    const titleFrame0 = title.render(80)[0]!;
+    const toolFrame0 = component.render(80)[0]!;
+    expect(titleFrame0).toContain("⣿");
+    expect(toolFrame0).toContain("⣿");
 
-    // Advance the spinner timer by SPINNER_INTERVAL_MS to trigger invalidate
-    // The SubagentStatusView owns its own setInterval; we advance it via mock timers
-    const timers = [];
-    // We can't easily intercept setInterval here, so verify the component is
-    // reused and that re-rendering after a manual spinnerIndex bump changes frame
-    const statusView = (
-      component as unknown as {
-        statusView: { spinnerIndex: number };
-      }
-    ).statusView;
-    statusView.spinnerIndex = 3;
-    const frame3 = component.render(80)[0]!;
-    expect(frame3).toContain("⣟");
-    expect(frame3).not.toEqual(frame0);
+    state.spinnerIndex = 3;
+    const titleFrame3 = title.render(80)[0]!;
+    const toolFrame3 = component.render(80)[0]!;
+    expect(titleFrame3).toContain("⣟");
+    expect(toolFrame3).toContain("⣟");
+
+    renderCall({ prompt: "investigate" }, stubTheme, {
+      ...context,
+      lastComponent: title,
+      isPartial: false,
+    });
   });
 
   test("long active tool title is truncated to the render width", () => {

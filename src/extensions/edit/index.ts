@@ -20,15 +20,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * tool's batched `edits: [...]` array. Rewrap that shape before validation
  * instead of rejecting it outright.
  */
-function normalizeFlatEdit(rawArgs: unknown): unknown {
+function normalizeFlatEdit(rawArgs: unknown): EditInput {
   if (!isRecord(rawArgs) || "edits" in rawArgs) {
-    return rawArgs;
+    return rawArgs as EditInput;
   }
   const { path, oldString, newString, replaceAll, ...rest } = rawArgs;
   if (oldString === undefined && newString === undefined) {
-    return rawArgs;
+    return rawArgs as EditInput;
   }
-  return { path, edits: [{ oldString, newString, replaceAll }], ...rest };
+  return {
+    path,
+    edits: [{ oldString, newString, replaceAll }],
+    ...rest,
+  } as EditInput;
 }
 
 export default function (pi: ExtensionAPI): void {

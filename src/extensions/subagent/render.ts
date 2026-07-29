@@ -39,7 +39,43 @@ type RenderContext = {
   readonly isPartial: boolean;
   readonly isError: boolean;
   readonly invalidate?: () => void;
+  readonly state?: unknown;
 };
+
+type SubagentRenderState = {
+  spinnerIndex?: number;
+  spinnerTimer?: ReturnType<typeof setInterval>;
+};
+
+function updateSpinner(context: RenderContext | undefined): void {
+  if (!context) {
+    return;
+  }
+  const state = context.state as SubagentRenderState | undefined;
+  if (!state) {
+    return;
+  }
+  if (!context.isPartial || !context.invalidate) {
+    if (state.spinnerTimer) {
+      clearInterval(state.spinnerTimer);
+      state.spinnerTimer = undefined;
+    }
+    return;
+  }
+  if (state.spinnerTimer) {
+    return;
+  }
+  state.spinnerTimer = setInterval(() => {
+    state.spinnerIndex =
+      ((state.spinnerIndex ?? 0) + 1) % SPINNER_FRAMES.length;
+    context.invalidate?.();
+  }, SPINNER_INTERVAL_MS);
+  state.spinnerTimer.unref?.();
+}
+
+function spinnerIndex(context: RenderContext | undefined): number {
+  return (context?.state as SubagentRenderState | undefined)?.spinnerIndex ?? 0;
+}
 
 type StatusFields = Pick<
   SubagentSnapshot,
@@ -65,8 +101,6 @@ class MarkdownTitle implements Component {
   private theme: Theme | undefined;
   private context: RenderContext | undefined;
   private labelColor: ThemeColor | undefined;
-  private spinnerIndex = 0;
-  private spinnerTimer: ReturnType<typeof setInterval> | undefined;
 
   public set(args: {
     readonly label: string;
@@ -95,7 +129,7 @@ class MarkdownTitle implements Component {
       Boolean(context.isError)
     );
     const marker = context.isPartial
-      ? (SPINNER_FRAMES[this.spinnerIndex] ?? "⣿")
+      ? (SPINNER_FRAMES[spinnerIndex(context)] ?? "⣿")
       : context.isError
         ? "✗"
         : "✓";
@@ -126,22 +160,7 @@ class MarkdownTitle implements Component {
   public invalidate(): void {}
 
   private updateSpinner(): void {
-    const context = this.context;
-    if (!context?.isPartial || !context.invalidate) {
-      if (this.spinnerTimer) {
-        clearInterval(this.spinnerTimer);
-        this.spinnerTimer = undefined;
-      }
-      return;
-    }
-    if (this.spinnerTimer) {
-      return;
-    }
-    this.spinnerTimer = setInterval(() => {
-      this.spinnerIndex = (this.spinnerIndex + 1) % SPINNER_FRAMES.length;
-      this.context?.invalidate?.();
-    }, SPINNER_INTERVAL_MS);
-    this.spinnerTimer.unref?.();
+    updateSpinner(this.context);
   }
 }
 
@@ -152,9 +171,8 @@ export function formatCallTitle(prompt: string | undefined): string {
 /**
  * Renders the subagent's status block: child tool-call lines (collapsed —
  * name + title only, no results), followed by the metadata top line. The
- * component owns its own spinner timer so in-flight tool calls animate while
- * the subagent is running. It is reused across renderResult calls via
- * context.lastComponent so the timer survives container clears.
+ * title and active child tools share the tool renderer's spinner state so one
+ * render tick advances both markers.
  */
 class SubagentStatusView implements Component {
   private toolCalls: readonly SubagentToolCall[] = [];
@@ -162,9 +180,7 @@ class SubagentStatusView implements Component {
   private topLine = "";
   private theme: Theme | undefined;
   private isPartial = false;
-  private invalidateFn: (() => void) | undefined;
-  private spinnerIndex = 0;
-  private spinnerTimer: ReturnType<typeof setInterval> | undefined;
+  private context: RenderContext | undefined;
 
   public set(args: {
     readonly toolCalls: readonly SubagentToolCall[];
@@ -172,15 +188,14 @@ class SubagentStatusView implements Component {
     readonly topLine: string;
     readonly theme: Theme;
     readonly isPartial: boolean;
-    readonly invalidate?: () => void;
+    readonly context: RenderContext;
   }): void {
     this.toolCalls = args.toolCalls;
     this.activeTools = args.activeTools;
     this.topLine = args.topLine;
     this.theme = args.theme;
     this.isPartial = args.isPartial;
-    this.invalidateFn = args.invalidate;
-    this.updateSpinner();
+    this.context = args.context;
   }
 
   public render(width: number): string[] {
@@ -197,7 +212,7 @@ class SubagentStatusView implements Component {
     }
 
     if (this.isPartial) {
-      const spinner = SPINNER_FRAMES[this.spinnerIndex] ?? "⣿";
+      const spinner = SPINNER_FRAMES[spinnerIndex(this.context)] ?? "⣿";
       for (const tool of this.activeTools) {
         items.push((prefix) =>
           renderActiveToolLine(tool, spinner, prefix, theme)
@@ -229,24 +244,6 @@ class SubagentStatusView implements Component {
   }
 
   public invalidate(): void {}
-
-  private updateSpinner(): void {
-    if (!this.isPartial || !this.invalidateFn) {
-      if (this.spinnerTimer) {
-        clearInterval(this.spinnerTimer);
-        this.spinnerTimer = undefined;
-      }
-      return;
-    }
-    if (this.spinnerTimer) {
-      return;
-    }
-    this.spinnerTimer = setInterval(() => {
-      this.spinnerIndex = (this.spinnerIndex + 1) % SPINNER_FRAMES.length;
-      this.invalidateFn?.();
-    }, SPINNER_INTERVAL_MS);
-    this.spinnerTimer.unref?.();
-  }
 }
 
 function renderToolCallLine(
@@ -364,7 +361,7 @@ class SubagentResult implements Component {
       topLine,
       theme,
       isPartial: Boolean(options.isPartial),
-      invalidate: context.invalidate,
+      context,
     });
 
     const showBody = !options.isPartial && body.length > 0;
