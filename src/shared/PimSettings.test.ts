@@ -65,6 +65,7 @@ describe("PimSettings", () => {
       painter: {},
       viewMedia: {},
       readSession: {},
+      sessionTitle: {},
       agents: {},
       thinkingLevels: {},
     });

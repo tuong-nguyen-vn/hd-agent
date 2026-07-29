@@ -55,6 +55,14 @@ const Schema = Type.Object({
     },
     { default: {} }
   ),
+  sessionTitle: Type.Object(
+    {
+      // A single model id, "provider/model", or a comma-separated list tried
+      // in order as fallbacks (mirrors subagent agent model config).
+      model: Type.Optional(Type.String()),
+    },
+    { default: {} }
+  ),
   // Per-agent model override: a single "model"/"provider/model" reference,
   // or a comma-separated list of references tried in order as fallbacks.
   agents: Type.Record(Type.String(), Type.String(), { default: {} }),
@@ -140,6 +148,13 @@ export class PimSettings {
     return (
       PimSettings.normalize((await PimSettings.get("readSession")).model) ??
       "gemini-3.6-flash"
+    );
+  }
+
+  public static async getSessionTitleModel(): Promise<string> {
+    return (
+      PimSettings.normalize((await PimSettings.get("sessionTitle")).model) ??
+      "gemini-3.6-flash,swe-1-7,claude-haiku-4-5-20251001"
     );
   }
 
