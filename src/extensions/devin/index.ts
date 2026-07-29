@@ -32,7 +32,11 @@ const DEVIN_PROVIDER_ID = "devin";
  * `swe-1-7-medium`. Confirmed via a direct `getCachedCatalog()` dump against
  * the live Cognition API (`GetCascadeModelConfigs`). Keep only the base ids.
  */
-const DEVIN_MODEL_ALLOWLIST = new Set<string>(["glm-5-2", "swe-1-7"]);
+const DEVIN_MODEL_ALLOWLIST = new Set<string>([
+  "glm-5-2",
+  "swe-1-7",
+  "claude-sonnet-5-high",
+]);
 
 /**
  * pi-devin-auth stamps every variant of a family with the SAME
@@ -77,6 +81,17 @@ const DEVIN_MODEL_OVERRIDES: Record<
       high: null,
       xhigh: null,
       max: "max",
+    },
+  },
+  "claude-sonnet-5-high": {
+    thinkingLevelMap: {
+      off: null,
+      minimal: null,
+      low: null,
+      medium: null,
+      high: "high",
+      xhigh: null,
+      max: null,
     },
   },
 };
