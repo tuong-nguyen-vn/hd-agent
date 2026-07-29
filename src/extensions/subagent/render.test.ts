@@ -451,4 +451,24 @@ describe("subagent render formatting", () => {
     expect(lines[1]).toContain("╰─");
     expect(lines[2]).toBe("   result");
   });
+
+  test("collapsed body truncates to last 20 lines with overflow indicator", () => {
+    const body = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join(
+      "\n"
+    );
+    const component = renderResult(
+      result(body),
+      { expanded: false, isPartial: false },
+      stubTheme,
+      { lastComponent: undefined, isPartial: false, isError: false }
+    );
+    const lines = component.render(80);
+    // tree lines + overflow line + 20 preview lines
+    expect(lines[0]).toContain("├─ ✓ read src/index.ts");
+    expect(lines[1]).toContain("╰─");
+    expect(lines[2]).toBe("   … 10 more lines");
+    expect(lines[3]).toBe("   line 11");
+    expect(lines.at(-1)).toBe("   line 30");
+    expect(lines.length).toBe(2 + 1 + 20);
+  });
 });

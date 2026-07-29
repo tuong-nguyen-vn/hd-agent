@@ -9,7 +9,7 @@ import type {
   DefaultTextStyle,
   MarkdownTheme,
 } from "@earendil-works/pi-tui";
-import { Markdown, visibleWidth } from "@earendil-works/pi-tui";
+import { Container, Markdown, visibleWidth } from "@earendil-works/pi-tui";
 import { type PrefixSpec, Renderer } from "../../shared/Renderer";
 import type {
   SubagentActiveTool,
@@ -22,6 +22,7 @@ const DOT = "⬝";
 const CONTINUATION_PREFIX = "   ";
 const TREE_MID_PREFIX = " ├─ ";
 const TREE_END_PREFIX = " ╰─ ";
+const BODY_PREVIEW_LINES = 20;
 const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
 const SPINNER_INTERVAL_MS = 80;
 
@@ -370,12 +371,7 @@ class SubagentResult implements Component {
               prefix: Renderer.GAPPED_PREFIX,
               lineColor: expandedResultColor(details, context.isError),
             })
-          : Renderer.makePrefixedBlock({
-              text: body,
-              theme,
-              prefix: Renderer.GAPPED_PREFIX,
-              lineColor: resultColor(details, context.isError),
-            });
+          : makeCollapsedBody(body, theme, details, context.isError);
         this.lastBodyKey = key;
       }
     } else {
@@ -393,6 +389,50 @@ class SubagentResult implements Component {
   }
 
   public invalidate(): void {}
+}
+
+/**
+ * Collapsed body: show only the last BODY_PREVIEW_LINES lines, preceded by
+ * a `… N more lines` overflow indicator. Matches the pattern used by bash
+ * and grep tools (previewFromEnd).
+ */
+function makeCollapsedBody(
+  body: string,
+  theme: Theme,
+  details: SubagentDetails | undefined,
+  isError: boolean
+): Component {
+  const container = new Container();
+  const lineColor = resultColor(details, isError);
+  const block = (text: string): Component =>
+    Renderer.makePrefixedBlock({
+      text,
+      theme,
+      prefix: Renderer.GAPPED_PREFIX,
+      lineColor,
+    });
+  const mutedBlock = (text: string): Component =>
+    Renderer.makePrefixedBlock({
+      text,
+      theme,
+      prefix: Renderer.GAPPED_PREFIX,
+      lineColor: "muted",
+    });
+
+  const lines = body.split("\n");
+  const overflow = Math.max(0, lines.length - BODY_PREVIEW_LINES);
+  const preview =
+    overflow > 0
+      ? lines.slice(-BODY_PREVIEW_LINES).join("\n")
+      : body;
+  if (overflow > 0) {
+    container.addChild(mutedBlock(`… ${overflow} more lines`));
+  }
+  if (preview) {
+    container.addChild(block(preview));
+  }
+  container.invalidate();
+  return container;
 }
 
 function makePrefixedMarkdownBlock(args: MarkdownBlockArgs): Component {
