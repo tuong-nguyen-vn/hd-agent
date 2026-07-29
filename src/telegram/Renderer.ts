@@ -285,7 +285,7 @@ export class Renderer {
     if (!details) {
       return;
     }
-    const count = details.toolCalls.length + details.activeToolNames.length;
+    const count = details.toolCalls.length + details.activeToolCalls.length;
     const suffix =
       count > 0 ? ` (${count} ${count === 1 ? "tool" : "tools"})` : "";
     const next = `${base}${suffix}`;

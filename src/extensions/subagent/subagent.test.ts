@@ -270,7 +270,9 @@ describe("SubagentEventCapture", () => {
       turns: 2,
       contextTokens: undefined,
     });
-    expect(snapshot.toolCalls).toEqual([{ name: "read", isError: false }]);
+    expect(snapshot.toolCalls).toEqual([
+      { name: "read", title: "", isError: false },
+    ]);
     expect(snapshot.lastToolName).toBe("read");
     expect(updates.at(-1)).toBe("$0.03 ⬝ ?/? ⬝ claude-test ⬝ 2 turns ⬝ 1 tool");
   });
@@ -302,6 +304,38 @@ describe("SubagentEventCapture", () => {
     } as never);
 
     expect(capture.snapshot().finalOutput).toBe("partial");
+  });
+
+  test("tool calls capture a title derived from their args", () => {
+    const capture = new SubagentEventCapture();
+
+    capture.handle({
+      type: "tool_execution_start",
+      toolCallId: "1",
+      toolName: "glob",
+      args: { pattern: "**/package.json" },
+    } as never);
+    capture.handle({
+      type: "tool_execution_end",
+      toolCallId: "1",
+      toolName: "glob",
+      result: {},
+      isError: false,
+    } as never);
+    capture.handle({
+      type: "tool_execution_start",
+      toolCallId: "2",
+      toolName: "read",
+      args: { path: "src/index.ts", start: 1, end: 100 },
+    } as never);
+
+    const snapshot = capture.snapshot();
+    expect(snapshot.toolCalls).toEqual([
+      { name: "glob", title: "**/package.json", isError: false },
+    ]);
+    expect(snapshot.activeToolCalls).toEqual([
+      { name: "read", title: "src/index.ts @1-100" },
+    ]);
   });
 });
 

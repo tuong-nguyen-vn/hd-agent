@@ -45,7 +45,13 @@ export type SubagentUsage = {
 
 export type SubagentToolCall = {
   readonly name: string;
+  readonly title: string;
   readonly isError: boolean;
+};
+
+export type SubagentActiveTool = {
+  readonly name: string;
+  readonly title: string;
 };
 
 export type SubagentDetails = {
@@ -55,7 +61,7 @@ export type SubagentDetails = {
   readonly omittedBytes: number;
   readonly usage: SubagentUsage;
   readonly toolCalls: readonly SubagentToolCall[];
-  readonly activeToolNames: readonly string[];
+  readonly activeToolCalls: readonly SubagentActiveTool[];
   readonly lastToolName: string | undefined;
   readonly stopReason: string | undefined;
   readonly errorMessage: string | undefined;
@@ -68,7 +74,7 @@ export type SubagentSnapshot = {
   readonly finalOutput: string;
   readonly usage: SubagentUsage;
   readonly toolCalls: readonly SubagentToolCall[];
-  readonly activeToolNames: readonly string[];
+  readonly activeToolCalls: readonly SubagentActiveTool[];
   readonly lastToolName: string | undefined;
   readonly stopReason: string | undefined;
   readonly errorMessage: string | undefined;
@@ -450,7 +456,7 @@ export class SubagentEventCapture {
   private pendingMessage: AssistantMessage | undefined;
   private readonly usage: MutableUsage = emptyUsage();
   private readonly toolCalls: SubagentToolCall[] = [];
-  private readonly activeToolsById = new Map<string, string>();
+  private readonly activeToolsById = new Map<string, SubagentActiveTool>();
   private lastToolName: string | undefined;
   private stopReason: string | undefined;
   private errorMessage: string | undefined;
@@ -492,15 +498,25 @@ export class SubagentEventCapture {
     }
 
     if (event.type === "tool_execution_start") {
-      this.activeToolsById.set(event.toolCallId, event.toolName);
+      const title = deriveToolTitle(event.toolName, event.args);
+      this.activeToolsById.set(event.toolCallId, {
+        name: event.toolName,
+        title,
+      });
       this.lastToolName = event.toolName;
       this.emitUpdate();
       return;
     }
 
     if (event.type === "tool_execution_end") {
+      const active = this.activeToolsById.get(event.toolCallId);
+      const title = active?.title ?? "";
       this.activeToolsById.delete(event.toolCallId);
-      this.toolCalls.push({ name: event.toolName, isError: event.isError });
+      this.toolCalls.push({
+        name: event.toolName,
+        title,
+        isError: event.isError,
+      });
       this.lastToolName = event.toolName;
       this.emitUpdate();
     }
@@ -517,7 +533,7 @@ export class SubagentEventCapture {
       finalOutput: this.finalOutput,
       usage: freezeUsage(this.usage),
       toolCalls: [...this.toolCalls],
-      activeToolNames: Array.from(new Set(this.activeToolsById.values())),
+      activeToolCalls: Array.from(this.activeToolsById.values()),
       lastToolName: this.lastToolName,
       stopReason: this.stopReason,
       errorMessage: this.errorMessage,
@@ -612,7 +628,7 @@ function detailsFromSnapshot(
     omittedBytes: capResult.omittedBytes,
     usage: snapshot.usage,
     toolCalls: snapshot.toolCalls,
-    activeToolNames: snapshot.activeToolNames,
+    activeToolCalls: snapshot.activeToolCalls,
     lastToolName: snapshot.lastToolName,
     stopReason: snapshot.stopReason,
     errorMessage: snapshot.errorMessage,
@@ -667,4 +683,62 @@ function addUsage(target: MutableUsage, usage: Usage): void {
 
 function thrownMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+function deriveToolTitle(toolName: string, args: unknown): string {
+  if (!args || typeof args !== "object") {
+    return "";
+  }
+  const a = args as Record<string, unknown>;
+  const name = toolName.toLowerCase();
+  const firstLine = (value: unknown): string =>
+    String(value ?? "")
+      .split(/\r?\n/u)[0]?.trim()
+      .slice(0, 120) ?? "";
+
+  if (name === "read") {
+    const path = firstLine(a.path);
+    const range = formatRangeField(a.start, a.end);
+    return path ? `${path}${range}` : "";
+  }
+  if (name === "glob") {
+    return firstLine(a.pattern);
+  }
+  if (name === "grep") {
+    const pattern = firstLine(a.pattern);
+    return pattern ? `/${pattern}/` : "";
+  }
+  if (name === "bash") {
+    return firstLine(a.command);
+  }
+  if (name === "write" || name === "edit") {
+    return firstLine(a.path);
+  }
+  if (name === "search" || name === "web_search") {
+    return firstLine(a.query ?? a.task);
+  }
+  if (name === "todo") {
+    return "update todo";
+  }
+  if (name === "subagent") {
+    const agent = firstLine(a.agent);
+    const prompt = firstLine(a.prompt);
+    return [agent, prompt].filter(Boolean).join(" ");
+  }
+  return firstLine(a.path ?? a.pattern ?? a.query ?? a.command ?? a.prompt);
+}
+
+function formatRangeField(
+  start: unknown,
+  end: unknown
+): string {
+  const s = typeof start === "number" ? start : undefined;
+  const e = typeof end === "number" ? end : undefined;
+  if (s === undefined && e === undefined) {
+    return "";
+  }
+  if (e === undefined) {
+    return ` @${s}`;
+  }
+  return ` @${s ?? 1}-${e}`;
 }

@@ -9,12 +9,19 @@ import type {
   DefaultTextStyle,
   MarkdownTheme,
 } from "@earendil-works/pi-tui";
-import { Container, Markdown, visibleWidth } from "@earendil-works/pi-tui";
+import { Markdown, visibleWidth } from "@earendil-works/pi-tui";
 import { type PrefixSpec, Renderer } from "../../shared/Renderer";
-import type { SubagentDetails, SubagentSnapshot } from "./subagent";
+import type {
+  SubagentActiveTool,
+  SubagentDetails,
+  SubagentSnapshot,
+  SubagentToolCall,
+} from "./subagent";
 
 const DOT = "⬝";
 const CONTINUATION_PREFIX = "   ";
+const TREE_MID_PREFIX = " ├─ ";
+const TREE_END_PREFIX = " ╰─ ";
 const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
 const SPINNER_INTERVAL_MS = 80;
 
@@ -32,7 +39,7 @@ type StatusFields = Pick<
   SubagentSnapshot,
   | "usage"
   | "toolCalls"
-  | "activeToolNames"
+  | "activeToolCalls"
   | "lastToolName"
   | "stopReason"
   | "model"
@@ -136,6 +143,139 @@ export function formatCallTitle(prompt: string | undefined): string {
   return (prompt ?? "...").split(/\r?\n/u)[0]?.trim() || "...";
 }
 
+/**
+ * Renders the subagent's status block: child tool-call lines (collapsed —
+ * name + title only, no results), followed by the metadata top line. The
+ * component owns its own spinner timer so in-flight tool calls animate while
+ * the subagent is running. It is reused across renderResult calls via
+ * context.lastComponent so the timer survives container clears.
+ */
+class SubagentStatusView implements Component {
+  private toolCalls: readonly SubagentToolCall[] = [];
+  private activeTools: readonly SubagentActiveTool[] = [];
+  private topLine = "";
+  private theme: Theme | undefined;
+  private isPartial = false;
+  private invalidateFn: (() => void) | undefined;
+  private spinnerIndex = 0;
+  private spinnerTimer: ReturnType<typeof setInterval> | undefined;
+
+  public set(args: {
+    readonly toolCalls: readonly SubagentToolCall[];
+    readonly activeTools: readonly SubagentActiveTool[];
+    readonly topLine: string;
+    readonly theme: Theme;
+    readonly isPartial: boolean;
+    readonly invalidate?: () => void;
+  }): void {
+    this.toolCalls = args.toolCalls;
+    this.activeTools = args.activeTools;
+    this.topLine = args.topLine;
+    this.theme = args.theme;
+    this.isPartial = args.isPartial;
+    this.invalidateFn = args.invalidate;
+    this.updateSpinner();
+  }
+
+  public render(width: number): string[] {
+    const theme = this.theme;
+    if (!theme) {
+      return [];
+    }
+
+    type LineGen = (prefix: string) => string;
+    const items: LineGen[] = [];
+
+    for (const call of this.toolCalls) {
+      items.push((prefix) => renderToolCallLine(call, prefix, theme));
+    }
+
+    if (this.isPartial) {
+      const spinner = SPINNER_FRAMES[this.spinnerIndex] ?? "⣿";
+      for (const tool of this.activeTools) {
+        items.push((prefix) => renderActiveToolLine(tool, spinner, prefix, theme));
+      }
+    }
+
+    if (this.topLine) {
+      const styled = this.isPartial
+        ? styleActiveLine(this.topLine, theme)
+        : styleDottedLine({
+            text: this.topLine,
+            theme,
+            lineColor: "accent",
+          });
+      items.push((prefix) => prefix + styled);
+    }
+
+    const hasTools = this.toolCalls.length > 0 || this.activeTools.length > 0;
+    const lines: string[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const isLast = i === items.length - 1;
+      const prefix = hasTools
+        ? theme.fg("muted", isLast ? TREE_END_PREFIX : TREE_MID_PREFIX)
+        : Renderer.GAPPED_PREFIX.prefix;
+      lines.push(items[i]!(prefix));
+    }
+    return lines;
+  }
+
+  public invalidate(): void {}
+
+  private updateSpinner(): void {
+    if (!this.isPartial || !this.invalidateFn) {
+      if (this.spinnerTimer) {
+        clearInterval(this.spinnerTimer);
+        this.spinnerTimer = undefined;
+      }
+      return;
+    }
+    if (this.spinnerTimer) {
+      return;
+    }
+    this.spinnerTimer = setInterval(() => {
+      this.spinnerIndex = (this.spinnerIndex + 1) % SPINNER_FRAMES.length;
+      this.invalidateFn?.();
+    }, SPINNER_INTERVAL_MS);
+    this.spinnerTimer.unref?.();
+  }
+}
+
+function renderToolCallLine(
+  call: SubagentToolCall,
+  connector: string,
+  theme: Theme
+): string {
+  const marker = call.isError ? "✗" : "✓";
+  const markerColor = call.isError ? "error" : "success";
+  return (
+    connector +
+    theme.fg(markerColor, marker) +
+    " " +
+    theme.bold(call.name) +
+    (call.title ? theme.fg("toolOutput", " " + call.title) : "")
+  );
+}
+
+function renderActiveToolLine(
+  tool: SubagentActiveTool,
+  spinner: string,
+  connector: string,
+  theme: Theme
+): string {
+  return (
+    connector +
+    ACTIVE_YELLOW +
+    spinner +
+    FG_RESET +
+    " " +
+    ACTIVE_YELLOW +
+    theme.bold(tool.name) +
+    FG_RESET +
+    (tool.title ? ` ${ACTIVE_YELLOW}${tool.title}${FG_RESET}` : "")
+  );
+}
+
 function formatAgentLabel(agent: string | undefined): string {
   const trimmed = agent?.trim();
   if (!trimmed) {
@@ -178,53 +318,81 @@ export function renderResult(
   theme: Theme,
   context: RenderContext
 ): Component {
-  const container =
-    context.lastComponent instanceof Container
+  const view =
+    context.lastComponent instanceof SubagentResult
       ? context.lastComponent
-      : new Container();
-  container.clear();
+      : new SubagentResult();
+  view.update(result, options, theme, context);
+  return view;
+}
 
-  const details = result.details;
-  const first = result.content?.[0];
-  const body = first && "text" in first ? (first.text ?? "") : "";
-  const topLine = details?.topLine;
+/**
+ * Renders the complete subagent result: child tool-call lines, the metadata
+ * top line, and the final output body (when complete/expanded). The tool-call
+ * and top-line status block is delegated to a reused SubagentStatusView so its
+ * spinner timer survives across renderResult calls. The body is rendered as a
+ * plain prefixed block (collapsed) or markdown (expanded), matching the prior
+ * behavior for the subagent's final message.
+ */
+class SubagentResult implements Component {
+  private readonly statusView = new SubagentStatusView();
+  private bodyComponent: Component | undefined;
+  private lastBodyKey = "";
 
-  if (topLine) {
-    container.addChild(
-      Renderer.makePrefixedBlock({
-        text: options.isPartial
-          ? styleActiveLine(topLine, theme)
-          : styleDottedLine({
-              text: topLine,
+  public update(
+    result: AgentToolResult<SubagentDetails>,
+    options: ToolRenderResultOptions,
+    theme: Theme,
+    context: RenderContext
+  ): void {
+    const details = result.details;
+    const first = result.content?.[0];
+    const body = first && "text" in first ? (first.text ?? "") : "";
+    const topLine = details?.topLine ?? "";
+
+    this.statusView.set({
+      toolCalls: details?.toolCalls ?? [],
+      activeTools: details?.activeToolCalls ?? [],
+      topLine,
+      theme,
+      isPartial: Boolean(options.isPartial),
+      invalidate: context.invalidate,
+    });
+
+    const showBody = !options.isPartial && body.length > 0;
+    if (showBody) {
+      const key = `${options.expanded ? "md" : "txt"}|${body}`;
+      if (key !== this.lastBodyKey) {
+        this.bodyComponent = options.expanded
+          ? makePrefixedMarkdownBlock({
+              text: body,
               theme,
-              lineColor: "accent",
-            }),
-        theme,
-        prefix: Renderer.GAPPED_PREFIX,
-      })
-    );
+              prefix: Renderer.GAPPED_PREFIX,
+              lineColor: expandedResultColor(details, context.isError),
+            })
+          : Renderer.makePrefixedBlock({
+              text: body,
+              theme,
+              prefix: Renderer.GAPPED_PREFIX,
+              lineColor: resultColor(details, context.isError),
+            });
+        this.lastBodyKey = key;
+      }
+    } else {
+      this.bodyComponent = undefined;
+      this.lastBodyKey = "";
+    }
   }
 
-  if (!options.isPartial && (!topLine || options.expanded) && body) {
-    container.addChild(
-      options.expanded
-        ? makePrefixedMarkdownBlock({
-            text: body,
-            theme,
-            prefix: Renderer.GAPPED_PREFIX,
-            lineColor: expandedResultColor(details, context.isError),
-          })
-        : Renderer.makePrefixedBlock({
-            text: body,
-            theme,
-            prefix: Renderer.GAPPED_PREFIX,
-            lineColor: resultColor(details, context.isError),
-          })
-    );
+  public render(width: number): string[] {
+    const lines = this.statusView.render(width);
+    if (this.bodyComponent) {
+      lines.push(...this.bodyComponent.render(width));
+    }
+    return lines;
   }
 
-  container.invalidate();
-  return container;
+  public invalidate(): void {}
 }
 
 function makePrefixedMarkdownBlock(args: MarkdownBlockArgs): Component {
@@ -361,11 +529,12 @@ function formatActivity(snapshot: StatusFields): string {
 }
 
 function activeToolLabel(snapshot: StatusFields): string {
-  if (snapshot.activeToolNames.length === 1) {
-    return snapshot.activeToolNames[0]!;
+  const active = snapshot.activeToolCalls;
+  if (active.length === 1) {
+    return active[0]!.name;
   }
-  if (snapshot.activeToolNames.length > 1) {
-    return `${snapshot.activeToolNames.length} tools`;
+  if (active.length > 1) {
+    return `${active.length} tools`;
   }
   return snapshot.lastToolName ?? "thinking";
 }

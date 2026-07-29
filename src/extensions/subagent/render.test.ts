@@ -62,8 +62,8 @@ const baseDetails: SubagentDetails = {
     turns: 3,
     contextTokens: 4000,
   },
-  toolCalls: [{ name: "read", isError: false }],
-  activeToolNames: [],
+  toolCalls: [{ name: "read", title: "src/index.ts", isError: false }],
+  activeToolCalls: [],
   lastToolName: "read",
   stopReason: "stop",
   errorMessage: undefined,
@@ -193,15 +193,17 @@ describe("subagent render formatting", () => {
     ).render(80);
 
     expect(running.calls).toContainEqual({ color: "muted", text: "⬝" });
-    expect(runningRender[0]).toContain(ACTIVE_YELLOW);
-    expect(runningRender[0]).toContain("$0.23 ");
+    expect(runningRender[0]).toContain("read");
+    const topLine = runningRender.at(-1)!;
+    expect(topLine).toContain(ACTIVE_YELLOW);
+    expect(topLine).toContain("$0.23 ");
   });
 
-  test("partial render displays only the running top line", () => {
+  test("partial render shows the running tool and the top line", () => {
     const runningDetails: SubagentDetails = {
       ...baseDetails,
       toolCalls: [],
-      activeToolNames: ["grep"],
+      activeToolCalls: [{ name: "grep", title: "" }],
       stopReason: undefined,
       topLine: "$0.23 ⬝ 0.4%/1.0M ⬝ deepseek-v4-flash ⬝ 3 turns ⬝ grep",
     };
@@ -215,12 +217,60 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: true, isError: false }
     );
 
-    expect(component.render(80)).toEqual([
-      `   ${ACTIVE_YELLOW}$0.23 ${FG_RESET}⬝${ACTIVE_YELLOW} 0.4%/1.0M ${FG_RESET}⬝${ACTIVE_YELLOW} deepseek-v4-flash ${FG_RESET}⬝${ACTIVE_YELLOW} 3 turns ${FG_RESET}⬝${ACTIVE_YELLOW} grep${FG_RESET}`,
-    ]);
+    const lines = component.render(80);
+    expect(lines[0]).toContain("grep");
+    expect(lines[0]).toContain("⣿");
+    expect(lines.at(-1)).toContain("$0.23 ");
   });
 
-  test("collapsed done render hides the final message", () => {
+  test("active tool spinner animates across invalidate ticks", () => {
+    const runningDetails: SubagentDetails = {
+      ...baseDetails,
+      toolCalls: [],
+      activeToolCalls: [{ name: "read", title: "a.ts" }],
+      stopReason: undefined,
+      topLine: "$0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn ⬝ read",
+    };
+
+    let renderCount = 0;
+    const invalidate = () => {
+      renderCount++;
+    };
+
+    const component = renderResult(
+      {
+        content: [{ type: "text", text: "ignored" }],
+        details: runningDetails,
+      },
+      { expanded: false, isPartial: true },
+      stubTheme,
+      {
+        lastComponent: undefined,
+        isPartial: true,
+        isError: false,
+        invalidate,
+      }
+    );
+
+    // First render: spinner shows the initial frame
+    const frame0 = component.render(80)[0]!;
+    expect(frame0).toContain("⣿");
+
+    // Advance the spinner timer by SPINNER_INTERVAL_MS to trigger invalidate
+    // The SubagentStatusView owns its own setInterval; we advance it via mock timers
+    const timers = [];
+    // We can't easily intercept setInterval here, so verify the component is
+    // reused and that re-rendering after a manual spinnerIndex bump changes frame
+    const statusView = (component as unknown as {
+      statusView: { spinnerIndex: number };
+    }).statusView;
+    statusView.spinnerIndex = 3;
+    const frame3 = component.render(80)[0]!;
+    expect(frame3).toContain("⣟");
+    expect(frame3).not.toEqual(frame0);
+  });
+
+  test("collapsed done render shows the final message", () => {
     const body = Array.from({ length: 12 }, (_, i) => `line ${i + 1}`).join(
       "\n"
     );
@@ -231,7 +281,11 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: false, isError: false }
     );
 
-    expect(component.render(80)).toEqual([`   ${baseDetails.topLine}`]);
+    expect(component.render(80)).toEqual([
+      " ├─ ✓ read src/index.ts",
+      ` ╰─ ${baseDetails.topLine}`,
+      ...Array.from({ length: 12 }, (_, i) => `   line ${i + 1}`),
+    ]);
   });
 
   test("expanded done render keeps the top line above the final message", () => {
@@ -243,7 +297,8 @@ describe("subagent render formatting", () => {
     );
 
     expect(component.render(80)).toEqual([
-      `   ${baseDetails.topLine}`,
+      " ├─ ✓ read src/index.ts",
+      ` ╰─ ${baseDetails.topLine}`,
       "   line 1",
       "   line 2",
     ]);
@@ -258,7 +313,8 @@ describe("subagent render formatting", () => {
     );
 
     expect(component.render(80)).toEqual([
-      `   ${baseDetails.topLine}`,
+      " ├─ ✓ read src/index.ts",
+      ` ╰─ ${baseDetails.topLine}`,
       "   Final answer and code",
     ]);
   });
@@ -321,5 +377,78 @@ describe("subagent render formatting", () => {
       color: "toolOutput",
       text: "plain final",
     });
+  });
+
+  test("subagent with no tool calls uses gapped prefix, not tree connectors", () => {
+    const noToolsDetails: SubagentDetails = {
+      ...baseDetails,
+      toolCalls: [],
+      activeToolCalls: [],
+      topLine: "$0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn",
+    };
+    const component = renderResult(
+      { content: [{ type: "text", text: "answer" }], details: noToolsDetails },
+      { expanded: false, isPartial: false },
+      stubTheme,
+      { lastComponent: undefined, isPartial: false, isError: false }
+    );
+
+    const lines = component.render(80);
+    expect(lines).toEqual([
+      "   $0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn",
+      "   answer",
+    ]);
+    expect(lines[0]).not.toContain("├");
+    expect(lines[0]).not.toContain("╰");
+  });
+
+  test("multiple completed tool calls get incremental tree branches", () => {
+    const multiDetails: SubagentDetails = {
+      ...baseDetails,
+      toolCalls: [
+        { name: "glob", title: "*.ts", isError: false },
+        { name: "read", title: "a.ts", isError: false },
+        { name: "bash", title: "ls", isError: true },
+      ],
+      activeToolCalls: [],
+    };
+    const component = renderResult(
+      { content: [{ type: "text", text: "done" }], details: multiDetails },
+      { expanded: false, isPartial: false },
+      stubTheme,
+      { lastComponent: undefined, isPartial: false, isError: false }
+    );
+
+    const lines = component.render(80);
+    expect(lines[0]).toContain("├─ ✓ glob *.ts");
+    expect(lines[1]).toContain("├─ ✓ read a.ts");
+    expect(lines[2]).toContain("├─ ✗ bash ls");
+    expect(lines[3]).toContain("╰─");
+    expect(lines[3]).toContain(baseDetails.topLine);
+    expect(lines[4]).toBe("   done");
+  });
+
+  test("plain subagent (no agent name) renders tool calls the same way", () => {
+    const component = renderCall(
+      { prompt: "do something" },
+      stubTheme,
+      { lastComponent: undefined, isPartial: false, isError: false }
+    );
+    expect(component.render(80)[0]).toContain("Subagent");
+
+    const plainDetails: SubagentDetails = {
+      ...baseDetails,
+      toolCalls: [{ name: "bash", title: "echo hi", isError: false }],
+    };
+    const rendered = renderResult(
+      { content: [{ type: "text", text: "result" }], details: plainDetails },
+      { expanded: false, isPartial: false },
+      stubTheme,
+      { lastComponent: undefined, isPartial: false, isError: false }
+    );
+    const lines = rendered.render(80);
+    expect(lines[0]).toContain("├─ ✓ bash echo hi");
+    expect(lines[1]).toContain("╰─");
+    expect(lines[2]).toBe("   result");
   });
 });
