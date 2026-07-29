@@ -35,7 +35,7 @@ const DEVIN_PROVIDER_ID = "devin";
 const DEVIN_MODEL_ALLOWLIST = new Set<string>([
   "glm-5-2",
   "swe-1-7",
-  "claude-sonnet-5-high",
+  "grok-4-5-medium",
 ]);
 
 /**
@@ -83,13 +83,13 @@ const DEVIN_MODEL_OVERRIDES: Record<
       max: "max",
     },
   },
-  "claude-sonnet-5-high": {
+  "grok-4-5-medium": {
     thinkingLevelMap: {
       off: null,
       minimal: null,
       low: null,
-      medium: null,
-      high: "high",
+      medium: "medium",
+      high: null,
       xhigh: null,
       max: null,
     },
