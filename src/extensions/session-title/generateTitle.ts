@@ -133,9 +133,10 @@ export async function runSdkTitleAttempt(
 
 /**
  * Tries the configured comma-separated model candidates in order, then falls
- * back to the main agent's current model. Best-effort: returns undefined
- * (instead of throwing) when every candidate fails, since naming a session
- * is never critical to the user's task.
+ * back to the main agent's current model. Throws with a diagnostic message
+ * (instead of silently returning undefined) when every candidate fails, so
+ * the caller can decide whether to surface it — naming a session is never
+ * critical, but silent failures are impossible to debug.
  */
 export async function generateSessionTitle(
   transcript: string,
@@ -161,14 +162,26 @@ export async function generateSessionTitle(
       errors.push(`${modelKey(candidate)}: ${errorMessage(error)}`);
     }
   }
+  if (candidates.length === 0) {
+    errors.push(`configured model "${modelRef}" not found in any provider`);
+  }
 
   const fallback = ctx.model;
-  if (!fallback || candidates.some((c) => modelKey(c) === modelKey(fallback))) {
-    return undefined;
+  if (!fallback) {
+    throw new Error(
+      `Session title generation failed (${errors.join("; ")}). No main-agent fallback model is available.`
+    );
+  }
+  if (candidates.some((c) => modelKey(c) === modelKey(fallback))) {
+    throw new Error(
+      `Session title generation failed (${errors.join("; ")}) and the main-agent fallback is the same model.`
+    );
   }
   try {
     return await runAttempt(transcript, fallback, ctx, signal);
-  } catch {
-    return undefined;
+  } catch (fallbackError) {
+    throw new Error(
+      `Session title generation failed. Candidates: ${errors.join("; ")}. Fallback ${modelKey(fallback)}: ${errorMessage(fallbackError)}`
+    );
   }
 }
