@@ -50,11 +50,9 @@ export default function (pi: ExtensionAPI): void {
       if (title && !ctx.sessionManager.getSessionName()) {
         pi.setSessionName(title);
       }
-    } catch (error) {
-      // Naming is never critical, but a silent failure is undebuggable, so
-      // surface it once instead of swallowing it.
-      const message = error instanceof Error ? error.message : String(error);
-      ctx.ui.notify(`session-title: ${message}`, "warning");
+    } catch {
+      // Best-effort: leave the session unnamed (falls back to the first
+      // message in the session picker) on failure.
     } finally {
       generating = false;
     }
