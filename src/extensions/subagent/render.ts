@@ -9,7 +9,12 @@ import type {
   DefaultTextStyle,
   MarkdownTheme,
 } from "@earendil-works/pi-tui";
-import { Container, Markdown, visibleWidth } from "@earendil-works/pi-tui";
+import {
+  Container,
+  Markdown,
+  truncateToWidth,
+  visibleWidth,
+} from "@earendil-works/pi-tui";
 import { type PrefixSpec, Renderer } from "../../shared/Renderer";
 import type {
   SubagentActiveTool,
@@ -218,7 +223,7 @@ class SubagentStatusView implements Component {
       const prefix = hasTools
         ? theme.fg("muted", isLast ? TREE_END_PREFIX : TREE_MID_PREFIX)
         : Renderer.GAPPED_PREFIX.prefix;
-      lines.push(items[i]!(prefix));
+      lines.push(truncateToWidth(items[i]!(prefix), width, ""));
     }
     return lines;
   }

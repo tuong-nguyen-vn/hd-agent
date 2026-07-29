@@ -4,6 +4,7 @@ import type {
   Theme,
   ThemeColor,
 } from "@earendil-works/pi-coding-agent";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SubagentDetails } from "./subagent";
 import {
   ACTIVE_YELLOW,
@@ -270,6 +271,38 @@ describe("subagent render formatting", () => {
     const frame3 = component.render(80)[0]!;
     expect(frame3).toContain("⣟");
     expect(frame3).not.toEqual(frame0);
+  });
+
+  test("long active tool title is truncated to the render width", () => {
+    const longTitle =
+      "/pi-tui|spinner|render|viewport|scrollback|inline|cursorTo|moveCursor|clearScreen|alternate/";
+    const runningDetails: SubagentDetails = {
+      ...baseDetails,
+      toolCalls: [],
+      activeToolCalls: [{ name: "grep", title: longTitle }],
+      stopReason: undefined,
+      topLine: "$0.03 ⬝ 1.6%/272K ⬝ gpt-5.6-sol ⬝ 1 turn",
+    };
+
+    const component = renderResult(
+      {
+        content: [{ type: "text", text: "ignored" }],
+        details: runningDetails,
+      },
+      { expanded: false, isPartial: true },
+      stubTheme,
+      {
+        lastComponent: undefined,
+        isPartial: true,
+        isError: false,
+        invalidate: () => {},
+      }
+    );
+
+    const lines = component.render(84);
+    for (const line of lines) {
+      expect(visibleWidth(line)).toBeLessThanOrEqual(84);
+    }
   });
 
   test("collapsed done render shows the final message", () => {
