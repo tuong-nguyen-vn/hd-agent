@@ -15,18 +15,36 @@ function isAbortError(reason: unknown): boolean {
 // Pressing Escape aborts the active tool/stream signal. Some cancellable work
 // (fetch, worker requests, subagent sessions) only surfaces that as a
 // rejected promise after the synchronous abort() call has already returned,
-// once nothing is left to await it. pi's own uncaughtException handler
-// restores the terminal on *synchronous* crashes, but there is no equivalent
-// for async ones: an unhandled AbortError rejection would otherwise crash
-// the whole TUI process outright (Bun's default unhandled-rejection
-// behavior), dropping the user back to the shell. Swallow only AbortError
-// here so cancellation is a no-op from the user's perspective; anything else
-// is logged (not hidden) instead of taking down the session.
+// once nothing is left to await it. Swallow only AbortError here so
+// cancellation is a no-op from the user's perspective; anything else is
+// logged (not hidden) instead of taking down the session.
 process.on("unhandledRejection", (reason) => {
   if (isAbortError(reason)) {
     return;
   }
   console.error("pim: unhandled rejection:", reason);
+});
+
+// pi's own AbortController.abort() call (e.g. restoreQueuedMessagesToEditor
+// on Escape) dispatches to any synchronous "abort" listeners still attached
+// to the active run's signal (streaming readers, etc). If one of those
+// throws, it bubbles up *synchronously* through abort() itself, out of the
+// keystroke handler - pressing Escape while the model is actively
+// streaming/thinking hits this path. pi registers its own uncaughtException
+// handler via prependListener during startup (restores the terminal, then
+// unconditionally calls process.exit(1)), which runs *before* any handler an
+// extension adds with plain `.on()` - so a normal listener here would never
+// get a chance to run. Extensions load after that registration, so
+// prependListener here puts this handler in front instead, letting it
+// swallow AbortError before pi's handler can kill the process. Anything else
+// is left alone (not exited here) - Node keeps invoking the remaining
+// uncaughtException listeners in order, so pi's own handler still runs
+// after this one and restores the terminal / exits as designed.
+process.prependListener("uncaughtException", (error) => {
+  if (isAbortError(error)) {
+    return;
+  }
+  console.error("pim: uncaught exception:", error);
 });
 
 const shortcuts = [

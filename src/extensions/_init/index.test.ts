@@ -28,3 +28,25 @@ describe("_init unhandledRejection guard", () => {
     expect(String(logged[0])).toContain("boom");
   });
 });
+
+describe("_init uncaughtException guard", () => {
+  test("swallows synchronous AbortError, logs everything else", async () => {
+    await import("./index.ts");
+    const originalError = console.error;
+    const logged: unknown[] = [];
+    console.error = (...args: unknown[]) => {
+      logged.push(args);
+    };
+    try {
+      process.emit(
+        "uncaughtException",
+        new DOMException("aborted", "AbortError")
+      );
+      process.emit("uncaughtException", new Error("boom"));
+    } finally {
+      console.error = originalError;
+    }
+    expect(logged.length).toBe(1);
+    expect(String(logged[0])).toContain("boom");
+  });
+});
