@@ -392,6 +392,21 @@ async function runSubagentAttempt(
       );
     }
     await session.prompt(promptFor(prompt, agent));
+
+    // Some models (notably gemini-flash) complete all tool work but end
+    // without producing any visible text — only thinking blocks. Nudge
+    // the model to emit a text summary so the parent agent gets usable
+    // results instead of an empty string.
+    if (
+      !abortRequested &&
+      !signal?.aborted &&
+      capture.snapshot().finalOutput === ""
+    ) {
+      await session.prompt(
+        "Report your findings concisely as a text response. Do not call any tools."
+      );
+    }
+
     if (abortRequested && capture.snapshot().stopReason !== "aborted") {
       capture.markAborted();
     }

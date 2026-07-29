@@ -419,6 +419,43 @@ describe("runSubagent", () => {
     expect(result.details.fullOutput).toBe("found it");
   });
 
+  test("sends a follow-up prompt when the model produces no text", async () => {
+    const fake = new FakeSession(async (session) => {
+      if (session.promptCalls === 1) {
+        session.emit({ type: "message_start", message: assistant([]) });
+        session.emit({
+          type: "message_end",
+          message: assistant([], { stopReason: "toolUse" }),
+        });
+        session.emit({ type: "message_start", message: assistant([]) });
+        session.emit({
+          type: "message_end",
+          message: assistant([], { stopReason: "stop" }),
+        });
+      } else {
+        session.emit({ type: "message_start", message: assistant([]) });
+        session.emit({
+          type: "message_end",
+          message: assistant(["summary of findings"]),
+        });
+      }
+    });
+
+    const result = await runSubagent(
+      "search",
+      ctx,
+      undefined,
+      undefined,
+      async () => fake
+    );
+
+    expect(fake.promptCalls).toBe(2);
+    expect(result.content).toEqual([
+      { type: "text", text: "summary of findings" },
+    ]);
+    expect(result.details.fullOutput).toBe("summary of findings");
+  });
+
   test("throws on model error with partial output", async () => {
     const fake = new FakeSession(async (session) => {
       session.emit({ type: "message_start", message: assistant([]) });
