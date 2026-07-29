@@ -203,6 +203,32 @@ export default async function (pi: ExtensionAPI): Promise<void> {
           high: "HIGH",
         },
       },
+      {
+        id: "gemini-3.1-flash-image",
+        name: "Gemini 3.1 Flash Image",
+        api: "google-generative-ai",
+        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
+        reasoning: false,
+        input: ["text", "image"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 1048576,
+        maxTokens: 65536,
+      },
+      {
+        id: "claude-haiku-4-5-20251001",
+        name: "Claude Haiku 4.5",
+        api: "anthropic-messages",
+        baseUrl: HDWEBSOFT_PROXY_ROOT,
+        reasoning: false,
+        input: ["text", "image"],
+        cost: { input: 0.5, output: 2.5, cacheRead: 0.1, cacheWrite: 0.6 },
+        contextWindow: 200000,
+        maxTokens: 64000,
+        thinkingLevelMap: {},
+        compat: {
+          supportsTemperature: false,
+        },
+      },
     ],
   });
 }

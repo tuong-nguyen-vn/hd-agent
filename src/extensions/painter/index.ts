@@ -117,6 +117,26 @@ function renderTitle(
   });
 }
 
+function fileToBase64(path: string): Promise<string> {
+  return Bun.file(path)
+    .arrayBuffer()
+    .then((buf) => Buffer.from(buf).toString("base64"));
+}
+
+function googleAuthHeaders(
+  apiKey: string | undefined,
+  headers: Record<string, string> | undefined
+): Record<string, string> {
+  const hasGoogle = Object.keys(headers ?? {}).some(
+    (k) => k.toLowerCase() === "x-goog-api-key"
+  );
+  const base = authHeaders(apiKey, headers);
+  if (apiKey && !hasGoogle) {
+    base["x-goog-api-key"] = apiKey;
+  }
+  return base;
+}
+
 async function callGenerate(
   resolved: ResolvedModel,
   prompt: string,
@@ -175,6 +195,79 @@ async function callEdit(
   return await r.json();
 }
 
+async function interactionInput(
+  prompt: string,
+  inputs: readonly string[]
+): Promise<
+  Array<
+    | { type: "text"; text: string }
+    | { type: "image"; mime_type: string; data: string }
+  >
+> {
+  const result: Array<
+    | { type: "text"; text: string }
+    | { type: "image"; mime_type: string; data: string }
+  > = [{ type: "text", text: prompt }];
+  for (const p of inputs) {
+    const mime = mimeFromPath(p) ?? "image/png";
+    const data = await fileToBase64(p);
+    result.push({ type: "image", mime_type: mime, data });
+  }
+  return result;
+}
+
+type GoogleInteractionStep = {
+  type?: string;
+  content?: Array<{
+    type?: string;
+    mime_type?: string;
+    data?: string;
+  }>;
+};
+
+async function callGoogleInteraction(
+  resolved: ResolvedModel,
+  prompt: string,
+  inputs: readonly string[],
+  signal: AbortSignal | undefined
+) {
+  const { model, apiKey, headers } = resolved;
+  const body = {
+    model: model.id,
+    input: await interactionInput(prompt, inputs),
+  };
+  const r = await fetch(`${model.baseUrl}/interactions`, {
+    method: "POST",
+    signal,
+    headers: {
+      "content-type": "application/json",
+      ...googleAuthHeaders(apiKey, headers),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const detail = await r.text().catch(() => "");
+    throw new Error(`interactions ${r.status}: ${detail.slice(0, 400)}`);
+  }
+  const json = (await r.json()) as {
+    steps?: GoogleInteractionStep[];
+  };
+  const image = json.steps
+    ?.find((step) => step.type === "model_output")
+    ?.content?.find((c) => c.type === "image" && c.data);
+  if (!image?.data) {
+    throw new Error("interactions response did not contain an output image");
+  }
+  return {
+    data: [
+      {
+        b64_json: image.data,
+        mime_type: image.mime_type ?? "image/png",
+      },
+    ],
+  };
+}
+
 export type PainterFallbackResult = {
   readonly json: unknown;
   readonly usedModel: string | undefined;
@@ -208,10 +301,14 @@ export async function runPainterFallback(
     }
 
     try {
-      const json =
-        mode === "edit"
-          ? await callEdit(resolved, prompt, inputs, size, quality, signal)
-          : await callGenerate(resolved, prompt, size, quality, signal);
+      let json: unknown;
+      if (resolved.model.api === "google-generative-ai") {
+        json = await callGoogleInteraction(resolved, prompt, inputs, signal);
+      } else if (mode === "edit") {
+        json = await callEdit(resolved, prompt, inputs, size, quality, signal);
+      } else {
+        json = await callGenerate(resolved, prompt, size, quality, signal);
+      }
       return {
         json,
         usedModel: `${candidate.provider}/${candidate.id}`,
@@ -290,10 +387,12 @@ export default function (pi: ExtensionAPI): void {
           modelRef,
           ctx.model?.provider
         )
-      ).filter((m) => m.api === "openai-completions");
+      ).filter(
+        (m) => m.api === "openai-completions" || m.api === "google-generative-ai"
+      );
       if (candidates.length === 0) {
         return errResult(
-          `painter: no model "${modelRef}" using api "openai-completions" found in any configured provider. ` +
+          `painter: no model "${modelRef}" using api "openai-completions" or "google-generative-ai" found in any configured provider. ` +
             `Set painter.model in ~/.pim/settings.json to an available image model.`
         );
       }
@@ -344,7 +443,9 @@ export default function (pi: ExtensionAPI): void {
       const json = outcome.json;
 
       const item = (
-        json as { data?: Array<{ b64_json?: string; url?: string }> }
+        json as {
+          data?: Array<{ b64_json?: string; url?: string; mime_type?: string }>;
+        }
       )?.data?.[0];
       if (!item) {
         return errResult(
@@ -352,6 +453,7 @@ export default function (pi: ExtensionAPI): void {
         );
       }
 
+      const mimeType = item.mime_type ?? "image/png";
       let b64: string | undefined = item.b64_json;
       let bytes: Buffer;
       if (b64) {
@@ -388,7 +490,7 @@ export default function (pi: ExtensionAPI): void {
             type: "text" as const,
             text: `painter ${mode} → ${outPath}  (${size}, ${quality}, ${(bytes.length / 1024).toFixed(0)} KB)`,
           },
-          { type: "image" as const, data: b64, mimeType: "image/png" },
+          { type: "image" as const, data: b64, mimeType: mimeType },
         ],
         details: {
           path: outPath,

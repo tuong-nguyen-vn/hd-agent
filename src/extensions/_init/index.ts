@@ -5,6 +5,30 @@ import type {
 
 const SPLASH_ID = "pim-splash";
 
+function isAbortError(reason: unknown): boolean {
+  if (typeof DOMException !== "undefined" && reason instanceof DOMException) {
+    return reason.name === "AbortError";
+  }
+  return reason instanceof Error && reason.name === "AbortError";
+}
+
+// Pressing Escape aborts the active tool/stream signal. Some cancellable work
+// (fetch, worker requests, subagent sessions) only surfaces that as a
+// rejected promise after the synchronous abort() call has already returned,
+// once nothing is left to await it. pi's own uncaughtException handler
+// restores the terminal on *synchronous* crashes, but there is no equivalent
+// for async ones: an unhandled AbortError rejection would otherwise crash
+// the whole TUI process outright (Bun's default unhandled-rejection
+// behavior), dropping the user back to the shell. Swallow only AbortError
+// here so cancellation is a no-op from the user's perspective; anything else
+// is logged (not hidden) instead of taking down the session.
+process.on("unhandledRejection", (reason) => {
+  if (isAbortError(reason)) {
+    return;
+  }
+  console.error("pim: unhandled rejection:", reason);
+});
+
 const shortcuts = [
   ["Ctrl+C", "Clear editor (first) / exit (second)"],
   ["Escape", "Cancel autocomplete / abort streaming"],

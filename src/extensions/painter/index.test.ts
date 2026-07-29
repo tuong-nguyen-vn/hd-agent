@@ -198,4 +198,184 @@ describe("runPainterFallback", () => {
     expect(result.json).toBeUndefined();
     expect(result.errors).toEqual([]);
   });
+
+  test("generate: calls Google Interactions API for google-generative-ai models", async () => {
+    const model = makeModel("hdwebsoft-proxy", "gemini-3.1-flash-image", {
+      api: "google-generative-ai",
+      baseUrl: "https://proxy-api.hdwebsoft.co/v1beta",
+    });
+    const registry = makeRegistry([model], new Set(["hdwebsoft-proxy"]));
+    let calledUrl = "";
+    let postedBody: unknown;
+    mockFetch((url, init) => {
+      calledUrl = url;
+      postedBody =
+        typeof init?.body === "string" ? JSON.parse(init.body) : init?.body;
+      return {
+        status: 200,
+        body: {
+          steps: [
+            {
+              type: "model_output",
+              content: [
+                {
+                  type: "image",
+                  mime_type: "image/png",
+                  data: "GGGG",
+                },
+              ],
+            },
+          ],
+        },
+      };
+    });
+
+    const result = await runPainterFallback(
+      registry,
+      [model],
+      "generate",
+      "a cat",
+      [],
+      "1024x1024",
+      "medium",
+      undefined
+    );
+
+    expect(calledUrl).toContain("/v1beta/interactions");
+    expect(postedBody).toEqual({
+      model: "gemini-3.1-flash-image",
+      input: [{ type: "text", text: "a cat" }],
+    });
+    expect(result.json).toEqual({
+      data: [{ b64_json: "GGGG", mime_type: "image/png" }],
+    });
+    expect(result.usedModel).toBe("hdwebsoft-proxy/gemini-3.1-flash-image");
+  });
+
+  test("edit: includes image input for Google Interactions API", async () => {
+    const tmpPath = "/tmp/test-input.png";
+    await Bun.write(tmpPath, Buffer.from("FAKEPNG", "base64"));
+
+    const model = makeModel("hdwebsoft-proxy", "gemini-3.1-flash-image", {
+      api: "google-generative-ai",
+      baseUrl: "https://proxy-api.hdwebsoft.co/v1beta",
+    });
+    const registry = makeRegistry([model], new Set(["hdwebsoft-proxy"]));
+    let postedBody: unknown;
+    mockFetch((_url, init) => {
+      postedBody =
+        typeof init?.body === "string" ? JSON.parse(init.body) : init?.body;
+      return {
+        status: 200,
+        body: {
+          steps: [
+            {
+              type: "model_output",
+              content: [{ type: "image", data: "EDITED" }],
+            },
+          ],
+        },
+      };
+    });
+
+    const result = await runPainterFallback(
+      registry,
+      [model],
+      "edit",
+      "make the cat wear a hat",
+      [tmpPath],
+      "1024x1024",
+      "medium",
+      undefined
+    );
+
+    expect(postedBody).toMatchObject({
+      model: "gemini-3.1-flash-image",
+      input: [
+        { type: "text", text: "make the cat wear a hat" },
+        { type: "image", mime_type: "image/png" },
+      ],
+    });
+    expect((postedBody as any).input[1].data).toBeTruthy();
+    expect(result.json).toEqual({
+      data: [{ b64_json: "EDITED", mime_type: "image/png" }],
+    });
+
+    await Bun.file(tmpPath).delete();
+  });
+
+  test("falls back from Gemini to OpenAI when Google response has no image", async () => {
+    const gemini = makeModel("hdwebsoft-proxy", "gemini-3.1-flash-image", {
+      api: "google-generative-ai",
+      baseUrl: "https://proxy-api.hdwebsoft.co/v1beta",
+    });
+    const openai = makeModel("openai", "gpt-image-2");
+    const registry = makeRegistry(
+      [gemini, openai],
+      new Set(["hdwebsoft-proxy", "openai"])
+    );
+    let calls = 0;
+    mockFetch((url, _init) => {
+      calls++;
+      if (url.includes("/interactions")) {
+        return {
+          status: 200,
+          body: { steps: [{ type: "model_output", content: [] }] },
+        };
+      }
+      return { status: 200, body: { data: [{ b64_json: "OPENAI" }] } };
+    });
+
+    const result = await runPainterFallback(
+      registry,
+      [gemini, openai],
+      "generate",
+      "a cat",
+      [],
+      "1024x1024",
+      "medium",
+      undefined
+    );
+
+    expect(result.json).toEqual({ data: [{ b64_json: "OPENAI" }] });
+    expect(result.usedModel).toBe("openai/gpt-image-2");
+    expect(result.errors).toHaveLength(1);
+    expect(calls).toBe(2);
+  });
+
+  test("falls back from Google HTTP error to OpenAI", async () => {
+    const gemini = makeModel("hdwebsoft-proxy", "gemini-3.1-flash-image", {
+      api: "google-generative-ai",
+      baseUrl: "https://proxy-api.hdwebsoft.co/v1beta",
+    });
+    const openai = makeModel("openai", "gpt-image-2");
+    const registry = makeRegistry(
+      [gemini, openai],
+      new Set(["hdwebsoft-proxy", "openai"])
+    );
+    let calls = 0;
+    mockFetch((url, _init) => {
+      calls++;
+      if (url.includes("/interactions")) {
+        return { status: 500, body: "gemini error" };
+      }
+      return { status: 200, body: { data: [{ b64_json: "OPENAI" }] } };
+    });
+
+    const result = await runPainterFallback(
+      registry,
+      [gemini, openai],
+      "generate",
+      "a cat",
+      [],
+      "1024x1024",
+      "medium",
+      undefined
+    );
+
+    expect(result.json).toEqual({ data: [{ b64_json: "OPENAI" }] });
+    expect(result.usedModel).toBe("openai/gpt-image-2");
+    expect(result.errors).toHaveLength(1);
+    expect(calls).toBe(2);
+  });
 });

@@ -125,7 +125,7 @@ export class PimSettings {
   public static async getPainterModel(): Promise<string> {
     return (
       PimSettings.normalize((await PimSettings.get("painter")).model) ??
-      "gpt-image-2"
+      "gemini-3.1-flash-image,gpt-image-2"
     );
   }
 
