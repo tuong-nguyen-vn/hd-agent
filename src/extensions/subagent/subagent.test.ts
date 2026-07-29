@@ -224,7 +224,7 @@ describe("resolveSubagentModel", () => {
 });
 
 describe("SubagentEventCapture", () => {
-  test("concatenates multi-part text, resets for each assistant message, and records usage/tools", () => {
+  test("concatenates multi-part text, keeps the latest non-empty assistant text, and records usage/tools", () => {
     const updates: string[] = [];
     const capture = new SubagentEventCapture((partial) => {
       updates.push(
@@ -277,7 +277,7 @@ describe("SubagentEventCapture", () => {
     expect(updates.at(-1)).toBe("$0.03 ⬝ ?/? ⬝ claude-test ⬝ 2 turns ⬝ 1 tool");
   });
 
-  test("a later message with no text discards the prior message's text", () => {
+  test("a later message with no text preserves the prior message's text", () => {
     const capture = new SubagentEventCapture();
 
     capture.handle({ type: "message_start", message: assistant([]) } as never);
@@ -291,7 +291,7 @@ describe("SubagentEventCapture", () => {
       message: assistant([], { stopReason: "stop" }),
     } as never);
 
-    expect(capture.snapshot().finalOutput).toBe("");
+    expect(capture.snapshot().finalOutput).toBe("intro");
   });
 
   test("message_update content is materialized lazily on snapshot read", () => {
@@ -394,6 +394,29 @@ describe("runSubagent", () => {
     expect(
       result.content[0]?.type === "text" ? result.content[0].text : ""
     ).toBe("[subagent tool: completed with no text output.]");
+  });
+
+  test("preserves earlier text when the final message has no text", async () => {
+    const fake = new FakeSession(async (session) => {
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({
+        type: "message_end",
+        message: assistant(["found it"], { stopReason: "toolUse" }),
+      });
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({ type: "message_end", message: assistant([]) });
+    });
+
+    const result = await runSubagent(
+      "search",
+      ctx,
+      undefined,
+      undefined,
+      async () => fake
+    );
+
+    expect(result.content).toEqual([{ type: "text", text: "found it" }]);
+    expect(result.details.fullOutput).toBe("found it");
   });
 
   test("throws on model error with partial output", async () => {

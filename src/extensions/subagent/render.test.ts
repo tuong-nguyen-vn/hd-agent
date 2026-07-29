@@ -261,9 +261,11 @@ describe("subagent render formatting", () => {
     const timers = [];
     // We can't easily intercept setInterval here, so verify the component is
     // reused and that re-rendering after a manual spinnerIndex bump changes frame
-    const statusView = (component as unknown as {
-      statusView: { spinnerIndex: number };
-    }).statusView;
+    const statusView = (
+      component as unknown as {
+        statusView: { spinnerIndex: number };
+      }
+    ).statusView;
     statusView.spinnerIndex = 3;
     const frame3 = component.render(80)[0]!;
     expect(frame3).toContain("⣟");
@@ -429,11 +431,11 @@ describe("subagent render formatting", () => {
   });
 
   test("plain subagent (no agent name) renders tool calls the same way", () => {
-    const component = renderCall(
-      { prompt: "do something" },
-      stubTheme,
-      { lastComponent: undefined, isPartial: false, isError: false }
-    );
+    const component = renderCall({ prompt: "do something" }, stubTheme, {
+      lastComponent: undefined,
+      isPartial: false,
+      isError: false,
+    });
     expect(component.render(80)[0]).toContain("Subagent");
 
     const plainDetails: SubagentDetails = {

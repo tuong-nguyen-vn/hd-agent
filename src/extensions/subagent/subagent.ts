@@ -474,7 +474,6 @@ export class SubagentEventCapture {
 
   public handle(event: AgentSessionEvent): void {
     if (event.type === "message_start" && isAssistantMessage(event.message)) {
-      this.finalOutput = "";
       this.pendingMessage = undefined;
       this.emitUpdate();
       return;
@@ -487,7 +486,10 @@ export class SubagentEventCapture {
 
     if (event.type === "message_end" && isAssistantMessage(event.message)) {
       this.pendingMessage = undefined;
-      this.finalOutput = collectText(event.message);
+      const text = collectText(event.message);
+      if (text) {
+        this.finalOutput = text;
+      }
       addUsage(this.usage, event.message.usage);
       this.usage.turns += 1;
       this.stopReason = event.message.stopReason;
@@ -550,7 +552,10 @@ export class SubagentEventCapture {
 
   private materializePending(): void {
     if (this.pendingMessage) {
-      this.finalOutput = collectText(this.pendingMessage);
+      const text = collectText(this.pendingMessage);
+      if (text) {
+        this.finalOutput = text;
+      }
       this.pendingMessage = undefined;
     }
   }
@@ -693,7 +698,8 @@ function deriveToolTitle(toolName: string, args: unknown): string {
   const name = toolName.toLowerCase();
   const firstLine = (value: unknown): string =>
     String(value ?? "")
-      .split(/\r?\n/u)[0]?.trim()
+      .split(/\r?\n/u)[0]
+      ?.trim()
       .slice(0, 120) ?? "";
 
   if (name === "read") {
@@ -728,10 +734,7 @@ function deriveToolTitle(toolName: string, args: unknown): string {
   return firstLine(a.path ?? a.pattern ?? a.query ?? a.command ?? a.prompt);
 }
 
-function formatRangeField(
-  start: unknown,
-  end: unknown
-): string {
+function formatRangeField(start: unknown, end: unknown): string {
   const s = typeof start === "number" ? start : undefined;
   const e = typeof end === "number" ? end : undefined;
   if (s === undefined && e === undefined) {

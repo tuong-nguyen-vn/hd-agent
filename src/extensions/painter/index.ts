@@ -388,7 +388,8 @@ export default function (pi: ExtensionAPI): void {
           ctx.model?.provider
         )
       ).filter(
-        (m) => m.api === "openai-completions" || m.api === "google-generative-ai"
+        (m) =>
+          m.api === "openai-completions" || m.api === "google-generative-ai"
       );
       if (candidates.length === 0) {
         return errResult(

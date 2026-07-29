@@ -150,9 +150,7 @@ export async function summarizeSession(
   const primaryErrors: string[] = [];
   for (const candidate of candidates) {
     if (signal?.aborted) {
-      throw new Error(
-        `Session summary aborted: ${primaryErrors.join("; ")}`
-      );
+      throw new Error(`Session summary aborted: ${primaryErrors.join("; ")}`);
     }
     try {
       const result = await runAttempt(transcript, candidate, ctx, signal);

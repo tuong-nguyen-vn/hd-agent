@@ -194,7 +194,9 @@ class SubagentStatusView implements Component {
     if (this.isPartial) {
       const spinner = SPINNER_FRAMES[this.spinnerIndex] ?? "⣿";
       for (const tool of this.activeTools) {
-        items.push((prefix) => renderActiveToolLine(tool, spinner, prefix, theme));
+        items.push((prefix) =>
+          renderActiveToolLine(tool, spinner, prefix, theme)
+        );
       }
     }
 
@@ -422,9 +424,7 @@ function makeCollapsedBody(
   const lines = body.split("\n");
   const overflow = Math.max(0, lines.length - BODY_PREVIEW_LINES);
   const preview =
-    overflow > 0
-      ? lines.slice(-BODY_PREVIEW_LINES).join("\n")
-      : body;
+    overflow > 0 ? lines.slice(-BODY_PREVIEW_LINES).join("\n") : body;
   if (overflow > 0) {
     container.addChild(mutedBlock(`… ${overflow} more lines`));
   }
