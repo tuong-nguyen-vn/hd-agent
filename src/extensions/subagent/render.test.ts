@@ -14,8 +14,6 @@ import {
   renderResult,
 } from "./render";
 
-const FG_RESET = "\x1b[39m";
-
 const stubTheme = {
   bold: (text: string) => text,
   italic: (text: string) => text,
@@ -224,7 +222,7 @@ describe("subagent render formatting", () => {
     expect(lines.at(-1)).toContain("$0.23 ");
   });
 
-  test("title and active tool share one spinner frame", () => {
+  test("pending markers do not schedule redraws", () => {
     const runningDetails: SubagentDetails = {
       ...baseDetails,
       toolCalls: [],
@@ -232,20 +230,15 @@ describe("subagent render formatting", () => {
       stopReason: undefined,
       topLine: "$0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn ⬝ read",
     };
-
-    const state: {
-      spinnerIndex: number;
-      spinnerTimer?: ReturnType<typeof setInterval>;
-    } = { spinnerIndex: 0 };
+    let invalidations = 0;
     const context = {
       lastComponent: undefined,
       isPartial: true,
       isError: false,
-      invalidate: () => {},
-      state,
+      invalidate: () => invalidations++,
     };
+
     const title = renderCall({ prompt: "investigate" }, stubTheme, context);
-    const sharedTimer = state.spinnerTimer;
     const component = renderResult(
       {
         content: [{ type: "text", text: "ignored" }],
@@ -255,24 +248,10 @@ describe("subagent render formatting", () => {
       stubTheme,
       context
     );
-    expect(state.spinnerTimer).toBe(sharedTimer);
 
-    const titleFrame0 = title.render(80)[0]!;
-    const toolFrame0 = component.render(80)[0]!;
-    expect(titleFrame0).toContain("⣿");
-    expect(toolFrame0).toContain("⣿");
-
-    state.spinnerIndex = 3;
-    const titleFrame3 = title.render(80)[0]!;
-    const toolFrame3 = component.render(80)[0]!;
-    expect(titleFrame3).toContain("⣟");
-    expect(toolFrame3).toContain("⣟");
-
-    renderCall({ prompt: "investigate" }, stubTheme, {
-      ...context,
-      lastComponent: title,
-      isPartial: false,
-    });
+    expect(title.render(80)[0]).toContain("⣿");
+    expect(component.render(80)[0]).toContain("⣿");
+    expect(invalidations).toBe(0);
   });
 
   test("long active tool title is truncated to the render width", () => {
@@ -297,7 +276,6 @@ describe("subagent render formatting", () => {
         lastComponent: undefined,
         isPartial: true,
         isError: false,
-        invalidate: () => {},
       }
     );
 
