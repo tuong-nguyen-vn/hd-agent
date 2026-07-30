@@ -28,8 +28,16 @@ export const SUBAGENT_TOOL_NAME = "subagent";
 // (session creation, a streamed message, or a tool call). This guards
 // against nested-session setup hanging indefinitely — e.g. a provider
 // extension's session_start hook blocking on a slow network call — which
-// would otherwise require the user to manually abort.
-export const STALL_TIMEOUT_MS = 60_000;
+// would otherwise require the user to manually abort. Set to 120s to
+// accommodate reasoning models that pause for extended thinking before
+// emitting their first token.
+export const STALL_TIMEOUT_MS = 120_000;
+
+// How many times to retry the same model candidate before falling back to
+// the next one. Transient provider errors (empty_stream, connection resets)
+// usually succeed on a quick retry, so this avoids unnecessary model
+// fallbacks for flaky-but-recoverable failures.
+export const MAX_SAME_MODEL_RETRIES = 2;
 
 const inSubagent = new AsyncLocalStorage<true>();
 
@@ -259,28 +267,52 @@ export async function runSubagent(
 
     for (let i = 0; i < models.length; i++) {
       const model = models[i];
-      const attempt = await runSubagentAttempt(
-        prompt,
-        parentCtx,
-        agent,
-        model,
-        signal,
-        onUpdate,
-        createSession,
-        activeToolNames,
-        stallTimeoutMs
-      );
 
+      // Retry the same model candidate up to MAX_SAME_MODEL_RETRIES times
+      // before falling back to the next candidate. Only retry transient
+      // failures that occurred before any progress (no tool calls, no
+      // turns completed) — these are typically provider-side hiccups
+      // (empty_stream, connection resets, brief stalls) that resolve on
+      // a quick retry. Once the subagent has made any progress, the
+      // failure is considered non-transient and we don't retry.
+      let attempt: SubagentAttemptResult | undefined;
+      for (let r = 0; r <= MAX_SAME_MODEL_RETRIES; r++) {
+        attempt = await runSubagentAttempt(
+          prompt,
+          parentCtx,
+          agent,
+          model,
+          signal,
+          onUpdate,
+          createSession,
+          activeToolNames,
+          stallTimeoutMs
+        );
+
+        const failedBeforeAnyProgress =
+          attempt.snapshot.toolCalls.length === 0 &&
+          attempt.snapshot.usage.turns === 0 &&
+          (attempt.thrown !== undefined ||
+            attempt.snapshot.stopReason === "error" ||
+            attempt.stalled);
+        const hasMoreRetries = r < MAX_SAME_MODEL_RETRIES;
+
+        if (!failedBeforeAnyProgress || !hasMoreRetries || signal?.aborted) {
+          break;
+        }
+      }
+
+      const finalAttempt = attempt!;
       const failedBeforeAnyProgress =
-        attempt.snapshot.toolCalls.length === 0 &&
-        attempt.snapshot.usage.turns === 0 &&
-        (attempt.thrown !== undefined ||
-          attempt.snapshot.stopReason === "error" ||
-          attempt.stalled);
+        finalAttempt.snapshot.toolCalls.length === 0 &&
+        finalAttempt.snapshot.usage.turns === 0 &&
+        (finalAttempt.thrown !== undefined ||
+          finalAttempt.snapshot.stopReason === "error" ||
+          finalAttempt.stalled);
       const hasMoreCandidates = i < models.length - 1;
 
       if (!failedBeforeAnyProgress || !hasMoreCandidates || signal?.aborted) {
-        return finalizeAttempt(attempt);
+        return finalizeAttempt(finalAttempt);
       }
     }
 

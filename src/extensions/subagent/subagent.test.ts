@@ -536,8 +536,11 @@ describe("runSubagent", () => {
       )
     ).rejects.toThrow("Subagent failed: stalled");
 
-    expect(fake.abortCalls).toBe(1);
-    expect(fake.disposeCalls).toBe(1);
+    // With same-model retries enabled (MAX_SAME_MODEL_RETRIES = 2), the
+    // single StuckSession is retried 3 times total (1 initial + 2 retries)
+    // before giving up, so abort/dispose are called 3 times.
+    expect(fake.abortCalls).toBe(3);
+    expect(fake.disposeCalls).toBe(3);
   });
 
   test("nested subagent calls are rejected by the async-local recursion ban", async () => {
@@ -708,5 +711,76 @@ describe("runSubagent with a named agent", () => {
     expect(result.content).toEqual([{ type: "text", text: "recovered" }]);
     expect(stuck.abortCalls).toBe(1);
     expect(healthy.abortCalls).toBe(0);
+  });
+
+  test("retries the same model candidate on transient failure before falling back", async () => {
+    // First attempt: throws (simulates empty_stream / connection reset).
+    // Second attempt: succeeds. Should NOT fall back to the next candidate.
+    let attemptCount = 0;
+    const transientThenHealthy = new FakeSession(async (session) => {
+      attemptCount += 1;
+      if (attemptCount === 1) {
+        throw new Error(
+          "empty_stream: upstream stream closed before first payload"
+        );
+      }
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({
+        type: "message_end",
+        message: assistant(["recovered on retry"]),
+      });
+    });
+
+    const result = await runSubagent(
+      "find bugs",
+      projectCtx,
+      undefined,
+      undefined,
+      async () => transientThenHealthy,
+      undefined,
+      "multimodel"
+    );
+
+    expect(result.content).toEqual([
+      { type: "text", text: "recovered on retry" },
+    ]);
+    expect(attemptCount).toBe(2);
+  });
+
+  test("falls back to the next candidate after exhausting same-model retries", async () => {
+    // First model: always throws (exhausts all retries).
+    // Second model: succeeds on first try.
+    const failingSession = new FakeSession(async () => {
+      throw new Error(
+        "empty_stream: upstream stream closed before first payload"
+      );
+    });
+    const healthySession = new FakeSession(async (session) => {
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({
+        type: "message_end",
+        message: assistant(["fallback worked"]),
+      });
+    });
+    const sessions = [
+      failingSession,
+      failingSession,
+      failingSession,
+      healthySession,
+    ];
+
+    const result = await runSubagent(
+      "find bugs",
+      projectCtx,
+      undefined,
+      undefined,
+      async () => sessions.shift() as FakeSession,
+      undefined,
+      "multimodel"
+    );
+
+    expect(result.content).toEqual([{ type: "text", text: "fallback worked" }]);
+    // 3 attempts on first model (1 initial + 2 retries), 1 on second = 4 total
+    expect(sessions.length).toBe(0);
   });
 });
