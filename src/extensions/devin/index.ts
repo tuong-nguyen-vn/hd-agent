@@ -102,9 +102,27 @@ function filterDevinModels(
   if (!models) {
     return models;
   }
-  return models
+  const filtered = models
     .filter((model) => DEVIN_MODEL_ALLOWLIST.has(model.id))
     .map((model) => ({ ...model, ...DEVIN_MODEL_OVERRIDES[model.id] }));
+  // pi-devin-auth's FALLBACK_MODELS ships "grok-4-5" but the live catalog
+  // (and our enabledModels setting) uses "grok-4-5-medium". Without a
+  // fallback entry for that exact id, resolveModelScope warns at startup
+  // before the live catalog arrives. Synthesize it from the grok-4-5
+  // fallback so the model is available immediately.
+  if (
+    !filtered.some((m) => m.id === "grok-4-5-medium") &&
+    models.some((m) => m.id === "grok-4-5")
+  ) {
+    const base = models.find((m) => m.id === "grok-4-5")!;
+    filtered.push({
+      ...base,
+      id: "grok-4-5-medium",
+      name: "Grok 4.5 Medium",
+      ...DEVIN_MODEL_OVERRIDES["grok-4-5-medium"],
+    });
+  }
+  return filtered;
 }
 
 /**
