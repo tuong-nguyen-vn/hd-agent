@@ -27,7 +27,7 @@ const DOT = "⬝";
 const CONTINUATION_PREFIX = "   ";
 const TREE_MID_PREFIX = " ├─ ";
 const TREE_END_PREFIX = " ╰─ ";
-const BODY_PREVIEW_LINES = 20;
+const BODY_PREVIEW_LINES = 15;
 const SPINNER = "⣿";
 
 export const ACTIVE_YELLOW = "\x1b[38;2;229;216;0m";
