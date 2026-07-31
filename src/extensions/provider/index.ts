@@ -265,7 +265,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
         api: "google-generative-ai",
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
         reasoning: false,
-        input: ["text", "image"],
+        input: ["image"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: 1048576,
         maxTokens: 65536,
