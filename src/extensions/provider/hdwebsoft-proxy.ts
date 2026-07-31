@@ -1,0 +1,133 @@
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { fetchOpencodeFreeModels } from "./opencode-free";
+
+const HDWEBSOFT_PROXY_ROOT = "https://proxy-api.hdwebsoft.co";
+
+export async function registerHdwebsoftProxy(pi: ExtensionAPI): Promise<void> {
+  // Fetch OpenCode Zen free models once for this session.
+  const opencodeFreeModels =
+    await fetchOpencodeFreeModels(HDWEBSOFT_PROXY_ROOT);
+
+  pi.registerProvider("hdwebsoft-proxy", {
+    name: "HDWEBSOFT Proxy",
+    authHeader: true,
+    models: [
+      {
+        id: "claude-opus-5",
+        name: "Claude Opus 5",
+        api: "anthropic-messages",
+        baseUrl: HDWEBSOFT_PROXY_ROOT,
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 },
+        contextWindow: 300000,
+        maxTokens: 128000,
+        thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
+        compat: {
+          forceAdaptiveThinking: true,
+          supportsTemperature: false,
+        },
+      },
+      {
+        id: "claude-opus-4-8",
+        name: "Claude Opus 4.8",
+        api: "anthropic-messages",
+        baseUrl: HDWEBSOFT_PROXY_ROOT,
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 },
+        contextWindow: 200000,
+        maxTokens: 128000,
+        thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
+        compat: {
+          forceAdaptiveThinking: true,
+          supportsTemperature: false,
+        },
+      },
+      {
+        id: "claude-sonnet-5",
+        name: "Claude Sonnet 5",
+        api: "anthropic-messages",
+        baseUrl: HDWEBSOFT_PROXY_ROOT,
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
+        contextWindow: 300000,
+        maxTokens: 128000,
+        thinkingLevelMap: { minimal: null, xhigh: "xhigh", max: "max" },
+        compat: { forceAdaptiveThinking: true },
+      },
+      {
+        id: "gemini-3.6-flash",
+        name: "Gemini 3.6 Flash",
+        api: "google-generative-ai",
+        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
+        contextWindow: 1048576,
+        maxTokens: 65536,
+        thinkingLevelMap: { off: null },
+      },
+      {
+        id: "gemini-3.5-flash",
+        name: "Gemini 3.5 Flash",
+        api: "google-generative-ai",
+        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
+        contextWindow: 1048576,
+        maxTokens: 65536,
+        thinkingLevelMap: { off: null },
+      },
+      {
+        id: "gemini-3.1-pro",
+        name: "Gemini 3.1 Pro",
+        api: "google-generative-ai",
+        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 2, output: 12, cacheRead: 0.2, cacheWrite: 0 },
+        contextWindow: 1048576,
+        maxTokens: 65536,
+        thinkingLevelMap: {
+          off: null,
+          minimal: null,
+          low: "LOW",
+          medium: null,
+          high: "HIGH",
+        },
+      },
+      {
+        id: "gemini-3.1-flash-image",
+        name: "Gemini Nano Banana 2",
+        api: "google-generative-ai",
+        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
+        reasoning: false,
+        input: ["image"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 1048576,
+        maxTokens: 65536,
+      },
+      {
+        id: "claude-haiku-4-5-20251001",
+        name: "Claude Haiku 4.5",
+        api: "anthropic-messages",
+        baseUrl: HDWEBSOFT_PROXY_ROOT,
+        reasoning: false,
+        input: ["text", "image"],
+        cost: { input: 0.5, output: 2.5, cacheRead: 0.1, cacheWrite: 0.6 },
+        contextWindow: 200000,
+        maxTokens: 64000,
+        thinkingLevelMap: {},
+        compat: {
+          supportsTemperature: false,
+        },
+      },
+      // OpenCode Zen free models — fetched dynamically at startup from
+      // `https://opencode.ai/zen/v1/models`; metadata from models.dev.
+      ...opencodeFreeModels,
+    ],
+  });
+}
