@@ -40,9 +40,19 @@ const FREE_THINKING_LEVEL_MAP = {
   max: null,
 } as const;
 
+/** Free models we deliberately hide from the picker (broken, redundant,
+ * or not useful). Ids matched exactly. */
+const HIDDEN_FREE_MODELS = new Set<string>([
+  "ling-3.0-flash-free",
+  "nemotron-3-ultra-free",
+  "north-mini-code-free",
+  "laguna-s-2.1-free",
+]);
+
 /** A model id is "free" on Zen if it ends with `-free` or is a known stealth
  * alias like `big-pickle` (routes to deepseek-v4-flash at $0). */
 function isFreeModel(id: string): boolean {
+  if (HIDDEN_FREE_MODELS.has(id)) return false;
   return id === "big-pickle" || id.endsWith("-free");
 }
 
