@@ -94,6 +94,14 @@ async function isFile(path: string): Promise<boolean> {
   }
 }
 
+async function isDir(path: string): Promise<boolean> {
+  try {
+    return (await Bun.file(path).stat()).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 function resolveGlobalPiCli(): string | null {
   const result = Bun.spawnSync({ cmd: ["bun", "pm", "-g", "bin"] });
   if (result.exitCode !== 0) {
@@ -125,6 +133,21 @@ let promptViaStdin: string | undefined;
 if (dashDashIdx >= 0) {
   promptViaStdin = cliArgs.slice(dashDashIdx + 1).join(" ");
   cliArgs.length = dashDashIdx;
+}
+
+// When launched inside a pim-agent repo (cwd has src/extensions), pi would load
+// the repo's own extensions via .pi/settings.json on top of the globally
+// installed pim-agent, causing "Tool X conflicts with Y" for every extension.
+// Skip project-local resources unless the user explicitly opts in with
+// --approve/-a. An explicit --no-approve/-na is still honoured as-is.
+const hasExplicitTrustFlag = cliArgs.some(
+  (a) => a === "--approve" || a === "-a" || a === "--no-approve" || a === "-na"
+);
+if (
+  !hasExplicitTrustFlag &&
+  (await isDir(join(process.cwd(), "src/extensions")))
+) {
+  cliArgs.push("--no-approve");
 }
 
 const modeIdx = cliArgs.findIndex(
