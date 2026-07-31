@@ -186,6 +186,77 @@ test("parses Exa plain-text result blocks", async () => {
   ]);
 });
 
+test("falls back to REST API when MCP fails and api key is set", async () => {
+  const restResponse = Response.json({
+    results: [
+      {
+        title: "REST result",
+        url: "https://example.test/rest",
+        text: "snippet from rest",
+      },
+    ],
+  });
+
+  const client = new ExaMcpClient({
+    apiKey: "exa-key",
+    fetch: async (input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("api.exa.ai")) {
+        return restResponse;
+      }
+      // MCP handshake fails with 404
+      return new Response(
+        JSON.stringify({ error: { code: "404", message: "not found" } }),
+        { status: 404, headers: { "content-type": "application/json" } }
+      );
+    },
+  });
+
+  await expect(
+    client.search({ query: "fallback", numResults: 1 })
+  ).resolves.toEqual([
+    {
+      title: "REST result",
+      url: "https://example.test/rest",
+      snippet: "snippet from rest",
+    },
+  ]);
+});
+
+test("does not fall back to REST when no api key is set", async () => {
+  const client = new ExaMcpClient({
+    fetch: async () =>
+      new Response(
+        JSON.stringify({ error: { code: "404", message: "not found" } }),
+        { status: 404, headers: { "content-type": "application/json" } }
+      ),
+  });
+
+  await expect(
+    client.search({ query: "no fallback", numResults: 1 })
+  ).rejects.toThrow();
+});
+
+test("throws clean error when REST fallback returns non-ok", async () => {
+  const client = new ExaMcpClient({
+    apiKey: "exa-key",
+    fetch: async (input) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("api.exa.ai")) {
+        return new Response("rate limited", { status: 429 });
+      }
+      return new Response(
+        JSON.stringify({ error: { code: "404", message: "not found" } }),
+        { status: 404, headers: { "content-type": "application/json" } }
+      );
+    },
+  });
+
+  await expect(
+    client.search({ query: "rest error", numResults: 1 })
+  ).rejects.toThrow("Exa REST search failed with HTTP 429");
+});
+
 test("throws clean errors for malformed tool envelopes", async () => {
   const client = new ExaMcpClient({
     fetch: handshakeOr(() =>

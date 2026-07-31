@@ -1,8 +1,17 @@
 import { McpClient, type McpFetch } from "../../shared/McpClient";
 import { RateLimiter } from "../../shared/RateLimiter";
 
+type RestSearchResult = {
+  readonly title?: string;
+  readonly url?: string;
+  readonly text?: string;
+  readonly snippet?: string;
+  readonly summary?: string;
+};
+
 type ExaMcpClientOptions = {
   readonly endpoint?: string;
+  readonly restEndpoint?: string;
   readonly apiKey?: string;
   readonly fetch?: McpFetch;
   readonly rateLimiter?: RateLimiter;
@@ -29,11 +38,15 @@ class ExaSearchError extends Error {
 
 export class ExaMcpClient {
   private static readonly defaultEndpoint = "https://mcp.exa.ai/mcp";
+  private static readonly defaultRestEndpoint = "https://api.exa.ai/search";
   private static readonly toolName = "web_search_exa";
   private static readonly maxRequestsPerWindow = 3;
   private static readonly windowMs = 1000;
 
   private readonly client: McpClient;
+  private readonly restEndpoint: string;
+  private readonly apiKey: string | undefined;
+  private readonly fetchFn: McpFetch;
 
   public constructor(options: ExaMcpClientOptions = {}) {
     const apiKey =
@@ -50,6 +63,9 @@ export class ExaMcpClient {
             windowMs: ExaMcpClient.windowMs,
           }));
 
+    this.apiKey = apiKey;
+    this.restEndpoint = options.restEndpoint ?? ExaMcpClient.defaultRestEndpoint;
+    this.fetchFn = options.fetch ?? fetch;
     this.client = new McpClient({
       endpoint: options.endpoint ?? ExaMcpClient.defaultEndpoint,
       ...(apiKey === undefined ? {} : { headers: { "x-api-key": apiKey } }),
@@ -61,16 +77,62 @@ export class ExaMcpClient {
   public async search(
     input: ExaSearchInput
   ): Promise<readonly ExaSearchResult[]> {
-    const result = await this.client.callTool({
-      name: ExaMcpClient.toolName,
-      arguments: {
+    try {
+      const result = await this.client.callTool({
+        name: ExaMcpClient.toolName,
+        arguments: {
+          query: input.query,
+          numResults: input.numResults,
+        },
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      });
+
+      return extractResults(result);
+    } catch (error) {
+      if (input.signal?.aborted) {
+        throw error;
+      }
+      // Fall back to the REST API when the MCP endpoint is unavailable.
+      // Requires an API key; the free-tier OAuth path has no REST equivalent.
+      if (this.apiKey === undefined) {
+        throw error;
+      }
+      return this.restSearch(input);
+    }
+  }
+
+  private async restSearch(
+    input: ExaSearchInput
+  ): Promise<readonly ExaSearchResult[]> {
+    const response = await this.fetchFn(this.restEndpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": this.apiKey!,
+      },
+      body: JSON.stringify({
         query: input.query,
         numResults: input.numResults,
-      },
+        contents: { text: true },
+      }),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     });
 
-    return extractResults(result);
+    if (!response.ok) {
+      throw new ExaSearchError(
+        `Exa REST search failed with HTTP ${response.status}: ${await excerptBody(response)}`
+      );
+    }
+
+    const body = (await response.json()) as {
+      readonly results?: readonly RestSearchResult[];
+    };
+
+    if (!Array.isArray(body.results) || body.results.length === 0) {
+      throw new ExaSearchError("Exa REST search returned no results.");
+    }
+
+    return body.results.map(projectRestResult);
   }
 }
 
@@ -261,6 +323,33 @@ function tryParseJson(text: string): unknown | undefined {
     return JSON.parse(text);
   } catch {
     return undefined;
+  }
+}
+
+function projectRestResult(result: RestSearchResult): ExaSearchResult {
+  const title = result.title;
+  const url = result.url;
+
+  if (title === undefined || url === undefined) {
+    throw new ExaSearchError("Exa REST returned a result without title or url.");
+  }
+
+  const snippet =
+    result.snippet ?? result.summary ?? result.text ?? "";
+
+  return {
+    title,
+    url,
+    snippet: snippet.length > 500 ? `${snippet.slice(0, 500)}...` : snippet,
+  };
+}
+
+async function excerptBody(response: Response): Promise<string> {
+  try {
+    const text = await response.text();
+    return text.length > 200 ? `${text.slice(0, 200)}...` : text;
+  } catch {
+    return "<empty>";
   }
 }
 
