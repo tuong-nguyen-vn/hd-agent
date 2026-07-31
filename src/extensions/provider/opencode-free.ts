@@ -15,6 +15,7 @@ import { join } from "node:path";
  */
 
 const ZEN_MODELS_URL = "https://opencode.ai/zen/v1/models";
+const ZEN_API_ROOT = "https://opencode.ai/zen/v1";
 const MODELS_DEV_CATALOG_URL = "https://models.dev/catalog.json";
 const CACHE_FILE = join(
   homedir(),
@@ -122,9 +123,9 @@ async function loadFreeModelMeta(): Promise<FreeModelMeta> {
 
 /** Fetch the current free-model list from Zen and merge with metadata from
  * models.dev. Models unknown to models.dev fall back to 200K / 32K. */
-export async function fetchOpencodeFreeModels(
-  proxyRoot: string
-): Promise<ProviderModelConfig[]> {
+export async function fetchOpencodeFreeModels(): Promise<
+  ProviderModelConfig[]
+> {
   let freeIds: string[] = [];
   try {
     const list = (await fetch(ZEN_MODELS_URL).then((r) => r.json())) as {
@@ -143,7 +144,7 @@ export async function fetchOpencodeFreeModels(
       id,
       name: cleanDisplayName(m?.name ?? id),
       api: "openai-completions",
-      baseUrl: `${proxyRoot}/v1`,
+      baseUrl: ZEN_API_ROOT,
       reasoning: true,
       input: ["text"] as const,
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },

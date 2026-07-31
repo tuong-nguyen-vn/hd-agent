@@ -5,8 +5,7 @@ const HDWEBSOFT_PROXY_ROOT = "https://proxy-api.hdwebsoft.co";
 
 export async function registerHdwebsoftProxy(pi: ExtensionAPI): Promise<void> {
   // Fetch OpenCode Zen free models once for this session.
-  const opencodeFreeModels =
-    await fetchOpencodeFreeModels(HDWEBSOFT_PROXY_ROOT);
+  const opencodeFreeModels = await fetchOpencodeFreeModels();
 
   pi.registerProvider("hdwebsoft-proxy", {
     name: "HDWEBSOFT Proxy",

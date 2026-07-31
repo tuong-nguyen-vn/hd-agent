@@ -14,7 +14,7 @@ const CACHE_FILE = join(
 
 describe("opencode-free", () => {
   it("fetches live free models from Zen + models.dev", async () => {
-    const models = await fetchOpencodeFreeModels("https://proxy.example.com");
+    const models = await fetchOpencodeFreeModels();
     expect(models.length).toBeGreaterThan(0);
 
     // All must be free (big-pickle or *-free)
@@ -22,9 +22,9 @@ describe("opencode-free", () => {
       expect(m.id === "big-pickle" || m.id.endsWith("-free")).toBe(true);
     }
 
-    // All point at the proxy /v1 with cost 0
+    // All point directly at OpenCode Zen with cost 0
     const sample = models[0]!;
-    expect(sample.baseUrl).toBe("https://proxy.example.com/v1");
+    expect(sample.baseUrl).toBe("https://opencode.ai/zen/v1");
     expect(sample.api).toBe("openai-completions");
     expect(sample.cost).toEqual({
       input: 0,
@@ -37,7 +37,7 @@ describe("opencode-free", () => {
   });
 
   it("pins thinking to high only, everything else null", async () => {
-    const models = await fetchOpencodeFreeModels("https://proxy.example.com");
+    const models = await fetchOpencodeFreeModels();
     const map = models[0]!.thinkingLevelMap!;
     expect(map).toEqual({
       off: null,
@@ -51,7 +51,7 @@ describe("opencode-free", () => {
   });
 
   it("uses models.dev metadata when available (ctx/maxTokens)", async () => {
-    const models = await fetchOpencodeFreeModels("https://proxy.example.com");
+    const models = await fetchOpencodeFreeModels();
     // deepseek-v4-flash-free is a known free model with ctx=200000, out=128000
     const ds = models.find((m) => m.id === "deepseek-v4-flash-free");
     expect(ds).toBeDefined();
@@ -66,7 +66,7 @@ describe("opencode-free", () => {
     expect(existsSync(CACHE_FILE)).toBe(false);
 
     // First call populates cache
-    await fetchOpencodeFreeModels("https://proxy.example.com");
+    await fetchOpencodeFreeModels();
     expect(existsSync(CACHE_FILE)).toBe(true);
 
     // Cache file has expected shape
@@ -77,7 +77,7 @@ describe("opencode-free", () => {
   });
 
   it("strips 'Free' and marketing suffixes from display names", async () => {
-    const models = await fetchOpencodeFreeModels("https://proxy.example.com");
+    const models = await fetchOpencodeFreeModels();
     for (const m of models) {
       // No "free" anywhere (case-insensitive) in the display name
       expect(m.name.toLowerCase()).not.toContain("free");
@@ -101,7 +101,7 @@ describe("opencode-free", () => {
     }) as any;
 
     try {
-      const models = await fetchOpencodeFreeModels("https://proxy.example.com");
+      const models = await fetchOpencodeFreeModels();
       expect(models).toEqual([]);
     } finally {
       globalThis.fetch = original;
@@ -125,7 +125,7 @@ describe("opencode-free", () => {
     rmSync(CACHE_FILE, { force: true });
 
     try {
-      const models = await fetchOpencodeFreeModels("https://proxy.example.com");
+      const models = await fetchOpencodeFreeModels();
       expect(modelsDevCalled).toBe(true);
       // Still got models from Zen, with fallback metadata
       expect(models.length).toBeGreaterThan(0);
