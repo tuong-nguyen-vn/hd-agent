@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerHdwebsoftProxy } from "./hdwebsoft-proxy";
+import { registerHdwebsoftBackup } from "./opencode-zen";
 import { registerTuongNguyenProxy } from "./tuongnguyen-proxy";
 
 /**
@@ -17,5 +18,6 @@ import { registerTuongNguyenProxy } from "./tuongnguyen-proxy";
  */
 export default async function (pi: ExtensionAPI): Promise<void> {
   registerTuongNguyenProxy(pi);
-  await registerHdwebsoftProxy(pi);
+  registerHdwebsoftProxy(pi);
+  await registerHdwebsoftBackup(pi);
 }

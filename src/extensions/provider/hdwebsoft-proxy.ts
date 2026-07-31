@@ -1,12 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { fetchOpencodeFreeModels } from "./opencode-free";
 
 const HDWEBSOFT_PROXY_ROOT = "https://proxy-api.hdwebsoft.co";
 
-export async function registerHdwebsoftProxy(pi: ExtensionAPI): Promise<void> {
-  // Fetch OpenCode Zen free models once for this session.
-  const opencodeFreeModels = await fetchOpencodeFreeModels();
-
+export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
   pi.registerProvider("hdwebsoft-proxy", {
     name: "HDWEBSOFT Proxy",
     authHeader: true,
@@ -124,9 +120,6 @@ export async function registerHdwebsoftProxy(pi: ExtensionAPI): Promise<void> {
           supportsTemperature: false,
         },
       },
-      // OpenCode Zen free models — fetched dynamically at startup from
-      // `https://opencode.ai/zen/v1/models`; metadata from models.dev.
-      ...opencodeFreeModels,
     ],
   });
 }
