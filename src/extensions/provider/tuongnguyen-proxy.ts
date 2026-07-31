@@ -101,6 +101,9 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         thinkingLevelMap: {
           off: "none",
           minimal: null,
+          low: "low",
+          medium: "medium",
+          high: "high",
           xhigh: "xhigh",
           max: "max",
         },
