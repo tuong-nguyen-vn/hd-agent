@@ -119,11 +119,13 @@ class StuckSession extends FakeSession {
 }
 
 describe("childToolNames", () => {
-  test("removes the subagent tool from a child's inherited allowlist", () => {
+  test("removes subagent recursion and always exposes the skill tool", () => {
     expect(childToolNames(["read", "subagent", "bash"])).toEqual([
       "read",
       "bash",
+      "skill",
     ]);
+    expect(childToolNames(["read", "skill"])).toEqual(["read", "skill"]);
   });
 });
 

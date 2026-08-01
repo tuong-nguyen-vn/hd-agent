@@ -109,7 +109,11 @@ export type CreateSubagentSession = (
 export function childToolNames(
   activeToolNames: readonly string[]
 ): readonly string[] {
-  return activeToolNames.filter((name) => name !== SUBAGENT_TOOL_NAME);
+  const tools = activeToolNames.filter((name) => name !== SUBAGENT_TOOL_NAME);
+  if (!tools.includes("skill")) {
+    tools.push("skill");
+  }
+  return tools;
 }
 
 export async function createSdkSubagentSession(
