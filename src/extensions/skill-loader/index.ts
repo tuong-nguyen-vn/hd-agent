@@ -236,7 +236,7 @@ function renderSkillCall(
       ? Renderer.renderFileLink(
           theme,
           skillName,
-          dirname(state.filePath)
+          state.filePath
         )
       : theme.fg("accent", skillName);
   return Renderer.renderStatefulToolCallTitle({
