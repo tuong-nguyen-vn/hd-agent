@@ -217,7 +217,10 @@ export function transformSkillCommand(text: string): string | undefined {
   if (!text.startsWith("/skill:")) {
     return undefined;
   }
-  return text;
+  // Prefix with a space so pi core's _expandSkillCommand (which checks
+  // startsWith("/skill:")) does not intercept and inline-expand the skill,
+  // letting the model invoke the skill tool via system-prompt guidance.
+  return ` ${text}`;
 }
 
 function renderSkillCall(

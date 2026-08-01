@@ -155,13 +155,13 @@ describe("skill discovery", () => {
 });
 
 describe("skill slash command", () => {
-  test("passes /skill:name through unchanged for the model to handle", () => {
+  test("prefixes /skill:name with a space to bypass pi core expansion", () => {
     expect(transformSkillCommand("/skill:agent-browser")).toBe(
-      "/skill:agent-browser"
+      " /skill:agent-browser"
     );
     expect(
       transformSkillCommand("/skill:agent-browser open the dashboard")
-    ).toBe("/skill:agent-browser open the dashboard");
+    ).toBe(" /skill:agent-browser open the dashboard");
     expect(transformSkillCommand("load skill agent-browser")).toBeUndefined();
   });
 });
