@@ -34,6 +34,7 @@ type SkillDetails = {
 
 type SkillCallState = StatefulToolCallTitleState & {
   skillName?: string;
+  filePath?: string;
 };
 
 type SkillRenderContext = StatefulToolCallTitleContext & {
@@ -230,9 +231,17 @@ function renderSkillCall(
 ) {
   const state = context.state as SkillCallState;
   const skillName = state.skillName ?? input.name ?? "?";
+  const title =
+    state.filePath && state.filePath !== ""
+      ? Renderer.renderFileLink(
+          theme,
+          skillName,
+          dirname(state.filePath)
+        )
+      : theme.fg("accent", skillName);
   return Renderer.renderStatefulToolCallTitle({
     label: "Invoked skill",
-    title: theme.fg("accent", skillName),
+    title,
     theme,
     context,
     labelColor: "muted",
@@ -400,6 +409,9 @@ export default function (pi: ExtensionAPI): void {
       const details = result.details as SkillDetails | undefined;
       if (details?.skillName) {
         state.skillName = details.skillName;
+      }
+      if (details?.filePath !== undefined) {
+        state.filePath = details.filePath;
       }
       renderSkillCall(
         (context.args ?? {}) as Partial<SkillInput>,

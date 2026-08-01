@@ -272,7 +272,8 @@ describe("skill tool", () => {
       stubTheme,
       { ...renderContext, state }
     );
-    expect(call.render(120).join("\n")).toContain(
+    const rendered = call.render(120).join("\n").replace(/\x1b\[[0-9;]*m|\x1b\]8;;[^\x1b]*\x1b\\/g, "");
+    expect(rendered).toContain(
       "✓ Invoked skill agent-browser"
     );
   });
