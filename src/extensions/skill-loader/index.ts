@@ -217,18 +217,7 @@ export function transformSkillCommand(text: string): string | undefined {
   if (!text.startsWith("/skill:")) {
     return undefined;
   }
-
-  const spaceIndex = text.indexOf(" ");
-  const name = (
-    spaceIndex === -1 ? text.slice(7) : text.slice(7, spaceIndex)
-  ).trim();
-  if (!name) {
-    return undefined;
-  }
-
-  const request = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1).trim();
-  const invoke = `Invoke the "${name}" skill using the skill tool before responding.`;
-  return request ? `${invoke}\n\nThen handle this request:\n${request}` : invoke;
+  return text;
 }
 
 function renderSkillCall(
@@ -237,11 +226,13 @@ function renderSkillCall(
   context: SkillRenderContext
 ) {
   const state = context.state as SkillCallState;
+  const skillName = state.skillName ?? input.name ?? "?";
   return Renderer.renderStatefulToolCallTitle({
     label: "Invoked skill",
-    title: state.skillName ?? input.name ?? "?",
+    title: theme.fg("accent", skillName),
     theme,
     context,
+    labelColor: "muted",
     markerGlyph: Renderer.markerGlyphFor(
       Renderer.markerColorFor(
         Boolean(context.isPartial),

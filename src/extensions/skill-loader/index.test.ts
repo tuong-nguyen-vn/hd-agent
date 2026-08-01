@@ -155,15 +155,13 @@ describe("skill discovery", () => {
 });
 
 describe("skill slash command", () => {
-  test("routes /skill:name through the skill tool instead of built-in expansion", () => {
+  test("passes /skill:name through unchanged for the model to handle", () => {
     expect(transformSkillCommand("/skill:agent-browser")).toBe(
-      'Invoke the "agent-browser" skill using the skill tool before responding.'
+      "/skill:agent-browser"
     );
     expect(
       transformSkillCommand("/skill:agent-browser open the dashboard")
-    ).toBe(
-      'Invoke the "agent-browser" skill using the skill tool before responding.\n\nThen handle this request:\nopen the dashboard'
-    );
+    ).toBe("/skill:agent-browser open the dashboard");
     expect(transformSkillCommand("load skill agent-browser")).toBeUndefined();
   });
 });

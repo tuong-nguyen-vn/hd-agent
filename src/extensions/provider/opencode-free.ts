@@ -52,7 +52,7 @@ const HIDDEN_FREE_MODELS = new Set<string>([
 /** A model id is "free" on Zen if it ends with `-free` or is a known stealth
  * alias like `big-pickle` (routes to deepseek-v4-flash at $0). */
 function isFreeModel(id: string): boolean {
-  if (HIDDEN_FREE_MODELS.has(id)) return false;
+  if (HIDDEN_FREE_MODELS.has(id)) {return false;}
   return id === "big-pickle" || id.endsWith("-free");
 }
 
