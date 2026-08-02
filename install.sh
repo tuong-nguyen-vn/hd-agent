@@ -4,6 +4,7 @@ set -eu
 
 HD_AGENT_SOURCE="git:github.com/tuong-nguyen-vn/hd-agent"
 HD_AGENT_BUN_SOURCE="github:tuong-nguyen-vn/hd-agent"
+LEGACY_PI_SOURCE="git:github.com/tuong-nguyen-vn/pim-agent"
 PI_PACKAGE="@earendil-works/pi-coding-agent"
 LEGACY_PACKAGE="@aaroncql/pim-agent"
 BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
@@ -84,6 +85,20 @@ run_pi_package_command() {
   fi
 }
 
+remove_legacy_pi_package() {
+  list_log="${TMPDIR:-/tmp}/hd-agent-list.$$"
+  trap 'rm -f "$list_log"' EXIT HUP INT TERM
+
+  run_pi_package_command list --no-approve >"$list_log" 2>&1
+  if grep -Fq "$LEGACY_PI_SOURCE" "$list_log"; then
+    log "Removing legacy Pim Pi package"
+    run_pi_package_command remove "$LEGACY_PI_SOURCE" --no-approve
+  fi
+
+  rm -f "$list_log"
+  trap - EXIT HUP INT TERM
+}
+
 install_or_update_pi_package() {
   log "Installing or updating the HD Agent Pi package"
 
@@ -127,6 +142,7 @@ print_summary() {
 refresh_path
 install_bun
 install_pi
+remove_legacy_pi_package
 install_or_update_pi_package
 install_or_update_launcher
 print_summary
