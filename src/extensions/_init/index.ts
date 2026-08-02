@@ -64,7 +64,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     throw new Error(
       "Pim requires the Bun runtime.\n" +
         "Install the Pim launcher: bun install -g @aaroncql/pim-agent\n" +
-        "Then run: amp-pi\n" +
+        "Then run: amp-pi (or hd-agent)\n" +
         "If amp-pi cannot locate Pi, ensure `pi` is on PATH or set PIM_PI_CLI=/path/to/cli.js"
     );
   }
@@ -102,7 +102,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     };
 
     const title =
-      theme.bold(theme.fg("accent", "AMP - Pi")) +
+      theme.bold(theme.fg("accent", "HDWEBSOFT AGENTS")) +
       " " +
       theme.italic(theme.fg("muted", `v${version}`));
     ctx.ui.setWidget(SPLASH_ID, [
@@ -153,7 +153,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   });
 
   pi.registerCommand("exit", {
-    description: "Exit AMP-Pi (alias: /quit)",
+    description: "Exit HDWEBSOFT AGENTS (alias: /quit)",
     handler: async (_args, ctx) => {
       await ctx.waitForIdle();
       ctx.shutdown();

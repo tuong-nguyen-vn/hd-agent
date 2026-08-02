@@ -142,6 +142,23 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
           maxTokensField: "max_tokens",
         },
       },
+      {
+        id: "deepseek-v4-flash",
+        name: "DeepSeek V4 Flash",
+        api: "openai-completions",
+        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+        reasoning: true,
+        input: ["text"],
+        cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
+        contextWindow: 1000000,
+        maxTokens: 384000,
+        thinkingLevelMap: { high: "high", max: "max" },
+        compat: {
+          supportsDeveloperRole: false,
+          supportsReasoningEffort: true,
+          maxTokensField: "max_tokens",
+        },
+      },
     ],
   });
 }

@@ -61,7 +61,10 @@ function skillPrompt(filePath: string): string {
 </available_skills>`;
 }
 
-function context(systemPrompt: string, sessionManager: object): ExtensionContext {
+function context(
+  systemPrompt: string,
+  sessionManager: object
+): ExtensionContext {
   return {
     getSystemPrompt: () => systemPrompt,
     sessionManager,
@@ -123,9 +126,7 @@ describe("skill discovery", () => {
       repoSkills,
       globalSkills,
     ]);
-    expect(collectClaudeSkillDirs(nested, home, false)).toEqual([
-      globalSkills,
-    ]);
+    expect(collectClaudeSkillDirs(nested, home, false)).toEqual([globalSkills]);
   });
 
   test("parses available skill entries from the system prompt", () => {
@@ -250,11 +251,10 @@ describe("skill tool", () => {
     const tool = registeredTool();
     const filePath = makeSkill();
     const state = {};
-    const call = tool.renderCall!(
-      { name: "agent beowser" },
-      stubTheme,
-      { ...renderContext, state }
-    );
+    const call = tool.renderCall!({ name: "agent beowser" }, stubTheme, {
+      ...renderContext,
+      state,
+    });
     expect(call.render(120).join("\n")).toContain(
       "✓ Invoked skill agent beowser"
     );
@@ -272,33 +272,30 @@ describe("skill tool", () => {
       stubTheme,
       { ...renderContext, state }
     );
-    const rendered = call.render(120).join("\n").replace(/\x1b\[[0-9;]*m|\x1b\]8;;[^\x1b]*\x1b\\/g, "");
-    expect(rendered).toContain(
-      "✓ Invoked skill agent-browser"
-    );
+    const rendered = call
+      .render(120)
+      .join("\n")
+      .replace(/\x1b\[[0-9;]*m|\x1b\]8;;[^\x1b]*\x1b\\/g, "");
+    expect(rendered).toContain("✓ Invoked skill agent-browser");
   });
 
   test("renders a spinner while running and a cross on error", () => {
     const tool = registeredTool();
-    const partial = tool.renderCall!(
-      { name: "agent-browser" },
-      stubTheme,
-      {
-        ...renderContext,
-        state: {},
-        isPartial: true,
-        invalidate: () => {},
-      }
-    );
+    const partial = tool.renderCall!({ name: "agent-browser" }, stubTheme, {
+      ...renderContext,
+      state: {},
+      isPartial: true,
+      invalidate: () => {},
+    });
     expect(partial.render(120).join("\n")).toContain(
       "⣿ Invoked skill agent-browser"
     );
 
-    const failed = tool.renderCall!(
-      { name: "agent-browser" },
-      stubTheme,
-      { ...renderContext, state: {}, isError: true }
-    );
+    const failed = tool.renderCall!({ name: "agent-browser" }, stubTheme, {
+      ...renderContext,
+      state: {},
+      isError: true,
+    });
     expect(failed.render(120).join("\n")).toContain(
       "✗ Invoked skill agent-browser"
     );

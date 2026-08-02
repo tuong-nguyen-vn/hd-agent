@@ -2,10 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { type Static, Type } from "typebox";
-import type {
-  ExtensionAPI,
-  Theme,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { stripFrontmatter } from "@earendil-works/pi-coding-agent";
 import { Levenshtein } from "../../shared/Levenshtein";
 import {
@@ -233,11 +230,7 @@ function renderSkillCall(
   const skillName = state.skillName ?? input.name ?? "?";
   const title =
     state.filePath && state.filePath !== ""
-      ? Renderer.renderFileLink(
-          theme,
-          skillName,
-          state.filePath
-        )
+      ? Renderer.renderFileLink(theme, skillName, state.filePath)
       : theme.fg("accent", skillName);
   return Renderer.renderStatefulToolCallTitle({
     label: "Invoked skill",
@@ -266,7 +259,10 @@ export default function (pi: ExtensionAPI): void {
     ),
   }));
 
-  const clearSessionCache = (_event: unknown, ctx: { sessionManager: object }) => {
+  const clearSessionCache = (
+    _event: unknown,
+    ctx: { sessionManager: object }
+  ) => {
     loadedBySession.delete(ctx.sessionManager);
   };
   pi.on("session_compact", clearSessionCache);

@@ -1,4 +1,7 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { buildSessionContext } from "@earendil-works/pi-coding-agent";
 import { buildTranscript } from "../read-session/transcript";
 import { generateSessionTitle } from "./generateTitle";

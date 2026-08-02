@@ -64,7 +64,8 @@ export class ExaMcpClient {
           }));
 
     this.apiKey = apiKey;
-    this.restEndpoint = options.restEndpoint ?? ExaMcpClient.defaultRestEndpoint;
+    this.restEndpoint =
+      options.restEndpoint ?? ExaMcpClient.defaultRestEndpoint;
     this.fetchFn = options.fetch ?? fetch;
     this.client = new McpClient({
       endpoint: options.endpoint ?? ExaMcpClient.defaultEndpoint,
@@ -331,11 +332,12 @@ function projectRestResult(result: RestSearchResult): ExaSearchResult {
   const url = result.url;
 
   if (title === undefined || url === undefined) {
-    throw new ExaSearchError("Exa REST returned a result without title or url.");
+    throw new ExaSearchError(
+      "Exa REST returned a result without title or url."
+    );
   }
 
-  const snippet =
-    result.snippet ?? result.summary ?? result.text ?? "";
+  const snippet = result.snippet ?? result.summary ?? result.text ?? "";
 
   return {
     title,

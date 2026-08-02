@@ -72,7 +72,9 @@ test("generateSessionTitle throws with per-candidate diagnostics when everything
       undefined,
       async (_text, candidate) => {
         throw new Error(
-          candidate === primary ? "no api key for google" : "no api key for openai"
+          candidate === primary
+            ? "no api key for google"
+            : "no api key for openai"
         );
       }
     )
@@ -99,7 +101,11 @@ test("generateSessionTitle avoids retrying the same model as the fallback", asyn
   await expect(
     generateSessionTitle(
       "transcript",
-      context({ models: [primary], fallback: primary, authenticated: [primary] }),
+      context({
+        models: [primary],
+        fallback: primary,
+        authenticated: [primary],
+      }),
       undefined,
       async () => {
         calls += 1;

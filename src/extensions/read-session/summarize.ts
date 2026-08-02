@@ -89,7 +89,8 @@ export async function runSummaryAttempt(
   });
   if (message.stopReason === "error" || message.stopReason === "aborted") {
     throw new Error(
-      message.errorMessage ?? `Summary model stopped with ${message.stopReason}.`
+      message.errorMessage ??
+        `Summary model stopped with ${message.stopReason}.`
     );
   }
   const text = assistantText(message);

@@ -1,5 +1,105 @@
 # Changelog
 
+## v0.9.0
+
+### Features
+
+- Add `hd-agent` as an alias binary for `amp-pi`.
+- Make skill names in tool titles clickable (OSC 8 hyperlink) — Cmd+Click opens the SKILL.md file directly in the editor.
+- Implement skill discovery and invocation: parse `<available_skills>` from the system prompt, match by name/partial/typo, and load SKILL.md content once per session with deduplication.
+- Transform `/skill:name` slash commands to bypass pi core's inline expansion, letting the model invoke the skill tool via system-prompt guidance.
+- Add automatic session title generation.
+- Add subagent collapsed body rendering with overflow indicator, tool-call titles, active tools display, and retry logic for transient failures with model fallback.
+- Add `gpt-5.6-luna` to Oracle model fallback list and HDWEBSOFT proxy.
+- Add HDWEBSOFT Backup provider with authorization handling.
+- Add HDWEBSOFT and Tuong Nguyen proxy models.
+- Add Claude Opus 4.8 and Gemini 3.5 Flash models.
+- Add Gemini 3.1 Flash Image to painter fallback.
+- Implement REST API fallback for ExaMCP web search client.
+- Add Painter and ViewMedia tools for image generation and analysis with fallback mechanisms.
+- Add Oracle and Search bundled subagents with model overrides.
+- Add `read-session` tool for summarizing previous workspace sessions.
+- Add `painter` tool with authorization header handling.
+- Add `view-media` tool with terminal-only image preview.
+- Add `glob` tool with tool visibility management for replaced tools.
+- Add `web_search` tool.
+- Add `mcp` tool via pi-mcp-adapter integration.
+- Add Amp-style fenced code block rendering with syntax highlighting.
+- Add ` AmpEditor` with Git state formatting and user message rendering enhancements.
+- Add startup rendering with preload support.
+- Add `/exit` command for graceful shutdown.
+- Add system prompt behavioral blocks for improved prompt structure.
+- Add prompt history management in AmpEditor.
+- Add session reference (`@@session:<id>`) feature.
+- Add file picker with repo-aware enumeration and nested Git ignore handling.
+- Add spinner functionality in tool-call title rendering.
+- Add `constrainedSampling` strict JSON Schema for bash, edit, write, apply-patch, and todo.
+- Add `cwd` parameter to `bash`, `grep`, and `glob`.
+- Add `<diagrams>` behavioral block to the system prompt.
+- Inject `PI_*` session metadata into bash subprocesses.
+- Enable clickable file links (OSC 8) in edit, write, apply-patch, and read tool titles.
+- Add Telegram bot mode with rich message rendering, status narration, and systemd/launchd supervisor.
+- Add `apply_patch` V4A patch tool for GPT/Codex models.
+- Add thinking memory extension for model-level persistence.
+- Add inference speed reporting (`/tps`).
+
+### Bug Fixes
+
+- Fix skill file path handling in rendering to link directly to SKILL.md.
+- Fix launcher to skip project-local extensions inside pim-agent repos to avoid tool conflicts.
+- Reduce `BODY_PREVIEW_LINES` from 20 to 15 for improved display.
+- Hide 4 broken free opencode zen models.
+- Fix Devin provider to synthesize grok-4-5-medium fallback to avoid startup warning.
+- Fix subagent spinner redraw forcing scroll.
+- Fix subagent tool-call lines exceeding terminal width.
+- Fix init to swallow synchronous AbortError from Escape during streaming.
+- Fix renderer to recognise herdr as hyperlink-capable via `HERDR_ENV`.
+- Fix dependencies: pin protobufjs to patched 7.6.5, patch npm audit findings.
+- Fix renderer to animate remaining tool markers.
+- Fix bash to animate marker while running.
+- Fix renderer to remove tool output guide lines.
+- Fix theme: update custom message background and label colors in pim-dark theme.
+- Fix `glob` result title formatting in `grep`.
+- Respect excluded edit tools when using `apply_patch`.
+
+### Improvements
+
+- Rebrand from "AMP - Pi" to "HDWEBSOFT AGENTS".
+- Bump `pi-coding-agent` peer dependency to `>=0.82.0`.
+- Bump `engines.bun` to `>=1.2.21` for `Bun.stripANSI`.
+- Complete gpt-5.6-sol thinking levels; bump gpt-5.6-luna context to 500k.
+- Simplify `fetchOpencodeFreeModels` to remove proxy dependency.
+- Update Devin model allowlist and configure new model overrides.
+- Streamline session title generation and error handling.
+- Unify spinner state management across subagent components.
+- Enhance follow-up prompt handling for empty model responses.
+- Enhance streamSimple handling for improved token usage accounting.
+- Enhance markdown-code extension with path resolution, patching, and restore functionality.
+- Enhance command execution with cwd support.
+- Enhance command ranking and debounce Git refresh.
+- Enforce `additionalProperties: false` in schema definitions for strict-mode compliance.
+- Improve code readability and formatting across extensions.
+- Refactor `view-media` to simplify image viewing messages.
+- Refactor `session-title` error handling.
+- Update `docs/pi-api.md` and `docs/tool-output.md`.
+- Add `Paths.cwdSuffix()` and `Paths.requireAbsolute()` helpers.
+- Add Levenshtein tests.
+- Add `package-lock.json` for consistent installations.
+- Register `pi` bin in launcher and skip self when resolving pi CLI.
+- Enhance footer `fitBorder` to handle long ANSI and wide-character labels.
+- Enhance user message handling with constructor resolution.
+- Remove GPT-5.5 model from provider configuration.
+- Add `pi-devin-auth` extension.
+- Update session start event to show thinking label.
+- Enhance diagram guidelines for clarity.
+- Refine image viewing logic with improved fallback handling.
+- Bundle default subagents.
+- Update branding references from "Pi Improved" / "AMP Pi" to "HDWEBSOFT AGENTS".
+- Rename launcher command from `pim` to `amp-pi` (with `hd-agent` alias).
+- Remove powerline toggle.
+- Add install instructions from fork in README.
+- Add README badges and benchmark results.
+
 ## v0.7.0
 
 ### Features
