@@ -13,6 +13,8 @@ import type {
 
 type DevinAuthExtension = (pi: ExtensionAPI) => Promise<void> | void;
 
+const INPUT_TEXT_ONLY: ("text" | "image")[] = ["text"];
+
 type StreamSimpleFn = NonNullable<
   Parameters<ExtensionAPI["registerProvider"]>[1] extends infer C
     ? C extends { streamSimple?: infer F }
@@ -32,10 +34,7 @@ const DEVIN_PROVIDER_ID = "devin";
  * `getCachedCatalog()` dump against the live Cognition API
  * (`GetCascadeModelConfigs`). Keep only the base ids.
  */
-const DEVIN_MODEL_ALLOWLIST = new Set<string>([
-  "glm-5-2",
-  "grok-4-5-medium",
-]);
+const DEVIN_MODEL_ALLOWLIST = new Set<string>(["glm-5-2", "grok-4-5-medium"]);
 
 /**
  * pi-devin-auth stamps every variant of a family with the SAME
@@ -54,12 +53,13 @@ const DEVIN_MODEL_OVERRIDES: Record<
   Partial<
     Pick<
       ProviderModelConfig,
-      "contextWindow" | "maxTokens" | "thinkingLevelMap"
+      "contextWindow" | "maxTokens" | "thinkingLevelMap" | "input"
     >
   >
 > = {
   "glm-5-2": {
     contextWindow: 200_000,
+    input: INPUT_TEXT_ONLY,
     thinkingLevelMap: {
       off: null,
       minimal: null,
