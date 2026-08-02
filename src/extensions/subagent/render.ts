@@ -30,9 +30,6 @@ const TREE_END_PREFIX = " ╰─ ";
 const BODY_PREVIEW_LINES = 15;
 const RUNNING_MARKER = "▪";
 
-export const ACTIVE_YELLOW = "\x1b[38;2;229;216;0m";
-const FG_RESET = "\x1b[39m";
-
 type RenderContext = {
   readonly lastComponent: Component | undefined;
   readonly isPartial: boolean;
@@ -96,10 +93,10 @@ class MarkdownTitle implements Component {
         : "✓";
     const isActive = context.isPartial;
     const markerStr = isActive
-      ? `${ACTIVE_YELLOW} ${marker}${FG_RESET}`
+      ? ` ${marker}`
       : theme.fg(markerColor, ` ${marker}`);
     const labelStr = isActive
-      ? `${ACTIVE_YELLOW}${theme.bold(this.label)}${FG_RESET}`
+      ? theme.bold(this.label)
       : theme.fg(this.labelColor ?? "toolTitle", theme.bold(this.label));
     const prefix = markerStr + " " + labelStr + theme.fg("toolTitle", " ");
     const inner = Math.max(1, width - visibleWidth(prefix));
@@ -222,14 +219,10 @@ function renderActiveToolLine(
 ): string {
   return (
     connector +
-    ACTIVE_YELLOW +
     RUNNING_MARKER +
-    FG_RESET +
     " " +
-    ACTIVE_YELLOW +
     theme.bold(tool.name) +
-    FG_RESET +
-    (tool.title ? ` ${ACTIVE_YELLOW}${tool.title}${FG_RESET}` : "")
+    (tool.title ? ` ${tool.title}` : "")
   );
 }
 
@@ -475,10 +468,7 @@ function styleDottedLine(args: {
 }
 
 function styleActiveLine(text: string, theme: Theme): string {
-  return text
-    .split(DOT)
-    .map((part) => `${ACTIVE_YELLOW}${part}${FG_RESET}`)
-    .join(theme.fg("muted", DOT));
+  return text.split(DOT).join(theme.fg("muted", DOT));
 }
 
 function titleColorFor(context: RenderContext): ThemeColor {

@@ -7,7 +7,6 @@ import type {
 import { visibleWidth } from "@earendil-works/pi-tui";
 import type { SubagentDetails } from "./subagent";
 import {
-  ACTIVE_YELLOW,
   formatCallTitle,
   formatTopLine,
   renderCall,
@@ -113,7 +112,7 @@ describe("subagent render formatting", () => {
     const runningText = running.render(80)[0] ?? "";
     expect(runningText).toContain("▪");
     expect(runningText).toContain("Subagent");
-    expect(runningText).toContain(ACTIVE_YELLOW);
+    expect(runningText).not.toContain("\x1b[38;2;229;216;0m");
 
     const failed = renderCall({ prompt: "investigate" }, stubTheme, {
       lastComponent: undefined,
@@ -147,7 +146,7 @@ describe("subagent render formatting", () => {
     });
   });
 
-  test("call title colors the Subagent label by running status", () => {
+  test("call title keeps the running Subagent label in the default color", () => {
     const pending = tracingTheme();
     const runningRender = renderCall({ prompt: "investigate" }, pending.theme, {
       lastComponent: undefined,
@@ -155,7 +154,7 @@ describe("subagent render formatting", () => {
       isError: false,
     }).render(80);
 
-    expect(runningRender[0]).toContain(ACTIVE_YELLOW);
+    expect(runningRender[0]).not.toContain("\x1b[38;2;229;216;0m");
     expect(runningRender[0]).toContain("Subagent");
 
     const done = tracingTheme();
@@ -168,7 +167,7 @@ describe("subagent render formatting", () => {
     expect(done.calls).toContainEqual({ color: "accent", text: "Subagent" });
   });
 
-  test("top line uses muted dots with accent or active-yellow content", () => {
+  test("top line uses muted dots with accent or default running content", () => {
     const done = tracingTheme();
     renderResult(
       result("body"),
@@ -194,7 +193,7 @@ describe("subagent render formatting", () => {
     expect(running.calls).toContainEqual({ color: "muted", text: "⬝" });
     expect(runningRender[0]).toContain("read");
     const topLine = runningRender.at(-1)!;
-    expect(topLine).toContain(ACTIVE_YELLOW);
+    expect(topLine).not.toContain("\x1b[38;2;229;216;0m");
     expect(topLine).toContain("$0.23 ");
   });
 
