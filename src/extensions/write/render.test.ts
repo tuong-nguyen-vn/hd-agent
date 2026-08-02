@@ -231,6 +231,7 @@ describe("DiffView.renderDiffCall with write's opt-in styling", () => {
     const partialContext = {
       ...callContext(),
       isPartial: true,
+      executionStarted: true,
       invalidate,
     };
 
@@ -244,6 +245,22 @@ describe("DiffView.renderDiffCall with write's opt-in styling", () => {
     });
 
     expect(component.render(80)[0]).toContain("⣿");
+
+    const restored = DiffView.renderDiffCall({
+      label: "Create",
+      rawPath: "/work/repo/src/restored.ts",
+      theme: stubTheme,
+      context: {
+        ...callContext(),
+        isPartial: true,
+        executionStarted: false,
+        invalidate,
+      },
+      markerGlyph: Renderer.markerGlyphFor,
+      link: true,
+    });
+    expect(restored.render(80)[0]).toContain("▪");
+    expect(restored.render(80)[0]).not.toContain("⣿");
 
     DiffView.renderDiffResult({
       label: "Create",

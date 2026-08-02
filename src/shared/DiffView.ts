@@ -65,6 +65,7 @@ export class DiffView {
     readonly separator?: string;
     readonly markerGlyph?: string;
     readonly padTitle?: boolean;
+    readonly executionStarted?: boolean;
     readonly invalidate?: () => void;
   }): Component {
     const { label, path, stats, theme, markerColor, lastComponent } = args;
@@ -78,6 +79,7 @@ export class DiffView {
         lastComponent,
         isPartial: markerColor === "warning",
         isError: markerColor === "error",
+        executionStarted: args.executionStarted,
         invalidate: args.invalidate,
       },
       separator: args.separator,
@@ -151,6 +153,7 @@ export class DiffView {
       readonly isPartial: boolean;
       readonly isError: boolean;
       readonly lastComponent: Component | undefined;
+      readonly executionStarted?: boolean;
       readonly invalidate?: () => void;
     };
     readonly separator?: string;
@@ -186,6 +189,7 @@ export class DiffView {
       separator: args.separator,
       markerGlyph: args.markerGlyph?.(markerColor),
       padTitle: args.padTitle,
+      executionStarted: context.executionStarted,
       invalidate: context.invalidate,
     });
     state.titleComponent = text;

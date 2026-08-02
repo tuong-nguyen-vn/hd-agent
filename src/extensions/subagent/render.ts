@@ -28,7 +28,8 @@ const CONTINUATION_PREFIX = "   ";
 const TREE_MID_PREFIX = " ├─ ";
 const TREE_END_PREFIX = " ╰─ ";
 const BODY_PREVIEW_LINES = 15;
-const SPINNER = "⣿";
+const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
+const SPINNER_INTERVAL_MS = 80;
 
 export const ACTIVE_YELLOW = "\x1b[38;2;229;216;0m";
 const FG_RESET = "\x1b[39m";
@@ -37,7 +38,48 @@ type RenderContext = {
   readonly lastComponent: Component | undefined;
   readonly isPartial: boolean;
   readonly isError: boolean;
+  readonly executionStarted?: boolean;
+  readonly invalidate?: () => void;
+  readonly state?: unknown;
 };
+
+type SubagentRenderState = {
+  spinnerIndex?: number;
+  spinnerTimer?: ReturnType<typeof setInterval>;
+};
+
+function updateSpinner(context: RenderContext | undefined): void {
+  const state = context?.state as SubagentRenderState | undefined;
+  if (!context || !state) {
+    return;
+  }
+  if (
+    !context.isPartial ||
+    context.executionStarted !== true ||
+    !context.invalidate
+  ) {
+    if (state.spinnerTimer) {
+      clearInterval(state.spinnerTimer);
+      state.spinnerTimer = undefined;
+    }
+    return;
+  }
+  if (state.spinnerTimer) {
+    return;
+  }
+  state.spinnerTimer = setInterval(() => {
+    state.spinnerIndex =
+      ((state.spinnerIndex ?? 0) + 1) % SPINNER_FRAMES.length;
+    context.invalidate?.();
+  }, SPINNER_INTERVAL_MS);
+  state.spinnerTimer.unref?.();
+}
+
+function spinnerFrame(context: RenderContext | undefined): string {
+  const index =
+    (context?.state as SubagentRenderState | undefined)?.spinnerIndex ?? 0;
+  return SPINNER_FRAMES[index] ?? "⣿";
+}
 
 type StatusFields = Pick<
   SubagentSnapshot,
@@ -76,6 +118,7 @@ class MarkdownTitle implements Component {
     this.theme = args.theme;
     this.context = args.context;
     this.labelColor = args.labelColor;
+    updateSpinner(this.context);
   }
 
   public render(width: number): string[] {
@@ -89,7 +132,11 @@ class MarkdownTitle implements Component {
       Boolean(context.isPartial),
       Boolean(context.isError)
     );
-    const marker = context.isPartial ? SPINNER : context.isError ? "✗" : "✓";
+    const marker = context.isPartial
+      ? spinnerFrame(context)
+      : context.isError
+        ? "✗"
+        : "✓";
     const isActive = context.isPartial;
     const markerStr = isActive
       ? `${ACTIVE_YELLOW} ${marker}${FG_RESET}`
@@ -164,9 +211,10 @@ class SubagentStatusView implements Component {
     }
 
     if (this.isPartial) {
+      const spinner = spinnerFrame(this.context);
       for (const tool of this.activeTools) {
         items.push((prefix) =>
-          renderActiveToolLine(tool, SPINNER, prefix, theme)
+          renderActiveToolLine(tool, spinner, prefix, theme)
         );
       }
     }
@@ -285,8 +333,8 @@ export function renderResult(
 /**
  * Renders the complete subagent result: child tool-call lines, the metadata
  * top line, and the final output body (when complete/expanded). The tool-call
- * and top-line status block is delegated to a reused SubagentStatusView so its
- * spinner timer survives across renderResult calls. The body is rendered as a
+ * and top-line status block is delegated to a reused SubagentStatusView. The
+ * spinner state is shared with the title through the tool render context. The body is rendered as a
  * plain prefixed block (collapsed) or markdown (expanded), matching the prior
  * behavior for the subagent's final message.
  */

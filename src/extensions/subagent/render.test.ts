@@ -222,36 +222,79 @@ describe("subagent render formatting", () => {
     expect(lines.at(-1)).toContain("$0.23 ");
   });
 
-  test("pending markers do not schedule redraws", () => {
-    const runningDetails: SubagentDetails = {
-      ...baseDetails,
-      toolCalls: [],
-      activeToolCalls: [{ name: "read", title: "a.ts" }],
-      stopReason: undefined,
-      topLine: "$0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn ⬝ read",
-    };
-    let invalidations = 0;
-    const context = {
-      lastComponent: undefined,
-      isPartial: true,
-      isError: false,
-      invalidate: () => invalidations++,
-    };
+  test("animates live calls without scheduling redraws for restored calls", () => {
+    const originalSetInterval = globalThis.setInterval;
+    const originalClearInterval = globalThis.clearInterval;
+    let tick: (() => void) | undefined;
+    let intervals = 0;
+    globalThis.setInterval = ((callback: () => void) => {
+      intervals++;
+      tick = callback;
+      return { unref() {} } as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
+    globalThis.clearInterval = (() => {}) as typeof clearInterval;
 
-    const title = renderCall({ prompt: "investigate" }, stubTheme, context);
-    const component = renderResult(
-      {
-        content: [{ type: "text", text: "ignored" }],
-        details: runningDetails,
-      },
-      { expanded: false, isPartial: true },
-      stubTheme,
-      context
-    );
+    try {
+      const runningDetails: SubagentDetails = {
+        ...baseDetails,
+        toolCalls: [],
+        activeToolCalls: [{ name: "read", title: "a.ts" }],
+        stopReason: undefined,
+        topLine: "$0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn ⬝ read",
+      };
+      let invalidations = 0;
+      const state = {};
+      const liveContext = {
+        lastComponent: undefined,
+        isPartial: true,
+        isError: false,
+        executionStarted: true,
+        invalidate: () => invalidations++,
+        state,
+      };
 
-    expect(title.render(80)[0]).toContain("⣿");
-    expect(component.render(80)[0]).toContain("⣿");
-    expect(invalidations).toBe(0);
+      const title = renderCall(
+        { prompt: "investigate" },
+        stubTheme,
+        liveContext
+      );
+      const component = renderResult(
+        {
+          content: [{ type: "text", text: "ignored" }],
+          details: runningDetails,
+        },
+        { expanded: false, isPartial: true },
+        stubTheme,
+        liveContext
+      );
+
+      expect(intervals).toBe(1);
+      expect(title.render(80)[0]).toContain("⣿");
+      expect(component.render(80)[0]).toContain("⣿");
+      tick?.();
+      expect(invalidations).toBe(1);
+      expect(title.render(80)[0]).toContain("⣷");
+      expect(component.render(80)[0]).toContain("⣷");
+
+      renderCall({ prompt: "investigate" }, stubTheme, {
+        ...liveContext,
+        isPartial: false,
+        executionStarted: true,
+      });
+
+      renderCall({ prompt: "restored" }, stubTheme, {
+        lastComponent: undefined,
+        isPartial: true,
+        isError: false,
+        executionStarted: false,
+        invalidate: () => invalidations++,
+        state: {},
+      });
+      expect(intervals).toBe(1);
+    } finally {
+      globalThis.setInterval = originalSetInterval;
+      globalThis.clearInterval = originalClearInterval;
+    }
   });
 
   test("long active tool title is truncated to the render width", () => {
@@ -467,7 +510,7 @@ describe("subagent render formatting", () => {
     expect(lines[2]).toBe("   result");
   });
 
-  test("collapsed body truncates to last 20 lines with overflow indicator", () => {
+  test("collapsed body truncates to last 15 lines with overflow indicator", () => {
     const body = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join(
       "\n"
     );
@@ -478,12 +521,12 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: false, isError: false }
     );
     const lines = component.render(80);
-    // tree lines + overflow line + 20 preview lines
+    // tree lines + overflow line + 15 preview lines
     expect(lines[0]).toContain("├─ ✓ read src/index.ts");
     expect(lines[1]).toContain("╰─");
-    expect(lines[2]).toBe("   … 10 more lines");
-    expect(lines[3]).toBe("   line 11");
+    expect(lines[2]).toBe("   … 15 more lines");
+    expect(lines[3]).toBe("   line 16");
     expect(lines.at(-1)).toBe("   line 30");
-    expect(lines.length).toBe(2 + 1 + 20);
+    expect(lines.length).toBe(2 + 1 + 15);
   });
 });
