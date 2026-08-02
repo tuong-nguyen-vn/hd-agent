@@ -170,6 +170,51 @@ describe("Renderer.renderToolCallTitle", () => {
     expect(component.render(80)).toEqual([" ▪ Bash: pwd".padEnd(80, " ")]);
   });
 
+  test("does not animate a restored pending tool that never started execution", () => {
+    const originalSetInterval = globalThis.setInterval;
+    let intervals = 0;
+    globalThis.setInterval = ((..._args: Parameters<typeof setInterval>) => {
+      intervals++;
+      return { unref() {} } as ReturnType<typeof setInterval>;
+    }) as typeof setInterval;
+
+    try {
+      Renderer.renderToolCallTitle({
+        label: "",
+        title: "sleep 60",
+        theme: stubTheme,
+        context: {
+          lastComponent: undefined,
+          isPartial: true,
+          isError: false,
+          executionStarted: false,
+          invalidate: () => {},
+        },
+        markerGlyph: "$",
+        useSpinner: true,
+      });
+      expect(intervals).toBe(0);
+
+      Renderer.renderToolCallTitle({
+        label: "",
+        title: "sleep 60",
+        theme: stubTheme,
+        context: {
+          lastComponent: undefined,
+          isPartial: true,
+          isError: false,
+          executionStarted: true,
+          invalidate: () => {},
+        },
+        markerGlyph: "$",
+        useSpinner: true,
+      });
+      expect(intervals).toBe(1);
+    } finally {
+      globalThis.setInterval = originalSetInterval;
+    }
+  });
+
   test("can leave title lines unpadded", () => {
     const component = Renderer.renderToolCallTitle({
       label: "Read",

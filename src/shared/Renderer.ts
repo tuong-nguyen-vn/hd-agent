@@ -17,6 +17,7 @@ export type RenderContext = {
   readonly lastComponent: Component | undefined;
   readonly isPartial: boolean;
   readonly isError: boolean;
+  readonly executionStarted?: boolean;
   readonly invalidate?: () => void;
 };
 
@@ -285,7 +286,8 @@ export class Renderer {
         ? {
             body: bodyText,
             markerColor,
-            isPartial: Boolean(context.isPartial),
+            isPartial:
+              Boolean(context.isPartial) && context.executionStarted !== false,
             invalidate: context.invalidate,
           }
         : undefined
