@@ -29,7 +29,6 @@ const TREE_MID_PREFIX = " ├─ ";
 const TREE_END_PREFIX = " ╰─ ";
 const BODY_PREVIEW_LINES = 15;
 const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
-const SPINNER_INTERVAL_MS = 80;
 
 export const ACTIVE_YELLOW = "\x1b[38;2;229;216;0m";
 const FG_RESET = "\x1b[39m";
@@ -45,34 +44,16 @@ type RenderContext = {
 
 type SubagentRenderState = {
   spinnerIndex?: number;
-  spinnerTimer?: ReturnType<typeof setInterval>;
 };
 
-function updateSpinner(context: RenderContext | undefined): void {
-  const state = context?.state as SubagentRenderState | undefined;
-  if (!context || !state) {
-    return;
-  }
-  if (
-    !context.isPartial ||
-    context.executionStarted !== true ||
-    !context.invalidate
-  ) {
-    if (state.spinnerTimer) {
-      clearInterval(state.spinnerTimer);
-      state.spinnerTimer = undefined;
+function advanceSpinner(context: RenderContext): void {
+  if (context.isPartial && context.executionStarted === true) {
+    const state = context.state as SubagentRenderState | undefined;
+    if (state) {
+      state.spinnerIndex =
+        ((state.spinnerIndex ?? -1) + 1) % SPINNER_FRAMES.length;
     }
-    return;
   }
-  if (state.spinnerTimer) {
-    return;
-  }
-  state.spinnerTimer = setInterval(() => {
-    state.spinnerIndex =
-      ((state.spinnerIndex ?? 0) + 1) % SPINNER_FRAMES.length;
-    context.invalidate?.();
-  }, SPINNER_INTERVAL_MS);
-  state.spinnerTimer.unref?.();
 }
 
 function spinnerFrame(context: RenderContext | undefined): string {
@@ -118,7 +99,7 @@ class MarkdownTitle implements Component {
     this.theme = args.theme;
     this.context = args.context;
     this.labelColor = args.labelColor;
-    updateSpinner(this.context);
+    advanceSpinner(this.context);
   }
 
   public render(width: number): string[] {
@@ -334,7 +315,8 @@ export function renderResult(
  * Renders the complete subagent result: child tool-call lines, the metadata
  * top line, and the final output body (when complete/expanded). The tool-call
  * and top-line status block is delegated to a reused SubagentStatusView. The
- * spinner state is shared with the title through the tool render context. The body is rendered as a
+ * passive spinner advances on real tool updates and shares its frame with the
+ * title, avoiding redraw-only timers that force terminal scroll. The body is rendered as a
  * plain prefixed block (collapsed) or markdown (expanded), matching the prior
  * behavior for the subagent's final message.
  */

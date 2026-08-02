@@ -222,17 +222,13 @@ describe("subagent render formatting", () => {
     expect(lines.at(-1)).toContain("$0.23 ");
   });
 
-  test("animates live calls without scheduling redraws for restored calls", () => {
+  test("advances on real updates without scheduling redraws", () => {
     const originalSetInterval = globalThis.setInterval;
-    const originalClearInterval = globalThis.clearInterval;
-    let tick: (() => void) | undefined;
     let intervals = 0;
-    globalThis.setInterval = ((callback: () => void) => {
+    globalThis.setInterval = ((..._args: Parameters<typeof setInterval>) => {
       intervals++;
-      tick = callback;
       return { unref() {} } as ReturnType<typeof setInterval>;
     }) as typeof setInterval;
-    globalThis.clearInterval = (() => {}) as typeof clearInterval;
 
     try {
       const runningDetails: SubagentDetails = {
@@ -244,7 +240,7 @@ describe("subagent render formatting", () => {
       };
       let invalidations = 0;
       const state = {};
-      const liveContext = {
+      const context = {
         lastComponent: undefined,
         isPartial: true,
         isError: false,
@@ -253,11 +249,7 @@ describe("subagent render formatting", () => {
         state,
       };
 
-      const title = renderCall(
-        { prompt: "investigate" },
-        stubTheme,
-        liveContext
-      );
+      const title = renderCall({ prompt: "investigate" }, stubTheme, context);
       const component = renderResult(
         {
           content: [{ type: "text", text: "ignored" }],
@@ -265,24 +257,24 @@ describe("subagent render formatting", () => {
         },
         { expanded: false, isPartial: true },
         stubTheme,
-        liveContext
+        context
       );
 
-      expect(intervals).toBe(1);
       expect(title.render(80)[0]).toContain("⣿");
       expect(component.render(80)[0]).toContain("⣿");
-      tick?.();
-      expect(invalidations).toBe(1);
-      expect(title.render(80)[0]).toContain("⣷");
-      expect(component.render(80)[0]).toContain("⣷");
+      expect(intervals).toBe(0);
+      expect(invalidations).toBe(0);
 
       renderCall({ prompt: "investigate" }, stubTheme, {
-        ...liveContext,
-        isPartial: false,
-        executionStarted: true,
+        ...context,
+        lastComponent: title,
       });
+      expect(title.render(80)[0]).toContain("⣷");
+      expect(component.render(80)[0]).toContain("⣷");
+      expect(intervals).toBe(0);
+      expect(invalidations).toBe(0);
 
-      renderCall({ prompt: "restored" }, stubTheme, {
+      const restored = renderCall({ prompt: "restored" }, stubTheme, {
         lastComponent: undefined,
         isPartial: true,
         isError: false,
@@ -290,10 +282,11 @@ describe("subagent render formatting", () => {
         invalidate: () => invalidations++,
         state: {},
       });
-      expect(intervals).toBe(1);
+      expect(restored.render(80)[0]).toContain("⣿");
+      expect(intervals).toBe(0);
+      expect(invalidations).toBe(0);
     } finally {
       globalThis.setInterval = originalSetInterval;
-      globalThis.clearInterval = originalClearInterval;
     }
   });
 
