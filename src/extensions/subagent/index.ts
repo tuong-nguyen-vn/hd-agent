@@ -17,7 +17,11 @@ export default function (pi: ExtensionAPI): void {
       "Subagent output returned to the main agent is capped at 32KB. " +
       `Set "agent" to the name of a predefined agent from ${join(getAgentDir(), "agents")} ` +
       "(or the project's .pi/agents) to use its configured name, model, system prompt, and tools. " +
-      'Use agent="Search" for broad code discovery and agent="Oracle" for deep reasoning; omit agent only for a plain subagent that should inherit the current model.',
+      'Use agent="Search" for broad code discovery. ' +
+      'Use agent="Oracle" for code reviews, architecture feedback, difficult bugs across many files, planning complex implementations, deep technical reasoning, or an alternative perspective. ' +
+      "When using Oracle, be specific about what you want to review, plan, or debug, provide relevant context, and list the files involved. " +
+      'Do NOT delegate to Oracle for file reads, simple searches, web browsing, or basic code changes — do those directly. ' +
+      "Omit agent only for a plain subagent that should inherit the current model.",
     parameters: subagentSchema,
     renderShell: "self",
     executionMode: "parallel",

@@ -135,7 +135,14 @@ describe("discoverAgents", () => {
 
     const oracleAgent = agents.find((a) => a.name === "Oracle");
     expect(oracleAgent?.source).toBe("bundled");
-    expect(oracleAgent?.tools).toEqual(["grep", "find", "read"]);
+    expect(oracleAgent?.tools).toEqual([
+      "grep",
+      "glob",
+      "find",
+      "read",
+      "web_search",
+      "web_fetch",
+    ]);
   });
 
   test("user agents override bundled agents by case-insensitive name", async () => {
