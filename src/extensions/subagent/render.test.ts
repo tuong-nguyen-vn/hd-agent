@@ -104,14 +104,14 @@ describe("subagent render formatting", () => {
     );
   });
 
-  test("call title uses a spinner while running and a cross on error", () => {
+  test("call title uses a static running marker and a cross on error", () => {
     const running = renderCall({ prompt: "investigate" }, stubTheme, {
       lastComponent: undefined,
       isPartial: true,
       isError: false,
     });
     const runningText = running.render(80)[0] ?? "";
-    expect(runningText).toContain("⣿");
+    expect(runningText).toContain("▪");
     expect(runningText).toContain("Subagent");
     expect(runningText).toContain(ACTIVE_YELLOW);
 
@@ -218,76 +218,40 @@ describe("subagent render formatting", () => {
 
     const lines = component.render(80);
     expect(lines[0]).toContain("grep");
-    expect(lines[0]).toContain("⣿");
+    expect(lines[0]).toContain("▪");
     expect(lines.at(-1)).toContain("$0.23 ");
   });
 
-  test("advances on real updates without scheduling redraws", () => {
-    const originalSetInterval = globalThis.setInterval;
-    let intervals = 0;
-    globalThis.setInterval = ((..._args: Parameters<typeof setInterval>) => {
-      intervals++;
-      return { unref() {} } as ReturnType<typeof setInterval>;
-    }) as typeof setInterval;
+  test("static running markers do not schedule redraws", () => {
+    const runningDetails: SubagentDetails = {
+      ...baseDetails,
+      toolCalls: [],
+      activeToolCalls: [{ name: "read", title: "a.ts" }],
+      stopReason: undefined,
+      topLine: "$0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn ⬝ read",
+    };
+    let invalidations = 0;
+    const context = {
+      lastComponent: undefined,
+      isPartial: true,
+      isError: false,
+      invalidate: () => invalidations++,
+    };
 
-    try {
-      const runningDetails: SubagentDetails = {
-        ...baseDetails,
-        toolCalls: [],
-        activeToolCalls: [{ name: "read", title: "a.ts" }],
-        stopReason: undefined,
-        topLine: "$0.01 ⬝ 0.1%/1.0M ⬝ model ⬝ 1 turn ⬝ read",
-      };
-      let invalidations = 0;
-      const state = {};
-      const context = {
-        lastComponent: undefined,
-        isPartial: true,
-        isError: false,
-        executionStarted: true,
-        invalidate: () => invalidations++,
-        state,
-      };
+    const title = renderCall({ prompt: "investigate" }, stubTheme, context);
+    const component = renderResult(
+      {
+        content: [{ type: "text", text: "ignored" }],
+        details: runningDetails,
+      },
+      { expanded: false, isPartial: true },
+      stubTheme,
+      context
+    );
 
-      const title = renderCall({ prompt: "investigate" }, stubTheme, context);
-      const component = renderResult(
-        {
-          content: [{ type: "text", text: "ignored" }],
-          details: runningDetails,
-        },
-        { expanded: false, isPartial: true },
-        stubTheme,
-        context
-      );
-
-      expect(title.render(80)[0]).toContain("⣿");
-      expect(component.render(80)[0]).toContain("⣿");
-      expect(intervals).toBe(0);
-      expect(invalidations).toBe(0);
-
-      renderCall({ prompt: "investigate" }, stubTheme, {
-        ...context,
-        lastComponent: title,
-      });
-      expect(title.render(80)[0]).toContain("⣷");
-      expect(component.render(80)[0]).toContain("⣷");
-      expect(intervals).toBe(0);
-      expect(invalidations).toBe(0);
-
-      const restored = renderCall({ prompt: "restored" }, stubTheme, {
-        lastComponent: undefined,
-        isPartial: true,
-        isError: false,
-        executionStarted: false,
-        invalidate: () => invalidations++,
-        state: {},
-      });
-      expect(restored.render(80)[0]).toContain("⣿");
-      expect(intervals).toBe(0);
-      expect(invalidations).toBe(0);
-    } finally {
-      globalThis.setInterval = originalSetInterval;
-    }
+    expect(title.render(80)[0]).toContain("▪");
+    expect(component.render(80)[0]).toContain("▪");
+    expect(invalidations).toBe(0);
   });
 
   test("long active tool title is truncated to the render width", () => {

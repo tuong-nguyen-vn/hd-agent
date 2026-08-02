@@ -66,7 +66,7 @@ describe("todo render", () => {
     };
 
     const component = renderCall({ todos: items }, stubTheme, partialContext);
-    expect(component.render(120)[0]).toContain("⣿");
+    expect(component.render(120)[0]).toContain("⠹");
 
     renderCall({ todos: items }, stubTheme, {
       ...context,

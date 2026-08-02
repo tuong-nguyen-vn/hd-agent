@@ -28,7 +28,7 @@ const CONTINUATION_PREFIX = "   ";
 const TREE_MID_PREFIX = " ├─ ";
 const TREE_END_PREFIX = " ╰─ ";
 const BODY_PREVIEW_LINES = 15;
-const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
+const RUNNING_MARKER = "▪";
 
 export const ACTIVE_YELLOW = "\x1b[38;2;229;216;0m";
 const FG_RESET = "\x1b[39m";
@@ -37,30 +37,7 @@ type RenderContext = {
   readonly lastComponent: Component | undefined;
   readonly isPartial: boolean;
   readonly isError: boolean;
-  readonly executionStarted?: boolean;
-  readonly invalidate?: () => void;
-  readonly state?: unknown;
 };
-
-type SubagentRenderState = {
-  spinnerIndex?: number;
-};
-
-function advanceSpinner(context: RenderContext): void {
-  if (context.isPartial && context.executionStarted === true) {
-    const state = context.state as SubagentRenderState | undefined;
-    if (state) {
-      state.spinnerIndex =
-        ((state.spinnerIndex ?? -1) + 1) % SPINNER_FRAMES.length;
-    }
-  }
-}
-
-function spinnerFrame(context: RenderContext | undefined): string {
-  const index =
-    (context?.state as SubagentRenderState | undefined)?.spinnerIndex ?? 0;
-  return SPINNER_FRAMES[index] ?? "⣿";
-}
 
 type StatusFields = Pick<
   SubagentSnapshot,
@@ -99,7 +76,6 @@ class MarkdownTitle implements Component {
     this.theme = args.theme;
     this.context = args.context;
     this.labelColor = args.labelColor;
-    advanceSpinner(this.context);
   }
 
   public render(width: number): string[] {
@@ -114,7 +90,7 @@ class MarkdownTitle implements Component {
       Boolean(context.isError)
     );
     const marker = context.isPartial
-      ? spinnerFrame(context)
+      ? RUNNING_MARKER
       : context.isError
         ? "✗"
         : "✓";
@@ -192,11 +168,8 @@ class SubagentStatusView implements Component {
     }
 
     if (this.isPartial) {
-      const spinner = spinnerFrame(this.context);
       for (const tool of this.activeTools) {
-        items.push((prefix) =>
-          renderActiveToolLine(tool, spinner, prefix, theme)
-        );
+        items.push((prefix) => renderActiveToolLine(tool, prefix, theme));
       }
     }
 
@@ -244,14 +217,13 @@ function renderToolCallLine(
 
 function renderActiveToolLine(
   tool: SubagentActiveTool,
-  spinner: string,
   connector: string,
   theme: Theme
 ): string {
   return (
     connector +
     ACTIVE_YELLOW +
-    spinner +
+    RUNNING_MARKER +
     FG_RESET +
     " " +
     ACTIVE_YELLOW +
@@ -315,8 +287,8 @@ export function renderResult(
  * Renders the complete subagent result: child tool-call lines, the metadata
  * top line, and the final output body (when complete/expanded). The tool-call
  * and top-line status block is delegated to a reused SubagentStatusView. The
- * passive spinner advances on real tool updates and shares its frame with the
- * title, avoiding redraw-only timers that force terminal scroll. The body is rendered as a
+ * running marker is static so it never schedules redraws that force terminal
+ * scroll. The body is rendered as a
  * plain prefixed block (collapsed) or markdown (expanded), matching the prior
  * behavior for the subagent's final message.
  */
