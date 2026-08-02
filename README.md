@@ -32,16 +32,28 @@ A Bun-native extension pack for [Pi](https://pi.dev/): web access, subagents, re
 
 ## Quick Start
 
-Ensure that you have [Pi](https://pi.dev/docs/latest/quickstart) and [Bun](https://bun.com/docs/installation) already installed. If not, install them first (_or ask your agent to do it for you_). For all things related to Pi, refer to [Pi's comprehensive docs](https://pi.dev/docs/latest).
+Install or update HD Agent with one command. The installer also installs Bun and Pi when they are missing, and works in macOS, Linux, WSL, and Windows Git Bash:
 
 ```sh
-# Install HD Agent as a Pi extension and Bun-native launcher:
-pi install git:github.com/tuong-nguyen-vn/hd-agent
-bun install -g github:tuong-nguyen-vn/hd-agent
+curl -fsSL https://raw.githubusercontent.com/tuong-nguyen-vn/hd-agent/main/install.sh | sh
+```
 
-# Launch HD Agent:
+Then launch it:
+
+```sh
 hd-agent
 ```
+
+<details>
+<summary>Manual installation</summary>
+
+```sh
+curl -fsSL https://pi.dev/install.sh | sh
+pi install git:github.com/tuong-nguyen-vn/hd-agent
+bun install -g github:tuong-nguyen-vn/hd-agent
+```
+
+</details>
 
 
 > [!IMPORTANT]
