@@ -27,14 +27,13 @@ const DEVIN_PROVIDER_ID = "devin";
  * pi-devin-auth's live catalog includes every reasoning-effort variant
  * Cognition exposes for each model family, e.g. for `glm-5-2`: `glm-5-2`
  * ("GLM-5.2 High"), `glm-5-2-max`, `glm-5-2-1m`, `glm-5-2-max-1m`,
- * `glm-5-2-none`, `glm-5-2-none-1m`; for `swe-1-7`: `swe-1-7` ("SWE-1.7
- * Max" — the unsuffixed id IS the max-effort variant), `swe-1-7-lightning`,
- * `swe-1-7-medium`. Confirmed via a direct `getCachedCatalog()` dump against
- * the live Cognition API (`GetCascadeModelConfigs`). Keep only the base ids.
+ * `glm-5-2-none`, `glm-5-2-none-1m`; for `grok-4-5`: `grok-4-5-medium`,
+ * `grok-4-5` ("Grok 4.5 Max"), `grok-4-5-1m`, ... Confirmed via a direct
+ * `getCachedCatalog()` dump against the live Cognition API
+ * (`GetCascadeModelConfigs`). Keep only the base ids.
  */
 const DEVIN_MODEL_ALLOWLIST = new Set<string>([
   "glm-5-2",
-  "swe-1-7",
   "grok-4-5-medium",
 ]);
 
@@ -46,7 +45,7 @@ const DEVIN_MODEL_ALLOWLIST = new Set<string>([
  *
  * Note: pi-devin-auth's `streamDevin()` never reads pi's selected thinking
  * level — Cognition's effort tiers are baked into the model_uid itself
- * (`glm-5-2` = High, `swe-1-7` = Max), not a runtime parameter. These
+ * (`glm-5-2` = High), not a runtime parameter. These
  * `thinkingLevelMap`s only control what shows in pi's thinking-level
  * picker; they don't change what's sent over the wire.
  */
@@ -69,18 +68,6 @@ const DEVIN_MODEL_OVERRIDES: Record<
       high: "high",
       xhigh: null,
       max: null,
-    },
-  },
-  "swe-1-7": {
-    contextWindow: 262_144,
-    thinkingLevelMap: {
-      off: null,
-      minimal: null,
-      low: null,
-      medium: null,
-      high: null,
-      xhigh: null,
-      max: "max",
     },
   },
   "grok-4-5-medium": {

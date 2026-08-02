@@ -152,7 +152,15 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         cost: { input: 0.14, output: 0.28, cacheRead: 0.0028, cacheWrite: 0 },
         contextWindow: 1000000,
         maxTokens: 384000,
-        thinkingLevelMap: { high: "high", max: "max" },
+        thinkingLevelMap: {
+          off: null,
+          minimal: null,
+          low: null,
+          medium: null,
+          high: "high",
+          xhigh: null,
+          max: "max",
+        },
         compat: {
           supportsDeveloperRole: false,
           supportsReasoningEffort: true,
