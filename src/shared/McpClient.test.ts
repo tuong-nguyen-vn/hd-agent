@@ -84,7 +84,7 @@ test("performs the initialize → initialized → tools/call round trip", async 
     params: {
       protocolVersion: "2025-06-18",
       clientInfo: {
-        name: "pim-agent",
+        name: "hd-agent",
         version: "0.0.0",
       },
       capabilities: {},

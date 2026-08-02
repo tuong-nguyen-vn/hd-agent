@@ -36,7 +36,7 @@ function isUserMessageConstructor(
 }
 
 /**
- * amp-pi can end up with two `pi-coding-agent` copies: one hoisted next to the
+ * HD Agent can end up with two `pi-coding-agent` copies: one hoisted next to the
  * extension and one nested in the installed package tree. Patching only the
  * imported copy leaves the running UI on the other class, so the quote bar
  * silently disappears. Resolve every reachable copy from the CLI entry point.

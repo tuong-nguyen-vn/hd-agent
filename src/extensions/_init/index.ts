@@ -62,10 +62,10 @@ const shortcuts = [
 export default async function (pi: ExtensionAPI): Promise<void> {
   if (typeof Bun === "undefined") {
     throw new Error(
-      "Pim requires the Bun runtime.\n" +
-        "Install the Pim launcher: bun install -g @aaroncql/pim-agent\n" +
-        "Then run: amp-pi (or hd-agent)\n" +
-        "If amp-pi cannot locate Pi, ensure `pi` is on PATH or set PIM_PI_CLI=/path/to/cli.js"
+      "HD Agent requires the Bun runtime.\n" +
+        "Install HD Agent: bun install -g github:tuong-nguyen-vn/hd-agent\n" +
+        "Then run: hd-agent\n" +
+        "If hd-agent cannot locate Pi, ensure `pi` is on PATH or set PIM_PI_CLI=/path/to/cli.js"
     );
   }
 

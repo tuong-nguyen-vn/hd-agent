@@ -128,7 +128,7 @@ function processEntryPoints(): string[] {
   if (argv1) {
     entries.push(argv1);
   }
-  // amp-pi: `bun /path/to/pi-coding-agent/dist/cli.js ...` → Bun.main is cli.js
+  // HD Agent: `bun /path/to/pi-coding-agent/dist/cli.js ...` → Bun.main is cli.js
   const bunMain =
     typeof Bun !== "undefined" ? (Bun as { main?: string }).main : undefined;
   if (bunMain && bunMain !== argv1) {
@@ -140,7 +140,7 @@ function processEntryPoints(): string[] {
 /**
  * Find every pi-tui installation reachable from an entry point.
  *
- * Do not stop at Node's first resolution result: amp-pi can have both a
+ * Do not stop at Node's first resolution result: HD Agent can have both a
  * top-level pi-tui and a copy nested under pi-coding-agent. Depending on how
  * Pi was installed, extensions and the interactive UI may use different
  * copies, so both Markdown prototypes must be patched.
@@ -181,9 +181,9 @@ export function resolvePiTuiPathsFromEntry(entry: string): string[] {
 }
 
 /**
- * Under Bun (`amp-pi`), jiti aliasing does not force extensions onto Pi's
+ * Under Bun (`hd-agent`), jiti aliasing does not force extensions onto Pi's
  * bundled `pi-tui` instance. A plain `import { Markdown } from "pi-tui"` then
- * patches pim-agent's copy while the UI still renders with Pi's copy — fences
+ * patches HD Agent's copy while the UI still renders with Pi's copy — fences
  * remain. Resolve every reachable Markdown constructor and patch them all.
  */
 export async function resolveMarkdownConstructors(): Promise<

@@ -25,7 +25,7 @@ async function findPiCli(): Promise<string> {
     return join(dirname(Bun.fileURLToPath(pkgUrl)), "dist/cli.js");
   } catch {
     throw new Error(
-      `Pim could not locate ${PI_PACKAGE}.\n` +
+      `HD Agent could not locate ${PI_PACKAGE}.\n` +
         `Install Pi from https://pi.dev/docs/latest/quickstart, or set PIM_PI_CLI=/path/to/cli.js`
     );
   }
@@ -39,7 +39,7 @@ async function resolveEnvPiCli(): Promise<string | null> {
   return (await isFile(candidate)) ? candidate : null;
 }
 
-// Pim also installs a `pi` bin, so the first `pi` on PATH may be this launcher.
+// HD Agent also installs a `pi` bin, so the first `pi` on PATH may be this launcher.
 // Walk every PATH entry until one resolves into the real Pi package.
 async function resolvePathPiCli(): Promise<string | null> {
   let searchDirs = (process.env["PATH"] ?? "").split(delimiter).filter(Boolean);
@@ -135,9 +135,9 @@ if (dashDashIdx >= 0) {
   cliArgs.length = dashDashIdx;
 }
 
-// When launched inside a pim-agent repo (cwd has src/extensions), pi would load
+// When launched inside an hd-agent repo (cwd has src/extensions), pi would load
 // the repo's own extensions via .pi/settings.json on top of the globally
-// installed pim-agent, causing "Tool X conflicts with Y" for every extension.
+// installed HD Agent, causing "Tool X conflicts with Y" for every extension.
 // Skip project-local resources unless the user explicitly opts in with
 // --approve/-a. An explicit --no-approve/-na is still honoured as-is.
 const hasExplicitTrustFlag = cliArgs.some(

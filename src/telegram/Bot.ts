@@ -135,7 +135,7 @@ export class Bot {
       Supervisor.readVersion(),
       Supervisor.readPiVersion(),
     ]);
-    const text = `✅ Pim Agent updated to v${version} (pi v${piVersion})!`;
+    const text = `✅ HD Agent updated to v${version} (pi v${piVersion})!`;
     await Promise.all(
       entries.map((e) =>
         this.grammy.api

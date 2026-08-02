@@ -1,21 +1,21 @@
 <!-- omit in toc -->
-# PIM - Pi
+# HD Agent
 
-[![npm version](https://img.shields.io/npm/v/@aaroncql/pim-agent?style=flat-square)](https://www.npmjs.com/package/@aaroncql/pim-agent)
-[![npm downloads](https://img.shields.io/npm/dm/@aaroncql/pim-agent?style=flat-square)](https://www.npmjs.com/package/@aaroncql/pim-agent)
-[![license](https://img.shields.io/npm/l/@aaroncql/pim-agent?style=flat-square)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/hd-agent?style=flat-square)](https://www.npmjs.com/package/hd-agent)
+[![npm downloads](https://img.shields.io/npm/dm/hd-agent?style=flat-square)](https://www.npmjs.com/package/hd-agent)
+[![license](https://img.shields.io/npm/l/hd-agent?style=flat-square)](./LICENSE)
 [![Bun](https://img.shields.io/badge/runtime-Bun-black?logo=bun&style=flat-square)](https://bun.com)
 
-_**Pim is to Pi what Vim is to Vi.**_
+_**HD Agent extends Pi with an opinionated, Bun-native agent experience.**_
 
 A Bun-native extension pack for [Pi](https://pi.dev/): web access, subagents, revamped core tools, ANSI-compatible themes, fzf-style completions, Telegram mode, and more. Preliminary score of [37.8% on Terminal-Bench 2.0](#terminal-bench-20) with locally hosted Qwen3.6-35B, rivalling Claude Code + Sonnet 4.5.
 
 - [Quick Start](#quick-start)
   - [Enabling/Disabling Extensions](#enablingdisabling-extensions)
   - [API Keys (Optional)](#api-keys-optional)
-  - [Pim Configuration](#pim-configuration)
+  - [HD Agent Configuration](#hd-agent-configuration)
   - [Recommended Pi Settings (Optional)](#recommended-pi-settings-optional)
-- [Why Pim?](#why-pim)
+- [Why HD Agent?](#why-hd-agent)
   - [Lean System Prompt](#lean-system-prompt)
   - [Model-Aware Tools](#model-aware-tools)
   - [Terminal-Bench 2.0](#terminal-bench-20)
@@ -28,50 +28,42 @@ A Bun-native extension pack for [Pi](https://pi.dev/): web access, subagents, re
 - [Changelog](#changelog)
 - [Developing](#developing)
 
-![Pim Demo](https://raw.githubusercontent.com/AaronCQL/pim-agent/refs/heads/main/assets/demo.webp)
+![HD Agent Demo](https://raw.githubusercontent.com/tuong-nguyen-vn/hd-agent/refs/heads/main/assets/demo.webp)
 
 ## Quick Start
 
 Ensure that you have [Pi](https://pi.dev/docs/latest/quickstart) and [Bun](https://bun.com/docs/installation) already installed. If not, install them first (_or ask your agent to do it for you_). For all things related to Pi, refer to [Pi's comprehensive docs](https://pi.dev/docs/latest).
 
 ```sh
-# First, install Pim as a Pi extension:
-pi install npm:@aaroncql/pim-agent
+# Install HD Agent as a Pi extension and Bun-native launcher:
+pi install git:github.com/tuong-nguyen-vn/hd-agent
+bun install -g github:tuong-nguyen-vn/hd-agent
 
-# Then, install the Bun-native `amp-pi` launcher:
-bun install -g @aaroncql/pim-agent
-
-# Finally, launch amp-pi:
-amp-pi
+# Launch HD Agent:
+hd-agent
 ```
 
-Or install directly from this fork:
-
-```sh
-pi install git:github.com/tuong-nguyen-vn/pim-agent
-bun install -g github:tuong-nguyen-vn/pim-agent
-```
 
 > [!IMPORTANT]
-> **Use `amp-pi` instead of `pi` after installing Pim.** The `amp-pi` command is a drop-in replacement for `pi` that [runs Pi via Bun](./bin/pim.ts), enabling Bun-specific APIs. Existing Pi behaviour and extensions should continue to work normally.
+> **Use `hd-agent` instead of `pi` after installing HD Agent.** The `hd-agent` command is a drop-in replacement for `pi` that [runs Pi via Bun](./bin/pim.ts), enabling Bun-specific APIs. Existing Pi behaviour and extensions should continue to work normally.
 
-The global install also registers a `pi` bin pointing at the same launcher, so tools that hardcode `pi` (e.g. [herdr](https://herdr.dev) resuming an agent pane with `pi --session <file>`) still get the Bun runtime. This only takes effect when Bun's global bin directory comes before Pi's own bin directory on your `PATH`; otherwise keep calling `amp-pi` directly. Pim skips its own bin when locating the real Pi CLI, so there is no recursion.
+The global install also registers a `pi` bin pointing at the same launcher, so tools that hardcode `pi` (e.g. [herdr](https://herdr.dev) resuming an agent pane with `pi --session <file>`) still get the Bun runtime. This only takes effect when Bun's global bin directory comes before Pi's own bin directory on your `PATH`; otherwise keep calling `hd-agent` directly. HD Agent skips its own bin when locating the real Pi CLI, so there is no recursion.
 
-If `amp-pi` cannot locate Pi, make sure `pi` is on your `PATH`, or set:
+If `hd-agent` cannot locate Pi, make sure `pi` is on your `PATH`, or set:
 
 ```sh
-PIM_PI_CLI=/path/to/pi/dist/cli.js amp-pi
+PIM_PI_CLI=/path/to/pi/dist/cli.js hd-agent
 ```
 
 ### Enabling/Disabling Extensions
 
-Pim ships a collection of extensions which are all enabled by default. To disable specific ones that don't suit your needs, run `amp-pi config` and toggle them there.
+HD Agent ships a collection of extensions which are all enabled by default. To disable specific ones that don't suit your needs, run `hd-agent config` and toggle them there.
 
-Some Pim extensions can be toggled directly within the TUI as well: `/tps` for inference speed reporting.
+Some HD Agent extensions can be toggled directly within the TUI as well: `/tps` for inference speed reporting.
 
 ### API Keys (Optional)
 
-Pim's web tools use [Exa](https://exa.ai) for searching the web and [Jina](https://jina.ai/reader/) for fetching websites as Markdown. These tools still work without API keys, but are subject to the following rate limits (as of May 2026):
+HD Agent's web tools use [Exa](https://exa.ai) for searching the web and [Jina](https://jina.ai/reader/) for fetching websites as Markdown. These tools still work without API keys, but are subject to the following rate limits (as of May 2026):
 
 - Exa - 1,000 requests per month
 - Jina - 20 requests per minute
@@ -92,12 +84,12 @@ For heavier usage, add API keys to `~/.pim/settings.json`:
 Environment variables override `settings.json` when present:
 
 ```sh
-EXA_API_KEY='api_key_here' JINA_API_KEY='api_key_here' amp-pi
+EXA_API_KEY='api_key_here' JINA_API_KEY='api_key_here' hd-agent
 ```
 
-### Pim Configuration
+### HD Agent Configuration
 
-Pim-specific settings live in `~/.pim/settings.json`. All fields are optional;
+HD Agent-specific settings live in `~/.pim/settings.json`. All fields are optional;
 the example below shows every currently supported setting:
 
 ```json
@@ -127,13 +119,13 @@ the example below shows every currently supported setting:
 }
 ```
 
-`painter.model` and `viewMedia.model` only select the dedicated model. Pim finds
+`painter.model` and `viewMedia.model` only select the dedicated model. HD Agent finds
 that model in `~/.pi/agent/models.json` and uses the provider's `baseUrl`,
 `apiKey`, and `api`. If the model or required provider fields are missing, the
 tool reports which Pi model configuration needs to be added.
 
 > [!NOTE]
-> **Bundled Subagents**: Pim ships with two built-in subagents—**Search** (fast, parallel code search) and **Oracle** (expert AI advisor for complex reasoning). These are available by default after installation. To customize them or add your own agents, place markdown configs in `~/.pi/agent/agents` (user-level) or `.pi/agents` (project-level). Project-level agents override user-level agents, which in turn override the bundled defaults (matching is case-insensitive).
+> **Bundled Subagents**: HD Agent ships with two built-in subagents—**Search** (fast, parallel code search) and **Oracle** (expert AI advisor for complex reasoning). These are available by default after installation. To customize them or add your own agents, place markdown configs in `~/.pi/agent/agents` (user-level) or `.pi/agents` (project-level). Project-level agents override user-level agents, which in turn override the bundled defaults (matching is case-insensitive).
 
 For `viewMedia`, the provider's `api` controls the vision request protocol:
 
@@ -151,7 +143,7 @@ provider to use `openai-completions` for `/images/generations` and
 
 ### Recommended Pi Settings (Optional)
 
-Add the following settings to your `~/.pi/agent/settings.json` for the best experience with Pim:
+Add the following settings to your `~/.pi/agent/settings.json` for the best experience with HD Agent:
 
 ```json
 {
@@ -163,13 +155,13 @@ Add the following settings to your `~/.pi/agent/settings.json` for the best expe
 }
 ```
 
-## Why Pim?
+## Why HD Agent?
 
-Pim's philosophy is **opinionated but minimal**. Its goal is to improve the out-of-the-box experience for both users and agents, without sacrificing composability with other Pi extensions.
+HD Agent's philosophy is **opinionated but minimal**. Its goal is to improve the out-of-the-box experience for both users and agents, without sacrificing composability with other Pi extensions.
 
 ### Lean System Prompt
 
-Pim's system prompt is just **~3K tokens** despite exposing 10+ tools, far leaner than alternatives like OpenCode (~10K) or Hermes (~16K).
+HD Agent's system prompt is just **~3K tokens** despite exposing 10+ tools, far leaner than alternatives like OpenCode (~10K) or Hermes (~16K).
 
 This is achieved by having tool descriptions focus on _how_ to use each tool instead of prescribing _when_, since models already appear to internally encode when tools are needed, and prompting them to call tools can [suppress both necessary and unnecessary calls](https://arxiv.org/abs/2605.09252).
 
@@ -177,19 +169,19 @@ This is achieved by having tool descriptions focus on _how_ to use each tool ins
 
 LLMs are [increasingly post-trained](https://openai.com/index/introducing-codex) for specific agent harnesses, making tool schemas part of the model's learned interface. For text-file editing, Anthropic models are trained to use [string replacement operations](https://platform.claude.com/docs/en/agents-and-tools/tool-use/text-editor-tool), while OpenAI models use [V4A patch operations](https://developers.openai.com/api/docs/guides/tools-apply-patch).
 
-Pim keeps the active toolset model-aware instead of assuming one tool fits every LLM. It dynamically exposes the tools best suited to the selected model, giving each model the interface that best matches its learned behaviour while keeping the prompt lean.
+HD Agent keeps the active toolset model-aware instead of assuming one tool fits every LLM. It dynamically exposes the tools best suited to the selected model, giving each model the interface that best matches its learned behaviour while keeping the prompt lean.
 
 ### Terminal-Bench 2.0
 
-| ID | Pim Version | LLM / Model | Results |
+| ID | HD Agent Version | LLM / Model | Results |
 | --- | --- | --- | --- |
-| [r1](./benchmarks/terminal_bench_2/results/r1/) | [`21d084d1`](https://github.com/AaronCQL/pim-agent/tree/21d084d1) | `Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf` | **41.6%** (37/89) |
-| [r2](./benchmarks/terminal_bench_2/results/r2/) | [`bfd792cf`](https://github.com/AaronCQL/pim-agent/tree/bfd792cf) | `Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf` | **36.0%** (32/89) |
-| [r3](./benchmarks/terminal_bench_2/results/r3/) | [`cd52f3a4`](https://github.com/AaronCQL/pim-agent/tree/cd52f3a4) | `Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf` | **36.0%** (32/89) |
+| [r1](./benchmarks/terminal_bench_2/results/r1/) | [`21d084d1`](https://github.com/tuong-nguyen-vn/hd-agent/tree/21d084d1) | `Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf` | **41.6%** (37/89) |
+| [r2](./benchmarks/terminal_bench_2/results/r2/) | [`bfd792cf`](https://github.com/tuong-nguyen-vn/hd-agent/tree/bfd792cf) | `Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf` | **36.0%** (32/89) |
+| [r3](./benchmarks/terminal_bench_2/results/r3/) | [`cd52f3a4`](https://github.com/tuong-nguyen-vn/hd-agent/tree/cd52f3a4) | `Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf` | **36.0%** (32/89) |
 
-Preliminary aggregate score of **37.8%** from 3 independent runs. Each ran on an incremental build of Pim, though changes between runs were minor and none were tuned to the benchmark. Pim's `subagent` tool was disabled for all runs to keep each trial single-agent.
+Preliminary aggregate score of **37.8%** from 3 independent runs. Each ran on an incremental build of HD Agent, though changes between runs were minor and none were tuned to the benchmark. HD Agent's `subagent` tool was disabled for all runs to keep each trial single-agent.
 
-On average, Pim solves **~54% more tasks** than [little-coder](https://github.com/itayinbarr/little-coder) with the same Qwen3.6-35B model (37.8% vs 24.6%). This also places Pim in a similar tier to Claude Code + Sonnet 4.5 (40.1%), and above Codex + GPT-5-Mini (31.9%).
+On average, HD Agent solves **~54% more tasks** than [little-coder](https://github.com/itayinbarr/little-coder) with the same Qwen3.6-35B model (37.8% vs 24.6%). This also places HD Agent in a similar tier to Claude Code + Sonnet 4.5 (40.1%), and above Codex + GPT-5-Mini (31.9%).
 
 The Qwen3.6-35B model is hosted via llama.cpp on an M4 Pro 48GB MacBook, with the following config:
 
@@ -223,7 +215,7 @@ _Note 4_: see the [`benchmarks/terminal_bench_2`](./benchmarks/terminal_bench_2/
 
 ## Agent Tools
 
-Pim revamps Pi's default tools (`bash`, `read`, `write`, `edit`) so they produce consistent behaviour and output, cross-reference each other where useful, and render uniformly in the TUI. It also adds:
+HD Agent revamps Pi's default tools (`bash`, `read`, `write`, `edit`) so they produce consistent behaviour and output, cross-reference each other where useful, and render uniformly in the TUI. It also adds:
 
 - **`apply_patch`** - V4A patch editing, dynamically exposed instead of `edit` for OpenAI models
 - **`glob`** - file enumeration by glob pattern, sorted newest-first, respects `.gitignore`
@@ -235,7 +227,7 @@ Pim revamps Pi's default tools (`bash`, `read`, `write`, `edit`) so they produce
 
 ## Terminal UI
 
-Pim also ships with quality of life improvements for the TUI:
+HD Agent also ships with quality of life improvements for the TUI:
 
 - **ANSI-compatible themes** - `pim-light` and `pim-dark` themes which adapt to your terminal's colour scheme
 - **fzf-style autocomplete** - `@path` file picker and `/command` picker with fuzzy search
@@ -245,7 +237,7 @@ Pim also ships with quality of life improvements for the TUI:
 
 ## Telegram Bot
 
-Run Pim as a Telegram bot with full agent capabilities in your DMs or group chats (supports threads).
+Run HD Agent as a Telegram bot with full agent capabilities in your DMs or group chats (supports threads).
 
 ### Setup
 
@@ -262,15 +254,15 @@ Then, install and run as a persistent daemon (_recommended_):
 
 ```sh
 # Supports Linux (systemd) and macOS (launchd)
-amp-pi --mode telegram --install
+hd-agent --mode telegram --install
 
 # Tear down
-amp-pi --mode telegram --uninstall
+hd-agent --mode telegram --uninstall
 ```
 
 The daemon auto-restarts on failure and supports the `/update` command for in-chat updates.
 
-For development, run standalone with `amp-pi --mode telegram` instead.
+For development, run standalone with `hd-agent --mode telegram` instead.
 
 ### Commands
 
@@ -311,4 +303,4 @@ See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 bun dev
 ```
 
-Pim is registered as a project-local Pi package via `.pi/settings.json` and auto-loads when launched from within this repo. Use the built-in `/reload` command to reload after edits without restarting.
+HD Agent is registered as a project-local Pi package via `.pi/settings.json` and auto-loads when launched from within this repo. Use the built-in `/reload` command to reload after edits without restarting.

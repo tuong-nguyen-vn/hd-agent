@@ -52,7 +52,7 @@ export class McpClient {
   public constructor(options: McpClientOptions) {
     this.endpoint = options.endpoint;
     this.extraHeaders = options.headers ?? {};
-    this.clientName = options.clientName ?? "pim-agent";
+    this.clientName = options.clientName ?? "hd-agent";
     this.clientVersion = options.clientVersion ?? "0.0.0";
     this.rateLimiter = options.rateLimiter;
     this.ky = ky.create(

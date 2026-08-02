@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@aaroncql/pim-agent",
+      "name": "hd-agent",
       "dependencies": {
         "diff": "^9.0.0",
         "fzf": "^0.5.2",

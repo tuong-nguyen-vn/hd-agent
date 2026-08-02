@@ -4,9 +4,9 @@ import { dirname, join } from "node:path";
 
 import { Fs } from "../shared/Fs";
 
-const UNIT_NAME = "pim-telegram";
-const LAUNCHD_LABEL = "com.aaroncql.pim-telegram";
-const NPM_PACKAGE = "@aaroncql/pim-agent";
+const UNIT_NAME = "hd-agent-telegram";
+const LAUNCHD_LABEL = "com.hdwebsoft.hd-agent-telegram";
+const NPM_PACKAGE = "github:tuong-nguyen-vn/hd-agent";
 const PI_PACKAGE = "@earendil-works/pi-coding-agent";
 const CONFIRM_FILE = "update-confirm.json";
 
@@ -293,7 +293,7 @@ export class Supervisor {
   private static systemdUnit(mode: Mode): string {
     return [
       "[Unit]",
-      "Description=Pim Telegram daemon",
+      "Description=HD Agent Telegram daemon",
       "After=network-online.target",
       "Wants=network-online.target",
       "",

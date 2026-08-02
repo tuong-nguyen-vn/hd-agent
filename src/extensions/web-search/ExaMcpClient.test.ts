@@ -112,7 +112,7 @@ test("parses Exa JSON results", async () => {
               text: JSON.stringify({
                 results: [
                   {
-                    title: "Pim docs",
+                    title: "HD Agent docs",
                     url: "https://example.test/pim",
                     snippet: "A concise result.",
                   },
@@ -129,7 +129,7 @@ test("parses Exa JSON results", async () => {
     client.search({ query: "pim agent", numResults: 3 })
   ).resolves.toEqual([
     {
-      title: "Pim docs",
+      title: "HD Agent docs",
       url: "https://example.test/pim",
       snippet: "A concise result.",
     },

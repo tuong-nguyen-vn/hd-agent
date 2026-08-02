@@ -1,21 +1,21 @@
 # Developer Guide
 
-Pim is an opinionated yet minimal, Bun-native extension pack for [Pi](https://pi.dev/).
+HD Agent is an opinionated yet minimal, Bun-native extension pack for [Pi](https://pi.dev/).
 
 `bin/pim.ts` is a Bun launcher that resolves pi's `cli.js` and runs it under Bun, bypassing pi's Node shebang. Other pi extensions still work normally.
 
-Dev setup: `bun link` puts `amp-pi` on PATH; `.pi/settings.json` registers Pim Agent as a project-local pi package, so pi auto-loads it inside this repo. Launching plain `pi` (Node) instead of `amp-pi` trips Pim Agent's Bun runtime guard.
+Dev setup: `bun link` puts `hd-agent` on PATH; `.pi/settings.json` registers HD Agent as a project-local pi package, so pi auto-loads it inside this repo. Launching plain `pi` (Node) instead of `hd-agent` trips HD Agent's Bun runtime guard.
 
 ## Commands
 
 - `bun run check`: typecheck + test + lint + format. **Run after every change.**
-- `bun dev`: `bun link` then launch `amp-pi` from this repo.
+- `bun dev`: `bun link` then launch `hd-agent` from this repo.
 - `bun test src --only-failures`: run only previously-failing tests. Single test: `bun test src/path/to/file.test.ts`.
 - `bun run typecheck` / `bun run lint` / `bun run format`: individual steps if you want to isolate.
 
-Inside a running `amp-pi` session, `/reload` re-loads Pim Agent after edits without restarting.
+Inside a running `hd-agent` session, `/reload` re-loads HD Agent after edits without restarting.
 
-Telegram daemon: `amp-pi --mode telegram --install` writes a user systemd/launchd unit and starts it. From Telegram, `/update` re-runs `bun install` (dev) or bumps the global pi and pim installs to latest (prod), then exits so the supervisor restarts the daemon. `amp-pi --mode telegram --uninstall` tears it down. See `src/telegram/Supervisor.ts`.
+Telegram daemon: `amp-pi --mode telegram --install` writes a user systemd/launchd unit and starts it. From Telegram, `/update` re-runs `bun install` (dev) or bumps the global Pi and HD Agent installs to latest (prod), then exits so the supervisor restarts the daemon. `amp-pi --mode telegram --uninstall` tears it down. See `src/telegram/Supervisor.ts`.
 
 ## Code Conventions
 

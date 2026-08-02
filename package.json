@@ -1,24 +1,24 @@
 {
-  "name": "@aaroncql/pim-agent",
+  "name": "hd-agent",
   "version": "0.9.0",
-  "description": "A Bun-native extension pack for Pi: web access, subagents, revamped core tools, ANSI-compatible themes, fzf-style completions, Telegram mode, and more.",
+  "description": "HD Agent is a Bun-native extension pack for Pi: web access, subagents, revamped core tools, ANSI-compatible themes, fzf-style completions, Telegram mode, and more.",
   "license": "MIT",
   "type": "module",
   "keywords": [
     "pi-package",
     "agent"
   ],
-  "homepage": "https://github.com/AaronCQL/pim-agent#readme",
+  "homepage": "https://github.com/tuong-nguyen-vn/hd-agent#readme",
   "bugs": {
-    "url": "https://github.com/AaronCQL/pim-agent/issues"
+    "url": "https://github.com/tuong-nguyen-vn/hd-agent/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AaronCQL/pim-agent.git"
+    "url": "git+https://github.com/tuong-nguyen-vn/hd-agent.git"
   },
   "bin": {
-    "amp-pi": "bin/pim.ts",
     "hd-agent": "bin/pim.ts",
+    "amp-pi": "bin/pim.ts",
     "pi": "bin/pim.ts"
   },
   "files": [
@@ -36,10 +36,10 @@
     "themes": [
       "./src/themes"
     ],
-    "image": "https://raw.githubusercontent.com/AaronCQL/pim-agent/refs/heads/main/assets/demo.webp"
+    "image": "https://raw.githubusercontent.com/tuong-nguyen-vn/hd-agent/refs/heads/main/assets/demo.webp"
   },
   "scripts": {
-    "dev": "bun link && amp-pi",
+    "dev": "bun link && hd-agent",
     "typecheck": "tsgo --noEmit",
     "test": "bun test src --only-failures",
     "lint": "oxlint . --fix",
