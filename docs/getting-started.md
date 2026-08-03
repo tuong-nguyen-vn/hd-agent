@@ -1,26 +1,26 @@
-# HD Agent - Hướng dẫn cài đặt và sử dụng
+# HD Agent - Getting Started Guide
 
-## Cài đặt
+## Installation
 
-### Yêu cầu
+### Prerequisites
 
-- **Bun** runtime (script sẽ tự cài nếu chưa có)
-- **Pi** coding agent (script sẽ tự cài nếu chưa có)
+- **Bun** runtime (the installer will install it if missing)
+- **Pi** coding agent (the installer will install it if missing)
 
-### Cài đặt bằng một lệnh
+### One-command install
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tuong-nguyen-vn/hd-agent/main/install.sh | sh
 ```
 
-Script tự động:
-- Cài Bun nếu chưa có (macOS, Linux, WSL, Windows Git Bash)
-- Cài Pi nếu chưa có
-- Gỡ package cũ `pim-agent` nếu còn (tránh xung đột tool)
-- Cài/ cập nhật HD Agent làm Pi extension
-- Cài/ cập nhật launcher `hd-agent` toàn cục
+The installer automatically:
+- Installs Bun if missing (macOS, Linux, WSL, Windows Git Bash)
+- Installs Pi if missing
+- Removes the legacy `pim-agent` package if present (avoids tool conflicts)
+- Installs or updates HD Agent as a Pi extension
+- Installs or updates the `hd-agent` global launcher
 
-### Cài thủ công
+### Manual install
 
 ```sh
 curl -fsSL https://pi.dev/install.sh | sh
@@ -28,7 +28,7 @@ pi install git:github.com/tuong-nguyen-vn/hd-agent
 bun install -g github:tuong-nguyen-vn/hd-agent
 ```
 
-### Khởi động
+### Launch
 
 ```sh
 hd-agent
@@ -36,38 +36,38 @@ hd-agent
 
 ---
 
-## Cấu hình Provider và API Key
+## Provider and API Key Setup
 
-### Chọn provider
+### Select a provider
 
-Trong TUI, gõ lệnh:
+In the TUI, run:
 
 ```
 /login
 ```
 
-Chọn một trong các provider có sẵn. Hai provider nội bộ chính:
+Choose from the available providers. Two main internal providers:
 
-| Provider | Cách lấy key |
+| Provider | How to get a key |
 | --- | --- |
-| **Devin** | Yêu cầu admin cấp key cho tài khoản Devin |
-| **HDWEBSOFT** | Dùng API key được cung cấp bởi HDWEBSOFT |
+| **Devin** | Request an API key from your admin for your Devin account |
+| **HDWEBSOFT** | Use the API key provided by HDWEBSOFT |
 
 ### Devin
 
-1. Chọn account **Devin** trong `/login`.
-2. Yêu cầu admin cấp API key cho tài khoản của bạn.
-3. Nhập key khi được hỏi.
+1. Select the **Devin** account in `/login`.
+2. Request an API key from your admin.
+3. Enter the key when prompted.
 
 ### HDWEBSOFT
 
-1. Chọn **API Key** trong `/login`.
-2. Chọn provider **hdwebsoft**.
-3. Nhập key được cung cấp.
+1. Select **API Key** in `/login`.
+2. Select the **hdwebsoft** provider.
+3. Enter the provided key.
 
 ---
 
-## Cấu hình cơ bản
+## Basic Configuration
 
 ### Theme
 
@@ -75,11 +75,11 @@ Chọn một trong các provider có sẵn. Hai provider nội bộ chính:
 /settings
 ```
 
-Chọn **Theme** → chọn **pim-dark**.
+Select **Theme** → select **pim-dark**.
 
-### Pi settings khuyến nghị
+### Recommended Pi settings
 
-Thêm vào `~/.pi/agent/settings.json`:
+Add to `~/.pi/agent/settings.json`:
 
 ```json
 {
@@ -118,61 +118,61 @@ File: `~/.pim/settings.json`
 
 ---
 
-## Phím tắt
+## Keyboard Shortcuts
 
-| Phím | Chức năng |
+| Key | Action |
 | --- | --- |
-| `Ctrl+T` | Bật/ tắt Thinking |
+| `Ctrl+T` | Toggle Thinking on/ off |
 | `Shift+Tab` | Switch Thinking mode |
-| `Ctrl+P` | Switch nhanh model |
-| `Ctrl+O` | Toggle chi tiết tool call |
-| `Esc` | Hủy autocomplete / dừng streaming |
-| `Ctrl+C` | Xóa editor (lần 1) / thoát (lần 2) |
+| `Ctrl+P` | Quick-switch model |
+| `Ctrl+O` | Toggle tool call details |
+| `Esc` | Cancel autocomplete / abort streaming |
+| `Ctrl+C` | Clear editor (first) / exit (second) |
 
-### Lệnh slash
+### Slash commands
 
-| Lệnh | Chức năng |
+| Command | Action |
 | --- | --- |
-| `/settings` | Mở menu cài đặt |
-| `/scope <model>` | Chọn các model hay sử dụng |
-| `/tps` | Bật/ tắt báo cáo tốc độ inference |
-| `/hotkeys` | Xem tất cả phím tắt |
+| `/settings` | Open settings menu |
+| `/scope <model>` | Select frequently used models |
+| `/tps` | Toggle inference speed reporting |
+| `/hotkeys` | Show all keyboard shortcuts |
 
 ---
 
-## Subagent
+## Subagents
 
-HD Agent có hai subagent mặc định.
+HD Agent ships with two built-in subagents.
 
 ### Oracle
 
-- **Mục đích**: AI advisor với khả năng suy luận nâng cao.
-- **Khi dùng**: review code, feedback kiến trúc, tìm bug khó trải nhiều file, lập kế hoạch implement/refactor phức tạp, trả lời câu hỏi kỹ thuật cần suy luận sâu, hoặc xin ý kiến thứ hai khi agent chính bí.
-- **Model**: `gpt-5.6-sol`, `gpt-5.6-luna`, `claude-opus-5`.
-- **Không dùng cho**: đọc file, tìm kiếm keyword đơn giản, duyệt web, sửa code cơ bản.
+- **Purpose**: AI advisor with advanced reasoning capabilities.
+- **When to use**: code reviews, architecture feedback, finding difficult bugs across many files, planning complex implementations or refactors, answering deep technical questions, or getting a second opinion when the main agent is stuck.
+- **Models**: `gpt-5.6-sol`, `gpt-5.6-luna`, `claude-opus-5`.
+- **Not for**: file reads, simple keyword searches, web browsing, basic code edits.
 
 ### Search
 
-- **Mục đích**: Tìm kiếm code song song, nhanh.
-- **Khi dùng**: tìm file/ code theo chức năng hoặc khái niệm, chain nhiều tìm kiếm, liệt kê tất cả occurrences của một pattern.
-- **Model**: `gemini-3.6-flash`, `swe-1-7`.
-- **Đặc điểm**: chạy nhiều tool call song song mỗi turn, hoàn thành trong 3 turn, trả về danh sách file kèm line range.
+- **Purpose**: Fast, parallel code search.
+- **When to use**: finding files and code by functionality or concept, chaining multiple searches, locating all occurrences of a pattern across the codebase.
+- **Models**: `gemini-3.6-flash`, `swe-1-7`.
+- **Characteristics**: runs multiple tool calls in parallel per turn, completes within 3 turns, returns a list of files with line ranges.
 
-### Custom subagent
+### Custom subagents
 
-Đặt file markdown vào:
+Place markdown files in:
 
 ```
 ~/.pi/agent/agents/      # user-level
-.pi/agents/              # project-level (override user-level)
+.pi/agents/              # project-level (overrides user-level)
 ```
 
-Format file (xem `src/extensions/subagent/bundled-agents/` để tham khảo):
+File format (see `src/extensions/subagent/bundled-agents/` for examples):
 
 ```markdown
 ---
 name: MyAgent
-description: Mô tả ngắn về tính năng.
+description: Short description of what this agent does.
 tools: grep, glob, read
 model: gpt-5.6-sol
 ---
@@ -180,4 +180,4 @@ model: gpt-5.6-sol
 You are MyAgent — ...
 ```
 
-Project-level override user-level, user-level override bundled (matching case-insensitive).
+Project-level agents override user-level agents, which in turn override bundled defaults (matching is case-insensitive).
