@@ -1,9 +1,19 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  buildContextLines,
+  colorFor,
+  fetchHdwebsoftUsage,
+  renderUsageReport,
+} from "./hdwebsoft-usage";
 
-const HDWEBSOFT_PROXY_ROOT = "https://proxy-api.hdwebsoft.co";
+export const HDWEBSOFT_PROXY_ROOT = "https://proxy-api.hdwebsoft.co";
+const PROVIDER_ID = "hdwebsoft-proxy";
+const USAGE_WIDGET_ID = "usage-report";
+
+let usageWidgetShown = false;
 
 export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
-  pi.registerProvider("hdwebsoft-proxy", {
+  pi.registerProvider(PROVIDER_ID, {
     name: "HDWEBSOFT Proxy",
     authHeader: true,
     models: [
@@ -168,5 +178,58 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         },
       },
     ],
+  });
+
+  pi.registerCommand("usage", {
+    description: "Show context usage and HDWEBSOFT proxy quota",
+    handler: async (_args, ctx) => {
+      const color = colorFor(ctx);
+      const lines: string[] = [color("title", "usage")];
+      lines.push(...buildContextLines(ctx, color));
+      if (ctx.model?.provider === PROVIDER_ID) {
+        lines.push("");
+        try {
+          const resolution = await ctx.modelRegistry.getApiKeyAndHeaders(
+            ctx.model
+          );
+          if (!resolution.ok || !resolution.apiKey) {
+            lines.push(
+              color(
+                "error",
+                `No API key for ${PROVIDER_ID} — run /login ${PROVIDER_ID}`
+              )
+            );
+          } else {
+            lines.push(
+              ...renderUsageReport(
+                await fetchHdwebsoftUsage(
+                  HDWEBSOFT_PROXY_ROOT,
+                  resolution.apiKey
+                ),
+                color
+              )
+            );
+          }
+        } catch (err) {
+          lines.push(
+            color("error", `usage fetch failed: ${(err as Error).message}`)
+          );
+        }
+      }
+      if (ctx.hasUI) {
+        ctx.ui.setWidget(USAGE_WIDGET_ID, lines);
+        usageWidgetShown = true;
+      } else {
+        console.log(lines.join("\n"));
+      }
+    },
+  });
+
+  pi.on("input", (_event, ctx) => {
+    if (usageWidgetShown) {
+      ctx.ui.setWidget(USAGE_WIDGET_ID, undefined);
+      usageWidgetShown = false;
+    }
+    return { action: "continue" };
   });
 }
