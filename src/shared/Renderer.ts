@@ -36,7 +36,7 @@ export type PrefixSpec = {
   readonly width: number;
 };
 
-const SPINNER_FRAMES = ["⠹", "⠼", "⠶", "⠧"] as const;
+const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
 const SPINNER_INTERVAL_MS = 80;
 
 class ToolTitle implements Component {

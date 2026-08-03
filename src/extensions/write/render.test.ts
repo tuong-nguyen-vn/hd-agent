@@ -244,7 +244,7 @@ describe("DiffView.renderDiffCall with write's opt-in styling", () => {
       link: true,
     });
 
-    expect(component.render(80)[0]).toContain("⠹");
+    expect(component.render(80)[0]).toContain("⣿");
 
     const restored = DiffView.renderDiffCall({
       label: "Create",
@@ -260,7 +260,7 @@ describe("DiffView.renderDiffCall with write's opt-in styling", () => {
       link: true,
     });
     expect(restored.render(80)[0]).toContain("▪");
-    expect(restored.render(80)[0]).not.toContain("⠹");
+    expect(restored.render(80)[0]).not.toContain("⣿");
 
     DiffView.renderDiffResult({
       label: "Create",

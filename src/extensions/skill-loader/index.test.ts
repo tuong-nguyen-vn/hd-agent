@@ -288,7 +288,7 @@ describe("skill tool", () => {
       invalidate: () => {},
     });
     expect(partial.render(120).join("\n")).toContain(
-      "⠹ Invoked skill agent-browser"
+      "⣿ Invoked skill agent-browser"
     );
 
     const failed = tool.renderCall!({ name: "agent-browser" }, stubTheme, {
