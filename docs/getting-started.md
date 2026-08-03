@@ -103,9 +103,6 @@ File: `~/.pim/settings.json`
   "tps": {
     "enabled": false
   },
-  "powerline": {
-    "enabled": true
-  },
   "exa": {
     "apiKey": ""
   },
@@ -355,9 +352,6 @@ File: `~/.pim/settings.json`
 {
   "tps": {
     "enabled": false
-  },
-  "powerline": {
-    "enabled": true
   },
   "exa": {
     "apiKey": ""
