@@ -238,6 +238,10 @@ Project-level agents override user-level agents, which in turn override bundled 
 
 ---
 
+# Vietnamese version below / Phiên bản tiếng Việt bên dưới
+
+---
+
 # HD Agent - Hướng dẫn cài đặt và sử dụng (Tiếng Việt)
 
 ## Cài đặt
