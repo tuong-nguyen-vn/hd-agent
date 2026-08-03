@@ -65,23 +65,47 @@ install_pi() {
   log "Installing Pi"
   bun install -g "$PI_PACKAGE"
   refresh_path
-  find_bun_pi_cli >/dev/null 2>&1 || fail "Pi installation completed but its Bun global installation was not found."
+  find_bun_pi_cli >/dev/null 2>&1 || command -v pi >/dev/null 2>&1 || fail "Pi installation completed but the pi command was not found."
 }
 
 find_bun_pi_cli() {
   bun_global_bin=$(bun pm -g bin 2>/dev/null || true)
-  [ -n "$bun_global_bin" ] || return 1
+  if [ -n "$bun_global_bin" ]; then
+    bun_pi_cli="$bun_global_bin/../install/global/node_modules/$PI_PACKAGE/dist/cli.js"
+    if [ -f "$bun_pi_cli" ]; then
+      printf '%s\n' "$bun_pi_cli"
+      return 0
+    fi
+  fi
 
-  bun_pi_cli="$bun_global_bin/../install/global/node_modules/$PI_PACKAGE/dist/cli.js"
-  [ -f "$bun_pi_cli" ] || return 1
-  printf '%s\n' "$bun_pi_cli"
+  bun_global_root=$(bun pm -g ls 2>/dev/null | sed -n '1s/.*node_modules.*/&/p' || true)
+  if [ -n "$bun_global_root" ]; then
+    bun_pi_cli="$bun_global_root/$PI_PACKAGE/dist/cli.js"
+    if [ -f "$bun_pi_cli" ]; then
+      printf '%s\n' "$bun_pi_cli"
+      return 0
+    fi
+  fi
+
+  for candidate in \
+    "$BUN_INSTALL/install/global/node_modules/$PI_PACKAGE/dist/cli.js" \
+    "$HOME/.bun/install/global/node_modules/$PI_PACKAGE/dist/cli.js"; do
+    if [ -f "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 run_pi_package_command() {
   if pi_cli=$(find_bun_pi_cli); then
     bun "$pi_cli" "$@"
-  else
+  elif command -v pi >/dev/null 2>&1; then
     pi "$@"
+  else
+    fail "Pi is not installed. Run this script again."
   fi
 }
 
@@ -126,7 +150,11 @@ install_or_update_launcher() {
     bun remove -g "$LEGACY_PACKAGE"
   fi
 
-  bun install -g --force "$HD_AGENT_BUN_SOURCE"
+  if bun pm ls -g 2>/dev/null | grep -Fq 'hd-agent@'; then
+    bun remove -g hd-agent
+  fi
+
+  bun install -g --force --no-cache "$HD_AGENT_BUN_SOURCE"
   refresh_path
   command -v hd-agent >/dev/null 2>&1 || fail "HD Agent was installed but the hd-agent command was not found."
 }
