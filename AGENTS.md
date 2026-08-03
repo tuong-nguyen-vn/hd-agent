@@ -4,7 +4,7 @@ HD Agent is an opinionated yet minimal, Bun-native extension pack for [Pi](https
 
 `bin/pim.ts` is a Bun launcher that resolves pi's `cli.js` and runs it under Bun, bypassing pi's Node shebang. Other pi extensions still work normally.
 
-Dev setup: `bun link` puts `hd-agent` on PATH; `.pi/settings.json` registers HD Agent as a project-local pi package, so pi auto-loads it inside this repo. Launching plain `pi` (Node) instead of `hd-agent` trips HD Agent's Bun runtime guard.
+Dev setup: `bun link` puts `hd-agent` on PATH; `.pi/settings.json` registers HD Agent as a project-local pi package, so pi auto-loads it inside this repo. All three launcher bins (`hd-agent`, `amp-pi`, `pi`) point at the same Bun launcher. Launching plain `pi` (Node) instead of `hd-agent`/`amp-pi` trips HD Agent's Bun runtime guard.
 
 ## Commands
 
@@ -15,7 +15,7 @@ Dev setup: `bun link` puts `hd-agent` on PATH; `.pi/settings.json` registers HD 
 
 Inside a running `hd-agent` session, `/reload` re-loads HD Agent after edits without restarting.
 
-Telegram daemon: `amp-pi --mode telegram --install` writes a user systemd/launchd unit and starts it. From Telegram, `/update` re-runs `bun install` (dev) or bumps the global Pi and HD Agent installs to latest (prod), then exits so the supervisor restarts the daemon. `amp-pi --mode telegram --uninstall` tears it down. See `src/telegram/Supervisor.ts`.
+Telegram daemon: `hd-agent --mode telegram --install` (or `amp-pi`/`pi`) writes a user systemd/launchd unit and starts it. From Telegram, `/update` re-runs `bun install` (dev) or bumps the global Pi and HD Agent installs to latest (prod), then exits so the supervisor restarts the daemon. `hd-agent --mode telegram --uninstall` tears it down. See `src/telegram/Supervisor.ts`.
 
 ## Code Conventions
 
