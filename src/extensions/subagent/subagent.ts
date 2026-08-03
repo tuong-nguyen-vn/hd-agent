@@ -149,10 +149,11 @@ export async function createSdkSubagentSession(
 // by several providers, all authenticated candidates are returned (preferring
 // the parent's current provider first) instead of failing, so callers can
 // fall back across providers if the first candidate errors out.
+// Returns an empty array when the reference is not found, so callers can
+// skip it and try the next comma-separated fallback.
 function resolveModelReference(
   parentCtx: ExtensionContext,
-  reference: string,
-  agentLabel: string
+  reference: string
 ): readonly Model<any>[] {
   const normalized = reference.toLowerCase();
   const models = parentCtx.modelRegistry.getAll();
@@ -165,9 +166,7 @@ function resolveModelReference(
 
   const byId = models.filter((model) => model.id.toLowerCase() === normalized);
   if (byId.length === 0) {
-    throw new Error(
-      `Unknown model "${reference}" for subagent "${agentLabel}". Use an exact model id or provider/model.`
-    );
+    return [];
   }
 
   const authenticated = byId.filter((model) =>
@@ -204,12 +203,14 @@ export function resolveSubagentModelCandidates(
 
   const seen = new Set<string>();
   const candidates: Model<any>[] = [];
+  const missing: string[] = [];
   for (const reference of references) {
-    for (const model of resolveModelReference(
-      parentCtx,
-      reference,
-      agentLabel
-    )) {
+    const resolved = resolveModelReference(parentCtx, reference);
+    if (resolved.length === 0) {
+      missing.push(reference);
+      continue;
+    }
+    for (const model of resolved) {
       const key = `${model.provider}/${model.id}`;
       if (seen.has(key)) {
         continue;
@@ -217,6 +218,11 @@ export function resolveSubagentModelCandidates(
       seen.add(key);
       candidates.push(model);
     }
+  }
+  if (candidates.length === 0) {
+    throw new Error(
+      `Unknown model "${missing.join(", ")}" for subagent "${agentLabel}". Use an exact model id or provider/model.`
+    );
   }
   return candidates;
 }

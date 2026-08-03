@@ -175,6 +175,28 @@ describe("resolveSubagentModel", () => {
     ).toThrow('Unknown model "missing-model"');
   });
 
+  test("unknown model in a comma-separated list is skipped, remaining models are used", () => {
+    const geminiFlash = { provider: "proxy", id: "gemini-3.6-flash" } as never;
+    const ctx2 = {
+      model: { provider: "proxy", id: "parent-model" } as never,
+      modelRegistry: {
+        getAll: () => [geminiFlash],
+        hasConfiguredAuth: () => true,
+      },
+    } as unknown as ExtensionContext;
+
+    const candidates = resolveSubagentModelCandidates(ctx2, {
+      name: "Search",
+      description: "Search",
+      tools: undefined,
+      model: "swe-1-7, gemini-3.6-flash",
+      systemPrompt: "",
+      source: "bundled",
+    });
+
+    expect(candidates).toEqual([geminiFlash]);
+  });
+
   test("a bare model id shared by multiple providers yields every authenticated candidate, current provider first", () => {
     const proxyFlash = { provider: "proxy", id: "flash" } as never;
     const devinFlash = { provider: "devin", id: "flash" } as never;
