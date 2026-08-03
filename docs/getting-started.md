@@ -114,7 +114,7 @@ File: `~/.pim/settings.json`
   },
   "agents": {
     "Oracle": "gpt-5.6-sol,claude-opus-5",
-    "Search": "deepseek-v4-flash,gemini-3.6-flash"
+    "Search": "gemini-3.6-flash,deepseek-v4-flash"
   }
 }
 ```
@@ -172,7 +172,7 @@ Override the model used by each subagent. Values are comma-separated model IDs (
 {
   "agents": {
     "Oracle": "gpt-5.6-sol,claude-opus-5",
-    "Search": "deepseek-v4-flash,gemini-3.6-flash"
+    "Search": "gemini-3.6-flash,deepseek-v4-flash"
   }
 }
 ```
@@ -218,7 +218,7 @@ HD Agent ships with two built-in subagents.
 
 - **Purpose**: Fast, parallel code search.
 - **When to use**: finding files and code by functionality or concept, chaining multiple searches, locating all occurrences of a pattern across the codebase.
-- **Models**: `deepseek-v4-flash`, `gemini-3.6-flash`.
+- **Models**: `gemini-3.6-flash`, `deepseek-v4-flash`.
 - **Characteristics**: runs multiple tool calls in parallel per turn, completes within 3 turns, returns a list of files with line ranges.
 
 ### Custom subagents
@@ -367,7 +367,7 @@ File: `~/.pim/settings.json`
   },
   "agents": {
     "Oracle": "gpt-5.6-sol,claude-opus-5",
-    "Search": "deepseek-v4-flash,gemini-3.6-flash"
+    "Search": "gemini-3.6-flash,deepseek-v4-flash"
   }
 }
 ```
@@ -425,7 +425,7 @@ Override model dùng cho từng subagent. Giá trị là danh sách model ID cá
 {
   "agents": {
     "Oracle": "gpt-5.6-sol,claude-opus-5",
-    "Search": "deepseek-v4-flash,gemini-3.6-flash"
+    "Search": "gemini-3.6-flash,deepseek-v4-flash"
   }
 }
 ```
@@ -471,7 +471,7 @@ HD Agent có sẵn hai subagent mặc định.
 
 - **Mục đích**: Tìm kiếm code song song, nhanh.
 - **Khi dùng**: tìm file/ code theo chức năng hoặc khái niệm, chain nhiều tìm kiếm, liệt kê tất cả occurrences của một pattern.
-- **Model**: `deepseek-v4-flash`, `gemini-3.6-flash`.
+- **Model**: `gemini-3.6-flash`, `deepseek-v4-flash`.
 - **Đặc điểm**: chạy nhiều tool call song song mỗi turn, hoàn thành trong 3 turn, trả về danh sách file kèm line range.
 
 ### Custom subagent
