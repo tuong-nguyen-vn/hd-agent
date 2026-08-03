@@ -12,7 +12,6 @@ const FIXTURE: UsageData = {
         remaining_percent: 89,
         resets_at: "",
         resets_at_max: "2026-08-03T21:20:00Z",
-        accounts: 11,
       },
       {
         name: "7-day",
@@ -20,7 +19,6 @@ const FIXTURE: UsageData = {
         remaining_percent: 36,
         resets_at: "2026-08-04T10:00:00Z",
         resets_at_max: "2026-08-09T19:59:59Z",
-        accounts: 11,
       },
     ],
     deepseek: [
@@ -30,7 +28,6 @@ const FIXTURE: UsageData = {
         remaining_percent: 94,
         resets_at: "2026-09-02T06:27:36Z",
         resets_at_max: "2026-09-02T06:27:36Z",
-        accounts: 1,
       },
       {
         name: "session",
@@ -38,7 +35,6 @@ const FIXTURE: UsageData = {
         remaining_percent: 86,
         resets_at: "2026-08-03T17:21:17Z",
         resets_at_max: "2026-08-03T17:21:17Z",
-        accounts: 1,
       },
       {
         name: "weekly",
@@ -46,7 +42,6 @@ const FIXTURE: UsageData = {
         remaining_percent: 93,
         resets_at: "2026-08-09T23:59:12Z",
         resets_at_max: "2026-08-09T23:59:12Z",
-        accounts: 1,
       },
     ],
     gemini: [
@@ -56,7 +51,6 @@ const FIXTURE: UsageData = {
         remaining_percent: 99,
         resets_at: "2026-08-03T17:28:12Z",
         resets_at_max: "2026-08-03T21:10:21Z",
-        accounts: 8,
       },
       {
         name: "weekly",
@@ -64,7 +58,6 @@ const FIXTURE: UsageData = {
         remaining_percent: 67,
         resets_at: "2026-08-04T23:09:49Z",
         resets_at_max: "2026-08-07T10:35:58Z",
-        accounts: 8,
       },
     ],
   },
@@ -115,7 +108,6 @@ describe("renderUsageReport", () => {
             remaining_percent: 100,
             resets_at: "2026-08-03T17:28:12Z",
             resets_at_max: "2026-08-03T21:10:21Z",
-            accounts: 8,
           },
         ],
       },
@@ -142,14 +134,6 @@ describe("renderUsageReport", () => {
     const session = lines.find((l) => l.startsWith("  session"))!;
     expect(session).toContain("resets in 1h 21m");
     expect(session).not.toContain("→");
-  });
-
-  test("shows averaged account count only when greater than 1", () => {
-    const lines = render(FIXTURE);
-    const fiveHour = lines.find((l) => l.includes("11%"))!;
-    expect(fiveHour).toContain("avg 11");
-    const session = lines.find((l) => l.startsWith("  session"))!;
-    expect(session).not.toContain("avg");
   });
 
   test("skips families the API did not return", () => {

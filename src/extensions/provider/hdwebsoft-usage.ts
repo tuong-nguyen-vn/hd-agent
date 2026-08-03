@@ -7,7 +7,6 @@ export type UsageBucket = {
   readonly remaining_percent: number;
   readonly resets_at: string;
   readonly resets_at_max?: string;
-  readonly accounts?: number;
 };
 
 export type UsageData = {
@@ -22,6 +21,7 @@ export type UsageStyle =
   | "muted"
   | "pct"
   | "dim"
+  | "ok"
   | "error";
 
 export type UsageColorFn = (style: UsageStyle, text: string) => string;
@@ -89,10 +89,6 @@ export function renderUsageReport(
     for (const bucket of sorted) {
       const used = Number(bucket.used_percent);
       const pct = `${Number.isFinite(used) ? Math.round(used) : 0}`.padStart(3);
-      const accounts =
-        bucket.accounts !== undefined && bucket.accounts > 1
-          ? color("dim", ` · avg ${bucket.accounts}`)
-          : "";
       const first = resetText(bucket.resets_at, nowMs);
       const last = bucket.resets_at_max
         ? resetText(bucket.resets_at_max, nowMs)
@@ -108,7 +104,6 @@ export function renderUsageReport(
       lines.push(
         color("muted", `  ${bucket.name.padEnd(labelWidth)} `) +
           color("pct", `${bar(used)} ${pct}%`) +
-          accounts +
           (reset ? `  ${reset}` : "")
       );
     }
@@ -139,6 +134,8 @@ export function colorFor(ctx: ExtensionContext): UsageColorFn {
         return theme.fg("mdCode", text);
       case "dim":
         return theme.fg("dim", text);
+      case "ok":
+        return theme.fg("success", text);
       case "error":
         return theme.fg("error", text);
     }
