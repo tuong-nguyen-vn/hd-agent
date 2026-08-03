@@ -40,24 +40,47 @@ In the TUI, run:
 /login
 ```
 
-Choose from the available providers. Two main internal providers:
+You will see two authentication methods:
 
-| Provider | How to get a key |
-| --- | --- |
-| **Devin** | Request an API key from your admin for your Devin account |
-| **HDWEBSOFT** | Use the API key provided by HDWEBSOFT |
+```
+Select authentication method:
 
-### Devin
+ → Sign in with an account
+   Sign in with an API key
 
-1. Select the **Devin** account in `/login`.
-2. Request an API key from your admin.
-3. Enter the key when prompted.
+ ↑↓ navigate  enter select  escape/ctrl+c cancel
+```
 
-### HDWEBSOFT
+- **Sign in with an account** — OAuth login for providers like Devin, GitHub Copilot, OpenRouter, etc.
+- **Sign in with an API key** — manual API key entry for providers like HDWEBSOFT, OpenAI, Anthropic, etc.
 
-1. Select **API Key** in `/login`.
-2. Select the **hdwebsoft** provider.
-3. Enter the provided key.
+Use `↑`/`↓` to navigate, `Enter` to select, `Esc` or `Ctrl+C` to cancel.
+
+### Devin (Sign in with an account)
+
+1. Run `/login`.
+2. Select **Sign in with an account**.
+3. Select **Devin** from the provider list.
+4. You will be redirected to Devin's OAuth flow. If you don't have an API key yet, request one from your admin.
+5. Complete the sign-in. The credential is saved automatically.
+
+### HDWEBSOFT (Sign in with an API key)
+
+1. Run `/login`.
+2. Select **Sign in with an API key**.
+3. Select **hdwebsoft** from the provider list.
+4. Enter the API key provided by HDWEBSOFT when prompted.
+5. The key is saved to `~/.pi/agent/settings.json` automatically.
+
+### Verify login
+
+After login, check that the provider is active:
+
+```
+/model
+```
+
+This shows the current model and provider. You can switch models with `Ctrl+P` or `/scope`.
 
 ---
 
@@ -284,24 +307,47 @@ Trong TUI, gõ lệnh:
 /login
 ```
 
-Chọn từ các provider có sẵn. Hai provider nội bộ chính:
+Bạn sẽ thấy hai phương thức xác thực:
 
-| Provider | Cách lấy key |
-| --- | --- |
-| **Devin** | Yêu cầu admin cấp API key cho tài khoản Devin |
-| **HDWEBSOFT** | Dùng API key được cung cấp bởi HDWEBSOFT |
+```
+Select authentication method:
 
-### Devin
+ → Sign in with an account
+   Sign in with an API key
 
-1. Chọn account **Devin** trong `/login`.
-2. Yêu cầu admin cấp API key.
-3. Nhập key khi được hỏi.
+ ↑↓ navigate  enter select  escape/ctrl+c cancel
+```
 
-### HDWEBSOFT
+- **Sign in with an account** — đăng nhập OAuth cho các provider như Devin, GitHub Copilot, OpenRouter, v.v.
+- **Sign in with an API key** — nhập API key thủ công cho các provider như HDWEBSOFT, OpenAI, Anthropic, v.v.
 
-1. Chọn **API Key** trong `/login`.
-2. Chọn provider **hdwebsoft**.
-3. Nhập key được cung cấp.
+Dùng `↑`/`↓` để di chuyển, `Enter` để chọn, `Esc` hoặc `Ctrl+C` để hủy.
+
+### Devin (Sign in with an account)
+
+1. Gõ `/login`.
+2. Chọn **Sign in with an account**.
+3. Chọn **Devin** từ danh sách provider.
+4. Bạn sẽ được chuyển đến luồng OAuth của Devin. Nếu chưa có API key, yêu cầu admin cấp key.
+5. Hoàn tất đăng nhập. Thông tin xác thực được lưu tự động.
+
+### HDWEBSOFT (Sign in with an API key)
+
+1. Gõ `/login`.
+2. Chọn **Sign in with an API key**.
+3. Chọn **hdwebsoft** từ danh sách provider.
+4. Nhập API key được HDWEBSOFT cung cấp khi được hỏi.
+5. Key được lưu tự động vào `~/.pi/agent/settings.json`.
+
+### Kiểm tra đăng nhập
+
+Sau khi đăng nhập, kiểm tra provider đang hoạt động:
+
+```
+/model
+```
+
+Lệnh này hiển thị model và provider hiện tại. Bạn có thể switch model bằng `Ctrl+P` hoặc `/scope`.
 
 ---
 
