@@ -15,6 +15,7 @@ A Bun-native extension pack for [Pi](https://pi.dev/): web access, subagents, re
   - [API Keys (Optional)](#api-keys-optional)
   - [HD Agent Configuration](#hd-agent-configuration)
   - [Recommended Pi Settings (Optional)](#recommended-pi-settings-optional)
+- [Getting Started Guide](docs/getting-started.md)
 - [Why HD Agent?](#why-hd-agent)
   - [Lean System Prompt](#lean-system-prompt)
   - [Model-Aware Tools](#model-aware-tools)
