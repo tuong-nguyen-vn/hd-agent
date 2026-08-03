@@ -94,20 +94,6 @@ This shows the current model and provider. You can switch models with `Ctrl+P` o
 
 Select **Theme** → select **pim-dark** (or any theme you prefer).
 
-### Recommended Pi settings
-
-Add to `~/.pi/agent/settings.json`:
-
-```json
-{
-  "quietStartup": true,
-  "editorPaddingX": 1,
-  "markdown": {
-    "codeBlockIndent": ""
-  }
-}
-```
-
 ### HD Agent settings
 
 File: `~/.pim/settings.json`
@@ -360,20 +346,6 @@ Lệnh này hiển thị model và provider hiện tại. Bạn có thể switch
 ```
 
 Chọn **Theme** → chọn **pim-dark** (hoặc theme nào bạn thích).
-
-### Pi settings khuyến nghị
-
-Thêm vào `~/.pi/agent/settings.json`:
-
-```json
-{
-  "quietStartup": true,
-  "editorPaddingX": 1,
-  "markdown": {
-    "codeBlockIndent": ""
-  }
-}
-```
 
 ### HD Agent settings
 
