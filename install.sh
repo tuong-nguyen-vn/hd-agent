@@ -126,7 +126,7 @@ install_or_update_launcher() {
     bun remove -g "$LEGACY_PACKAGE"
   fi
 
-  bun install -g "$HD_AGENT_BUN_SOURCE"
+  bun install -g --force "$HD_AGENT_BUN_SOURCE"
   refresh_path
   command -v hd-agent >/dev/null 2>&1 || fail "HD Agent was installed but the hd-agent command was not found."
 }
