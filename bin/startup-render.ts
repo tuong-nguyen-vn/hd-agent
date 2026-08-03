@@ -9,6 +9,24 @@ const FAILSAFE_MS = 10_000;
 const piCli = process.env["AMP_PI_CLI"];
 const interactive = process.stdin.isTTY && process.stdout.isTTY;
 
+if (piCli) {
+  // pi's shutdown hint ("To resume this session: pi --session …") prints pi's own
+  // APP_NAME. Rewrite the command token so the hint points at hd-agent instead.
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  process.stdout.write = ((chunk: string | Uint8Array, ...rest: unknown[]) => {
+    if (
+      typeof chunk === "string" &&
+      chunk.includes("To resume this session:")
+    ) {
+      chunk = chunk.replace(/(^|\s)pi(?=\s+--session)/, "$1hd-agent");
+    }
+    return (originalStdoutWrite as (...args: unknown[]) => boolean)(
+      chunk,
+      ...rest
+    );
+  }) as typeof process.stdout.write;
+}
+
 const powerlineEnabled = async (): Promise<boolean> => {
   const settingsPath = join(
     process.env["PIM_HOME_DIR"] ?? join(homedir(), ".pim"),
