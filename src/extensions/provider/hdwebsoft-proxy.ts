@@ -16,6 +16,20 @@ const USAGE_WIDGET_ID = "usage-report";
 
 let usageWidgetShown = false;
 
+function showUsageWidget(
+  ctx: ExtensionContext,
+  lines: readonly string[]
+): void {
+  if (ctx.hasUI) {
+    // Component factory (not a string array) so pi's 10-line widget cap
+    // doesn't truncate the report.
+    ctx.ui.setWidget(USAGE_WIDGET_ID, () => new Text(lines.join("\n"), 1, 0));
+    usageWidgetShown = true;
+  } else {
+    console.log(lines.join("\n"));
+  }
+}
+
 function startUsageSpinner(
   ctx: ExtensionContext
 ): ReturnType<typeof setInterval> {
@@ -201,55 +215,50 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
     ],
   });
 
-  pi.registerCommand("usage", {
-    description: "Show context usage and HDWEBSOFT proxy quota",
+  pi.registerCommand("usage-hdwebsoft", {
+    description: "Show HDWEBSOFT proxy quota",
     handler: async (_args, ctx) => {
       const color = colorFor(ctx);
       const model = ctx.model;
-      const fetching = model !== undefined && model.provider === PROVIDER_ID;
-      const spinner =
-        fetching && ctx.hasUI ? startUsageSpinner(ctx) : undefined;
-      const lines: string[] = [color("ok", "✓ ") + color("title", "usage")];
+      if (!model || model.provider !== PROVIDER_ID) {
+        showUsageWidget(ctx, [
+          color("error", "✗ ") + color("title", "usage-hdwebsoft"),
+          color(
+            "muted",
+            "Available only for hdwebsoft-proxy models — /model to switch"
+          ),
+        ]);
+        return;
+      }
+      const spinner = ctx.hasUI ? startUsageSpinner(ctx) : undefined;
+      const lines: string[] = [
+        color("ok", "✓ ") + color("title", "usage-hdwebsoft"),
+      ];
       lines.push(...buildContextLines(ctx, color));
-      if (fetching && model) {
-        lines.push("");
-        try {
-          const resolution = await ctx.modelRegistry.getApiKeyAndHeaders(model);
-          if (!resolution.ok || !resolution.apiKey) {
-            throw new Error(
-              `No API key for ${PROVIDER_ID} — run /login ${PROVIDER_ID}`
-            );
-          }
-          lines.push(
-            ...renderUsageReport(
-              await fetchHdwebsoftUsage(
-                HDWEBSOFT_PROXY_ROOT,
-                resolution.apiKey
-              ),
-              color
-            )
-          );
-        } catch (err) {
-          lines[0] = color("error", "✗ ") + color("title", "usage");
-          lines.push(
-            color("error", `usage fetch failed: ${(err as Error).message}`)
+      lines.push("");
+      try {
+        const resolution = await ctx.modelRegistry.getApiKeyAndHeaders(model);
+        if (!resolution.ok || !resolution.apiKey) {
+          throw new Error(
+            `No API key for ${PROVIDER_ID} — run /login ${PROVIDER_ID}`
           );
         }
+        lines.push(
+          ...renderUsageReport(
+            await fetchHdwebsoftUsage(HDWEBSOFT_PROXY_ROOT, resolution.apiKey),
+            color
+          )
+        );
+      } catch (err) {
+        lines[0] = color("error", "✗ ") + color("title", "usage-hdwebsoft");
+        lines.push(
+          color("error", `usage fetch failed: ${(err as Error).message}`)
+        );
       }
       if (spinner) {
         clearInterval(spinner);
       }
-      if (ctx.hasUI) {
-        // Component factory (not a string array) so pi's 10-line widget cap
-        // doesn't truncate the report.
-        ctx.ui.setWidget(
-          USAGE_WIDGET_ID,
-          () => new Text(lines.join("\n"), 1, 0)
-        );
-        usageWidgetShown = true;
-      } else {
-        console.log(lines.join("\n"));
-      }
+      showUsageWidget(ctx, lines);
     },
   });
 
