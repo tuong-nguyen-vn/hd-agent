@@ -70,7 +70,7 @@ Use `↑`/`↓` to navigate, `Enter` to select, `Esc` or `Ctrl+C` to cancel.
 2. Select **Sign in with an API key**.
 3. Select **hdwebsoft** from the provider list.
 4. Enter the API key provided by HDWEBSOFT when prompted.
-5. The key is saved to `~/.pi/agent/settings.json` automatically.
+5. The key is saved automatically.
 
 ### Verify login
 
@@ -337,7 +337,7 @@ Dùng `↑`/`↓` để di chuyển, `Enter` để chọn, `Esc` hoặc `Ctrl+C`
 2. Chọn **Sign in with an API key**.
 3. Chọn **hdwebsoft** từ danh sách provider.
 4. Nhập API key được HDWEBSOFT cung cấp khi được hỏi.
-5. Key được lưu tự động vào `~/.pi/agent/settings.json`.
+5. Key được lưu tự động.
 
 ### Kiểm tra đăng nhập
 
