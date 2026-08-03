@@ -235,3 +235,243 @@ You are MyAgent — ...
 ```
 
 Project-level agents override user-level agents, which in turn override bundled defaults (matching is case-insensitive).
+
+---
+
+# HD Agent - Hướng dẫn cài đặt và sử dụng (Tiếng Việt)
+
+## Cài đặt
+
+### Cài bằng một lệnh
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tuong-nguyen-vn/hd-agent/main/install.sh | sh
+```
+
+Script tự động:
+- Cài Bun nếu chưa có (macOS, Linux, WSL, Windows Git Bash)
+- Cài Pi nếu chưa có
+- Cài hoặc cập nhật HD Agent làm Pi extension
+- Cài hoặc cập nhật launcher `hd-agent` toàn cục
+
+### Cài thủ công
+
+```sh
+curl -fsSL https://pi.dev/install.sh | sh
+pi install git:github.com/tuong-nguyen-vn/hd-agent
+bun install -g github:tuong-nguyen-vn/hd-agent
+```
+
+### Khởi động
+
+```sh
+hd-agent
+```
+
+---
+
+## Cấu hình Provider và API Key
+
+### Chọn provider
+
+Trong TUI, gõ lệnh:
+
+```
+/login
+```
+
+Chọn từ các provider có sẵn. Hai provider nội bộ chính:
+
+| Provider | Cách lấy key |
+| --- | --- |
+| **Devin** | Yêu cầu admin cấp API key cho tài khoản Devin |
+| **HDWEBSOFT** | Dùng API key được cung cấp bởi HDWEBSOFT |
+
+### Devin
+
+1. Chọn account **Devin** trong `/login`.
+2. Yêu cầu admin cấp API key.
+3. Nhập key khi được hỏi.
+
+### HDWEBSOFT
+
+1. Chọn **API Key** trong `/login`.
+2. Chọn provider **hdwebsoft**.
+3. Nhập key được cung cấp.
+
+---
+
+## Cấu hình cơ bản
+
+### Theme
+
+```
+/settings
+```
+
+Chọn **Theme** → chọn **pim-dark**.
+
+### Pi settings khuyến nghị
+
+Thêm vào `~/.pi/agent/settings.json`:
+
+```json
+{
+  "quietStartup": true,
+  "editorPaddingX": 1,
+  "markdown": {
+    "codeBlockIndent": ""
+  }
+}
+```
+
+### HD Agent settings
+
+File: `~/.pim/settings.json`
+
+```json
+{
+  "tps": {
+    "enabled": false
+  },
+  "powerline": {
+    "enabled": true
+  },
+  "exa": {
+    "apiKey": ""
+  },
+  "jina": {
+    "apiKey": ""
+  },
+  "painter": {
+    "model": "gpt-image-2"
+  },
+  "viewMedia": {
+    "model": "gemini-3.6-flash"
+  },
+  "thinkingLevels": {
+    "tuongnguyen-proxy/gemini-3.6-flash": "high",
+    "tuongnguyen-proxy/gpt-5.6-sol": "medium"
+  },
+  "agents": {
+    "Oracle": "gpt-5.6-sol",
+    "Search": "gemini-3.6-flash"
+  }
+}
+```
+
+#### API key cho web search (tùy chọn)
+
+Web tools của HD Agent dùng [Exa](https://exa.ai) để tìm kiếm web và [Jina](https://jina.ai/reader/) để tải trang web dạng Markdown. Cả hai đều hoạt động không cần API key nhưng có giới hạn rate. Nếu dùng nhiều hơn, thêm key của bạn:
+
+```json
+{
+  "exa": {
+    "apiKey": "your-exa-api-key"
+  },
+  "jina": {
+    "apiKey": "your-jina-api-key"
+  }
+}
+```
+
+Biến môi trường sẽ override `settings.json` khi có:
+
+```sh
+EXA_API_KEY='your-key' JINA_API_KEY='your-key' hd-agent
+```
+
+#### Thinking level theo model
+
+Thiết lập thinking level mặc định cho từng model. Các mức: `low`, `medium`, `high`.
+
+```json
+{
+  "thinkingLevels": {
+    "tuongnguyen-proxy/gemini-3.6-flash": "high",
+    "tuongnguyen-proxy/gpt-5.6-sol": "medium",
+    "devin/glm-5-2": "high"
+  }
+}
+```
+
+#### Model cho subagent
+
+Override model dùng cho từng subagent. Giá trị là danh sách model ID cách nhau bằng dấu phẩy (thử theo thứ tự với fallback):
+
+```json
+{
+  "agents": {
+    "Oracle": "gpt-5.6-sol,claude-opus-5",
+    "Search": "deepseek-v4-flash,gemini-3.6-flash"
+  }
+}
+```
+
+Nếu subagent không được liệt kê ở đây, nó sẽ dùng model mặc định từ bundled.
+
+---
+
+## Phím tắt
+
+| Phím | Chức năng |
+| --- | --- |
+| `Ctrl+T` | Bật/ tắt Thinking |
+| `Shift+Tab` | Switch Thinking mode |
+| `Ctrl+P` | Switch nhanh model |
+| `Ctrl+O` | Toggle chi tiết tool call |
+| `Esc` | Hủy autocomplete / dừng streaming |
+| `Ctrl+C` | Xóa editor (lần 1) / thoát (lần 2) |
+
+### Lệnh slash
+
+| Lệnh | Chức năng |
+| --- | --- |
+| `/settings` | Mở menu cài đặt |
+| `/scope <model>` | Chọn các model hay sử dụng |
+| `/tps` | Bật/ tắt báo cáo tốc độ inference |
+| `/hotkeys` | Xem tất cả phím tắt |
+
+---
+
+## Subagent
+
+HD Agent có sẵn hai subagent mặc định.
+
+### Oracle
+
+- **Mục đích**: AI advisor với khả năng suy luận nâng cao.
+- **Khi dùng**: review code, feedback kiến trúc, tìm bug khó trải nhiều file, lập kế hoạch implement/refactor phức tạp, trả lời câu hỏi kỹ thuật cần suy luận sâu, hoặc xin ý kiến thứ hai khi agent chính bí.
+- **Model**: `gpt-5.6-sol`, `gpt-5.6-luna`, `claude-opus-5`.
+- **Không dùng cho**: đọc file, tìm kiếm keyword đơn giản, duyệt web, sửa code cơ bản.
+
+### Search
+
+- **Mục đích**: Tìm kiếm code song song, nhanh.
+- **Khi dùng**: tìm file/ code theo chức năng hoặc khái niệm, chain nhiều tìm kiếm, liệt kê tất cả occurrences của một pattern.
+- **Model**: `gemini-3.6-flash`, `swe-1-7`.
+- **Đặc điểm**: chạy nhiều tool call song song mỗi turn, hoàn thành trong 3 turn, trả về danh sách file kèm line range.
+
+### Custom subagent
+
+Đặt file markdown vào:
+
+```
+~/.pi/agent/agents/      # user-level
+.pi/agents/              # project-level (override user-level)
+```
+
+Format file (xem `src/extensions/subagent/bundled-agents/` để tham khảo):
+
+```markdown
+---
+name: MyAgent
+description: Mô tả ngắn về tính năng.
+tools: grep, glob, read
+model: gpt-5.6-sol
+---
+
+You are MyAgent — ...
+```
+
+Project-level override user-level, user-level override bundled (matching case-insensitive).
