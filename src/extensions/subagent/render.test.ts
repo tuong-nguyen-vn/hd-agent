@@ -146,16 +146,18 @@ describe("subagent render formatting", () => {
     });
   });
 
-  test("call title keeps the running Subagent label in the default color", () => {
+  test("call title colors the Subagent label with accent while running", () => {
     const pending = tracingTheme();
-    const runningRender = renderCall({ prompt: "investigate" }, pending.theme, {
+    renderCall({ prompt: "investigate" }, pending.theme, {
       lastComponent: undefined,
       isPartial: true,
       isError: false,
     }).render(80);
 
-    expect(runningRender[0]).not.toContain("\x1b[38;2;229;216;0m");
-    expect(runningRender[0]).toContain("Subagent");
+    expect(pending.calls).toContainEqual({
+      color: "accent",
+      text: "Subagent",
+    });
 
     const done = tracingTheme();
     renderCall({ prompt: "investigate" }, done.theme, {
@@ -167,7 +169,7 @@ describe("subagent render formatting", () => {
     expect(done.calls).toContainEqual({ color: "accent", text: "Subagent" });
   });
 
-  test("top line uses muted dots with accent or default running content", () => {
+  test("top line uses muted dots with accent for both running and done content", () => {
     const done = tracingTheme();
     renderResult(
       result("body"),
@@ -190,11 +192,10 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: true, isError: false }
     ).render(80);
 
+    expect(running.calls).toContainEqual({ color: "accent", text: "$0.23 " });
     expect(running.calls).toContainEqual({ color: "muted", text: "⬝" });
     expect(runningRender[0]).toContain("read");
-    const topLine = runningRender.at(-1)!;
-    expect(topLine).not.toContain("\x1b[38;2;229;216;0m");
-    expect(topLine).toContain("$0.23 ");
+    expect(runningRender.at(-1)).toContain("$0.23 ");
   });
 
   test("partial render shows the running tool and the top line", () => {

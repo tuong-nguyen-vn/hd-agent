@@ -91,13 +91,13 @@ class MarkdownTitle implements Component {
       : context.isError
         ? "✗"
         : "✓";
-    const isActive = context.isPartial;
-    const markerStr = isActive
+    const markerStr = context.isPartial
       ? ` ${marker}`
       : theme.fg(markerColor, ` ${marker}`);
-    const labelStr = isActive
-      ? theme.bold(this.label)
-      : theme.fg(this.labelColor ?? "toolTitle", theme.bold(this.label));
+    const labelStr = theme.fg(
+      this.labelColor ?? "toolTitle",
+      theme.bold(this.label)
+    );
     const prefix = markerStr + " " + labelStr + theme.fg("toolTitle", " ");
     const inner = Math.max(1, width - visibleWidth(prefix));
     const titleLines = renderMarkdownLines({
@@ -171,13 +171,11 @@ class SubagentStatusView implements Component {
     }
 
     if (this.topLine) {
-      const styled = this.isPartial
-        ? styleActiveLine(this.topLine, theme)
-        : styleDottedLine({
-            text: this.topLine,
-            theme,
-            lineColor: "accent",
-          });
+      const styled = styleDottedLine({
+        text: this.topLine,
+        theme,
+        lineColor: "accent",
+      });
       items.push((prefix) => prefix + styled);
     }
 
@@ -467,14 +465,7 @@ function styleDottedLine(args: {
     .join(args.theme.fg("muted", DOT));
 }
 
-function styleActiveLine(text: string, theme: Theme): string {
-  return text.split(DOT).join(theme.fg("muted", DOT));
-}
-
 function titleColorFor(context: RenderContext): ThemeColor {
-  if (context.isPartial) {
-    return "warning";
-  }
   if (context.isError) {
     return "error";
   }

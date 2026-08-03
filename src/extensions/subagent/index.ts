@@ -20,7 +20,7 @@ export default function (pi: ExtensionAPI): void {
       'Use agent="Search" for broad code discovery. ' +
       'Use agent="Oracle" for code reviews, architecture feedback, difficult bugs across many files, planning complex implementations, deep technical reasoning, or an alternative perspective. ' +
       "When using Oracle, be specific about what you want to review, plan, or debug, provide relevant context, and list the files involved. " +
-      'Do NOT delegate to Oracle for file reads, simple searches, web browsing, or basic code changes — do those directly. ' +
+      "Do NOT delegate to Oracle for file reads, simple searches, web browsing, or basic code changes — do those directly. " +
       "Omit agent only for a plain subagent that should inherit the current model.",
     parameters: subagentSchema,
     renderShell: "self",
