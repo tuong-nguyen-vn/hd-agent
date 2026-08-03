@@ -211,14 +211,14 @@ HD Agent ships with two built-in subagents.
 
 - **Purpose**: AI advisor with advanced reasoning capabilities.
 - **When to use**: code reviews, architecture feedback, finding difficult bugs across many files, planning complex implementations or refactors, answering deep technical questions, or getting a second opinion when the main agent is stuck.
-- **Models**: `gpt-5.6-sol`, `gpt-5.6-luna`, `claude-opus-5`.
+- **Models**: `gpt-5.6-sol`, `claude-opus-5`.
 - **Not for**: file reads, simple keyword searches, web browsing, basic code edits.
 
 ### Search
 
 - **Purpose**: Fast, parallel code search.
 - **When to use**: finding files and code by functionality or concept, chaining multiple searches, locating all occurrences of a pattern across the codebase.
-- **Models**: `gemini-3.6-flash`, `swe-1-7`.
+- **Models**: `deepseek-v4-flash`, `gemini-3.6-flash`.
 - **Characteristics**: runs multiple tool calls in parallel per turn, completes within 3 turns, returns a list of files with line ranges.
 
 ### Custom subagents
@@ -464,14 +464,14 @@ HD Agent có sẵn hai subagent mặc định.
 
 - **Mục đích**: AI advisor với khả năng suy luận nâng cao.
 - **Khi dùng**: review code, feedback kiến trúc, tìm bug khó trải nhiều file, lập kế hoạch implement/refactor phức tạp, trả lời câu hỏi kỹ thuật cần suy luận sâu, hoặc xin ý kiến thứ hai khi agent chính bí.
-- **Model**: `gpt-5.6-sol`, `gpt-5.6-luna`, `claude-opus-5`.
+- **Model**: `gpt-5.6-sol`, `claude-opus-5`.
 - **Không dùng cho**: đọc file, tìm kiếm keyword đơn giản, duyệt web, sửa code cơ bản.
 
 ### Search
 
 - **Mục đích**: Tìm kiếm code song song, nhanh.
 - **Khi dùng**: tìm file/ code theo chức năng hoặc khái niệm, chain nhiều tìm kiếm, liệt kê tất cả occurrences của một pattern.
-- **Model**: `gemini-3.6-flash`, `swe-1-7`.
+- **Model**: `deepseek-v4-flash`, `gemini-3.6-flash`.
 - **Đặc điểm**: chạy nhiều tool call song song mỗi turn, hoàn thành trong 3 turn, trả về danh sách file kèm line range.
 
 ### Custom subagent
