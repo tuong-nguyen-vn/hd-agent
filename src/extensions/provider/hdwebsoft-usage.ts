@@ -6,6 +6,8 @@ export type UsageBucket = {
   readonly used_percent: number;
   readonly remaining_percent: number;
   readonly resets_at: string;
+  readonly resets_at_max?: string;
+  readonly accounts?: number;
 };
 
 export type UsageData = {
@@ -43,25 +45,28 @@ function bar(usedPercent: number): string {
   return "█".repeat(filled) + "░".repeat(BAR_CELLS - filled);
 }
 
-function relativeReset(resetsAt: string, nowMs: number): string {
-  const ms = new Date(resetsAt).getTime() - nowMs;
-  if (!Number.isFinite(ms)) {
-    return "";
-  }
-  const totalMins = Math.round(ms / MINUTE_MS);
-  if (totalMins < 1) {
-    return "resets soon";
+function formatMs(ms: number): string {
+  if (ms < MINUTE_MS) {
+    return "soon";
   }
   const days = Math.floor(ms / DAY_MS);
   const hours = Math.floor((ms % DAY_MS) / HOUR_MS);
   const mins = Math.round((ms % HOUR_MS) / MINUTE_MS);
   if (days > 0) {
-    return `resets in ${days}d${hours > 0 ? ` ${hours}h` : ""}`;
+    return `${days}d${hours > 0 ? ` ${hours}h` : ""}`;
   }
   if (hours > 0) {
-    return `resets in ${hours}h ${mins}m`;
+    return `${hours}h${mins > 0 ? ` ${mins}m` : ""}`;
   }
-  return `resets in ${mins}m`;
+  return `${mins}m`;
+}
+
+function resetText(resetsAt: string, nowMs: number): string {
+  const ms = new Date(resetsAt).getTime() - nowMs;
+  if (!Number.isFinite(ms)) {
+    return "";
+  }
+  return formatMs(ms);
 }
 
 export function renderUsageReport(
@@ -84,12 +89,26 @@ export function renderUsageReport(
     for (const bucket of sorted) {
       const used = Number(bucket.used_percent);
       const pct = `${Number.isFinite(used) ? Math.round(used) : 0}`.padStart(3);
-      const reset = bucket.resets_at
-        ? color("dim", relativeReset(bucket.resets_at, nowMs))
+      const accounts =
+        bucket.accounts !== undefined && bucket.accounts > 1
+          ? color("dim", ` · avg ${bucket.accounts}`)
+          : "";
+      const first = resetText(bucket.resets_at, nowMs);
+      const last = bucket.resets_at_max
+        ? resetText(bucket.resets_at_max, nowMs)
         : "";
+      const reset =
+        first && last && first !== last
+          ? color("dim", `resets in ${first} → ${last}`)
+          : first
+            ? color("dim", `resets in ${first}`)
+            : last
+              ? color("dim", `resets in ${last}`)
+              : "";
       lines.push(
         color("muted", `  ${bucket.name.padEnd(labelWidth)} `) +
           color("pct", `${bar(used)} ${pct}%`) +
+          accounts +
           (reset ? `  ${reset}` : "")
       );
     }
