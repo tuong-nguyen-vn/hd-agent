@@ -2,11 +2,6 @@
 
 ## Installation
 
-### Prerequisites
-
-- **Bun** runtime (the installer will install it if missing)
-- **Pi** coding agent (the installer will install it if missing)
-
 ### One-command install
 
 ```sh
