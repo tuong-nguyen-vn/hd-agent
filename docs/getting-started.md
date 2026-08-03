@@ -113,8 +113,8 @@ File: `~/.pim/settings.json`
     "model": "gemini-3.6-flash"
   },
   "agents": {
-    "Oracle": "gpt-5.6-sol",
-    "Search": "gemini-3.6-flash"
+    "Oracle": "gpt-5.6-sol,claude-opus-5",
+    "Search": "deepseek-v4-flash,gemini-3.6-flash"
   }
 }
 ```
@@ -366,8 +366,8 @@ File: `~/.pim/settings.json`
     "model": "gemini-3.6-flash"
   },
   "agents": {
-    "Oracle": "gpt-5.6-sol",
-    "Search": "gemini-3.6-flash"
+    "Oracle": "gpt-5.6-sol,claude-opus-5",
+    "Search": "deepseek-v4-flash,gemini-3.6-flash"
   }
 }
 ```
