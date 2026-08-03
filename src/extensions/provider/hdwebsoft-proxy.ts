@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import {
   buildContextLines,
   colorFor,
@@ -217,7 +218,12 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         }
       }
       if (ctx.hasUI) {
-        ctx.ui.setWidget(USAGE_WIDGET_ID, lines);
+        // Component factory (not a string array) so pi's 10-line widget cap
+        // doesn't truncate the report.
+        ctx.ui.setWidget(
+          USAGE_WIDGET_ID,
+          () => new Text(lines.join("\n"), 1, 0)
+        );
         usageWidgetShown = true;
       } else {
         console.log(lines.join("\n"));
