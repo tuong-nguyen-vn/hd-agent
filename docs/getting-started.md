@@ -11,7 +11,6 @@ curl -fsSL https://raw.githubusercontent.com/tuong-nguyen-vn/hd-agent/main/insta
 The installer automatically:
 - Installs Bun if missing (macOS, Linux, WSL, Windows Git Bash)
 - Installs Pi if missing
-- Removes the legacy `pim-agent` package if present (avoids tool conflicts)
 - Installs or updates HD Agent as a Pi extension
 - Installs or updates the `hd-agent` global launcher
 
