@@ -92,7 +92,7 @@ This shows the current model and provider. You can switch models with `Ctrl+P` o
 /settings
 ```
 
-Select **Theme** → select **pim-dark**.
+Select **Theme** → select **pim-dark** (or any theme you prefer).
 
 ### Recommended Pi settings
 
@@ -359,7 +359,7 @@ Lệnh này hiển thị model và provider hiện tại. Bạn có thể switch
 /settings
 ```
 
-Chọn **Theme** → chọn **pim-dark**.
+Chọn **Theme** → chọn **pim-dark** (hoặc theme nào bạn thích).
 
 ### Pi settings khuyến nghị
 
