@@ -113,7 +113,7 @@ File: `~/.pim/settings.json`
     "model": "gemini-3.6-flash"
   },
   "agents": {
-    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna",
+    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,claude-sonnet-5",
     "Search": "gemini-3.6-flash,deepseek-v4-flash"
   }
 }
@@ -171,7 +171,7 @@ Override the model used by each subagent. Values are comma-separated model IDs (
 ```json
 {
   "agents": {
-    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna",
+    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,claude-sonnet-5",
     "Search": "gemini-3.6-flash,deepseek-v4-flash"
   }
 }
@@ -211,7 +211,7 @@ HD Agent ships with two built-in subagents.
 
 - **Purpose**: AI advisor with advanced reasoning capabilities.
 - **When to use**: code reviews, architecture feedback, finding difficult bugs across many files, planning complex implementations or refactors, answering deep technical questions, or getting a second opinion when the main agent is stuck.
-- **Models**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`.
+- **Models**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`, `claude-sonnet-5`.
 - **Not for**: file reads, simple keyword searches, web browsing, basic code edits.
 
 ### Search
@@ -366,7 +366,7 @@ File: `~/.pim/settings.json`
     "model": "gemini-3.6-flash"
   },
   "agents": {
-    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna",
+    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,claude-sonnet-5",
     "Search": "gemini-3.6-flash,deepseek-v4-flash"
   }
 }
@@ -424,7 +424,7 @@ Override model dùng cho từng subagent. Giá trị là danh sách model ID cá
 ```json
 {
   "agents": {
-    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna",
+    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,claude-sonnet-5",
     "Search": "gemini-3.6-flash,deepseek-v4-flash"
   }
 }
@@ -464,7 +464,7 @@ HD Agent có sẵn hai subagent mặc định.
 
 - **Mục đích**: AI advisor với khả năng suy luận nâng cao.
 - **Khi dùng**: review code, feedback kiến trúc, tìm bug khó trải nhiều file, lập kế hoạch implement/refactor phức tạp, trả lời câu hỏi kỹ thuật cần suy luận sâu, hoặc xin ý kiến thứ hai khi agent chính bí.
-- **Model**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`.
+- **Model**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`, `claude-sonnet-5`.
 - **Không dùng cho**: đọc file, tìm kiếm keyword đơn giản, duyệt web, sửa code cơ bản.
 
 ### Search
