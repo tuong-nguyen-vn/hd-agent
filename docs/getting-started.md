@@ -100,9 +100,6 @@ File: `~/.pim/settings.json`
 
 ```json
 {
-  "tps": {
-    "enabled": false
-  },
   "exa": {
     "apiKey": ""
   },
@@ -114,10 +111,6 @@ File: `~/.pim/settings.json`
   },
   "viewMedia": {
     "model": "gemini-3.6-flash"
-  },
-  "thinkingLevels": {
-    "tuongnguyen-proxy/gemini-3.6-flash": "high",
-    "tuongnguyen-proxy/gpt-5.6-sol": "medium"
   },
   "agents": {
     "Oracle": "gpt-5.6-sol",
@@ -147,16 +140,26 @@ Environment variables override `settings.json` when present:
 EXA_API_KEY='your-key' JINA_API_KEY='your-key' hd-agent
 ```
 
-#### Per-model thinking levels
+#### Painter (image generation)
 
-Set the default thinking level for specific models. Valid levels: `low`, `medium`, `high`.
+Set the model used for image generation. The model must exist in `~/.pi/agent/models.json` with a provider that uses `openai-completions` API.
 
 ```json
 {
-  "thinkingLevels": {
-    "tuongnguyen-proxy/gemini-3.6-flash": "high",
-    "tuongnguyen-proxy/gpt-5.6-sol": "medium",
-    "devin/glm-5-2": "high"
+  "painter": {
+    "model": "gpt-image-2"
+  }
+}
+```
+
+#### ViewMedia (image analysis)
+
+Set the model used for viewing and analyzing images. The model must exist in `~/.pi/agent/models.json`.
+
+```json
+{
+  "viewMedia": {
+    "model": "gemini-3.6-flash"
   }
 }
 ```
@@ -350,9 +353,6 @@ File: `~/.pim/settings.json`
 
 ```json
 {
-  "tps": {
-    "enabled": false
-  },
   "exa": {
     "apiKey": ""
   },
@@ -364,10 +364,6 @@ File: `~/.pim/settings.json`
   },
   "viewMedia": {
     "model": "gemini-3.6-flash"
-  },
-  "thinkingLevels": {
-    "tuongnguyen-proxy/gemini-3.6-flash": "high",
-    "tuongnguyen-proxy/gpt-5.6-sol": "medium"
   },
   "agents": {
     "Oracle": "gpt-5.6-sol",
@@ -397,16 +393,26 @@ Biến môi trường sẽ override `settings.json` khi có:
 EXA_API_KEY='your-key' JINA_API_KEY='your-key' hd-agent
 ```
 
-#### Thinking level theo model
+#### Painter (tạo ảnh)
 
-Thiết lập thinking level mặc định cho từng model. Các mức: `low`, `medium`, `high`.
+Thiết lập model dùng để tạo ảnh. Model phải tồn tại trong `~/.pi/agent/models.json` với provider dùng API `openai-completions`.
 
 ```json
 {
-  "thinkingLevels": {
-    "tuongnguyen-proxy/gemini-3.6-flash": "high",
-    "tuongnguyen-proxy/gpt-5.6-sol": "medium",
-    "devin/glm-5-2": "high"
+  "painter": {
+    "model": "gpt-image-2"
+  }
+}
+```
+
+#### ViewMedia (phân tích ảnh)
+
+Thiết lập model dùng để xem và phân tích ảnh. Model phải tồn tại trong `~/.pi/agent/models.json`.
+
+```json
+{
+  "viewMedia": {
+    "model": "gemini-3.6-flash"
   }
 }
 ```
