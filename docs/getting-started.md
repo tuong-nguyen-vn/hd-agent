@@ -103,11 +103,21 @@ File: `~/.pim/settings.json`
   "powerline": {
     "enabled": true
   },
+  "exa": {
+    "apiKey": ""
+  },
+  "jina": {
+    "apiKey": ""
+  },
   "painter": {
     "model": "gpt-image-2"
   },
   "viewMedia": {
     "model": "gemini-3.6-flash"
+  },
+  "thinkingLevels": {
+    "tuongnguyen-proxy/gemini-3.6-flash": "high",
+    "tuongnguyen-proxy/gpt-5.6-sol": "medium"
   },
   "agents": {
     "Oracle": "gpt-5.6-sol",
@@ -115,6 +125,56 @@ File: `~/.pim/settings.json`
   }
 }
 ```
+
+#### Web search API keys (optional)
+
+HD Agent's web tools use [Exa](https://exa.ai) for web search and [Jina](https://jina.ai/reader/) for fetching websites as Markdown. Both work without API keys but are rate-limited. For heavier usage, add your keys:
+
+```json
+{
+  "exa": {
+    "apiKey": "your-exa-api-key"
+  },
+  "jina": {
+    "apiKey": "your-jina-api-key"
+  }
+}
+```
+
+Environment variables override `settings.json` when present:
+
+```sh
+EXA_API_KEY='your-key' JINA_API_KEY='your-key' hd-agent
+```
+
+#### Per-model thinking levels
+
+Set the default thinking level for specific models. Valid levels: `low`, `medium`, `high`.
+
+```json
+{
+  "thinkingLevels": {
+    "tuongnguyen-proxy/gemini-3.6-flash": "high",
+    "tuongnguyen-proxy/gpt-5.6-sol": "medium",
+    "devin/glm-5-2": "high"
+  }
+}
+```
+
+#### Subagent models
+
+Override the model used by each subagent. Values are comma-separated model IDs (tried in order with fallback):
+
+```json
+{
+  "agents": {
+    "Oracle": "gpt-5.6-sol,claude-opus-5",
+    "Search": "deepseek-v4-flash,gemini-3.6-flash"
+  }
+}
+```
+
+If a subagent is not listed here, it falls back to its bundled default model.
 
 ---
 
