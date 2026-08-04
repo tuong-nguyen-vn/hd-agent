@@ -139,7 +139,10 @@ export class AmpEditor extends CustomEditor {
 
     const { ctx, pi } = this.options;
     const theme = ctx.ui.theme;
-    const model = ctx.model?.id ?? "no model";
+    const model =
+      ctx.model && ctx.model.provider
+        ? `${ctx.model.provider}/${ctx.model.id}`
+        : (ctx.model?.id ?? "no model");
     const level = pi.getThinkingLevel();
     const cost = this.options.getCost();
     const path = Paths.abbreviateHome(ctx.sessionManager.getCwd());
