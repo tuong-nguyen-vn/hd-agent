@@ -95,7 +95,7 @@ export function renderUsageReport(
         : "";
       const reset =
         first && last && first !== last
-          ? color("dim", `resets in ${first} → ${last}`)
+          ? color("dim", `resets partially in ${first} → ${last}`)
           : first
             ? color("dim", `resets in ${first}`)
             : last

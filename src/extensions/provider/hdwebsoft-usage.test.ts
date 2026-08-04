@@ -120,7 +120,7 @@ describe("renderUsageReport", () => {
     const weekly = lines.find(
       (l) => l.startsWith("  weekly") && l.includes("33%")
     )!;
-    expect(weekly).toContain("resets in 1d 7h → 3d 18h");
+    expect(weekly).toContain("resets partially in 1d 7h → 3d 18h");
   });
 
   test("falls back to resets_at_max when resets_at is empty", () => {
