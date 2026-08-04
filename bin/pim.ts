@@ -177,6 +177,10 @@ if (mode === "telegram") {
 
 const piCli = await findPiCli();
 const startupRenderPreload = join(import.meta.dir, "startup-render.ts");
+const childEnv: NodeJS.ProcessEnv = { ...process.env, AMP_PI_CLI: piCli };
+if (childEnv["HERDR_ENV"] === "1" && !childEnv["HERDR_AGENT"]) {
+  childEnv["HERDR_AGENT"] = "pi";
+}
 const proc = Bun.spawn({
   cmd: [process.execPath, "--preload", startupRenderPreload, piCli, ...cliArgs],
   stdio: [
@@ -184,7 +188,7 @@ const proc = Bun.spawn({
     "inherit",
     "inherit",
   ],
-  env: { ...process.env, AMP_PI_CLI: piCli },
+  env: childEnv,
 });
 if (promptViaStdin !== undefined && proc.stdin) {
   proc.stdin.write(promptViaStdin);
