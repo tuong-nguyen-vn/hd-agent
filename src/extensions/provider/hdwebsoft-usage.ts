@@ -36,8 +36,6 @@ const BUCKET_RANK: Record<string, number> = {
 const UNKNOWN_RANK = 99;
 const BAR_CELLS = 10;
 const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
 export const FETCH_TIMEOUT_MS = 15_000;
 
 function bar(usedPercent: number): string {
@@ -49,9 +47,11 @@ function formatMs(ms: number): string {
   if (ms < MINUTE_MS) {
     return "soon";
   }
-  const days = Math.floor(ms / DAY_MS);
-  const hours = Math.floor((ms % DAY_MS) / HOUR_MS);
-  const mins = Math.round((ms % HOUR_MS) / MINUTE_MS);
+  let totalMins = Math.round(ms / MINUTE_MS);
+  const days = Math.floor(totalMins / 1440);
+  totalMins %= 1440;
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
   if (days > 0) {
     return `${days}d${hours > 0 ? ` ${hours}h` : ""}`;
   }
@@ -75,6 +75,11 @@ export function renderUsageReport(
   nowMs: number = Date.now()
 ): readonly string[] {
   const lines: string[] = [];
+  // One width for every family so bars line up in the same column.
+  const labelWidth = Object.values(data.usage).reduce(
+    (max, buckets) => Math.max(max, ...buckets.map((b) => b.name.length)),
+    0
+  );
   for (const [family, buckets] of Object.entries(data.usage)) {
     if (buckets.length === 0) {
       continue;
@@ -85,7 +90,6 @@ export function renderUsageReport(
         (BUCKET_RANK[a.name] ?? UNKNOWN_RANK) -
         (BUCKET_RANK[b.name] ?? UNKNOWN_RANK)
     );
-    const labelWidth = Math.max(...sorted.map((b) => b.name.length));
     for (const bucket of sorted) {
       const used = Number(bucket.used_percent);
       const pct = `${Number.isFinite(used) ? Math.round(used) : 0}`.padStart(3);

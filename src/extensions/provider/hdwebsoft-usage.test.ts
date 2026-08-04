@@ -172,6 +172,34 @@ describe("renderUsageReport", () => {
     expect(lines[start + 2]).toContain("mystery");
   });
 
+  test("aligns bars in the same column across families", () => {
+    const lines = render(FIXTURE);
+    const rows = lines.filter((l) => l.startsWith("  "));
+    const barIdx = rows.map((l) => {
+      const filled = l.indexOf("█");
+      return filled === -1 ? l.indexOf("░") : filled;
+    });
+    expect(new Set(barIdx).size).toBe(1);
+  });
+
+  test("rolls minutes up to hours instead of emitting 60m", () => {
+    const lines = render({
+      generated_at: "2026-08-03T16:00:00Z",
+      usage: {
+        claude: [
+          {
+            name: "5-hour",
+            used_percent: 5,
+            remaining_percent: 95,
+            resets_at: "2026-08-03T20:59:40Z",
+          },
+        ],
+      },
+    });
+    expect(lines.join("\n")).toContain("resets in 5h");
+    expect(lines.join("\n")).not.toContain("60m");
+  });
+
   test("trims trailing blank lines and skips empty families", () => {
     const lines = render({
       generated_at: "2026-08-03T16:00:00Z",
