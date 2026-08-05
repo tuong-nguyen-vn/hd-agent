@@ -246,9 +246,10 @@ describe("DiffView.renderDiffCall with write's opt-in styling", () => {
 
     expect(component.render(80)[0]).toContain("⣿");
 
-    const restored = DiffView.renderDiffCall({
+    // Waiting (not yet executed) also spins now, instead of a static block.
+    const waiting = DiffView.renderDiffCall({
       label: "Create",
-      rawPath: "/work/repo/src/restored.ts",
+      rawPath: "/work/repo/src/waiting.ts",
       theme: stubTheme,
       context: {
         ...callContext(),
@@ -259,8 +260,7 @@ describe("DiffView.renderDiffCall with write's opt-in styling", () => {
       markerGlyph: Renderer.markerGlyphFor,
       link: true,
     });
-    expect(restored.render(80)[0]).toContain("▪");
-    expect(restored.render(80)[0]).not.toContain("⣿");
+    expect(waiting.render(80)[0]).toContain("⣿");
 
     DiffView.renderDiffResult({
       label: "Create",

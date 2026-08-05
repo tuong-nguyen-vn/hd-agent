@@ -170,7 +170,7 @@ describe("Renderer.renderToolCallTitle", () => {
     expect(component.render(80)).toEqual([" ▪ Bash: pwd".padEnd(80, " ")]);
   });
 
-  test("does not animate a restored pending tool that never started execution", () => {
+  test("animates a pending tool that never started execution too", () => {
     const originalSetInterval = globalThis.setInterval;
     let intervals = 0;
     globalThis.setInterval = ((..._args: Parameters<typeof setInterval>) => {
@@ -193,7 +193,8 @@ describe("Renderer.renderToolCallTitle", () => {
         markerGlyph: "$",
         useSpinner: true,
       });
-      expect(intervals).toBe(0);
+      // Pending (not yet executed) spins too, matching every running tool.
+      expect(intervals).toBe(1);
 
       Renderer.renderToolCallTitle({
         label: "",
@@ -209,7 +210,7 @@ describe("Renderer.renderToolCallTitle", () => {
         markerGlyph: "$",
         useSpinner: true,
       });
-      expect(intervals).toBe(1);
+      expect(intervals).toBe(2);
     } finally {
       globalThis.setInterval = originalSetInterval;
     }

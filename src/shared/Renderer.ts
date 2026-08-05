@@ -37,7 +37,10 @@ export type PrefixSpec = {
 };
 
 const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
-const SPINNER_INTERVAL_MS = 80;
+// 150ms cadence: 80ms made long-running tools (e.g. bash) repaint the marker
+// line nearly continuously and flicker on terminals without synchronized
+// output. ~150ms stays visibly animated but roughly halves the repaint rate.
+const SPINNER_INTERVAL_MS = 150;
 
 class ToolTitle implements Component {
   private text = "";
@@ -286,8 +289,9 @@ export class Renderer {
         ? {
             body: bodyText,
             markerColor,
-            isPartial:
-              Boolean(context.isPartial) && context.executionStarted !== false,
+            // Spin from the moment the call is rendered (both while it waits
+            // to run and while it runs), not only once execution has started.
+            isPartial: Boolean(context.isPartial),
             invalidate: context.invalidate,
           }
         : undefined
