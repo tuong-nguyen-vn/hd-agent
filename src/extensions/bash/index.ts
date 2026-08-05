@@ -15,6 +15,7 @@ import { killAllActiveBashGroups, runBashCommand } from "./run";
 import { type BashInput, bashSchema, DEFAULT_TIMEOUT_MS } from "./schema";
 
 const PREVIEW_LINES = 5;
+const TITLE_MAX_LINES = 7;
 
 type BashRenderContext = StatefulToolCallTitleContext & {
   readonly args?: Partial<BashInput>;
@@ -38,6 +39,7 @@ function renderTitle(
     separator: "",
     pad: false,
     useSpinner: true,
+    maxLines: TITLE_MAX_LINES,
   });
 }
 

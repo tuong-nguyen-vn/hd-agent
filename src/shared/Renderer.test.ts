@@ -290,4 +290,28 @@ describe("Renderer.renderToolCallTitle", () => {
     expect(lines.slice(1).every((line) => !line.includes("│"))).toBe(true);
     expect(lines.every((line) => visibleWidth(line) <= width)).toBe(true);
   });
+
+  test("caps wrapped titles by visual line count", () => {
+    const width = 18;
+    const component = Renderer.renderToolCallTitle({
+      label: "",
+      title:
+        "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen",
+      theme: stubTheme,
+      context: {
+        lastComponent: undefined,
+        isPartial: false,
+        isError: false,
+      },
+      markerGlyph: "$",
+      separator: "",
+      pad: false,
+      maxLines: 3,
+    });
+    const lines = component.render(width);
+
+    expect(lines).toHaveLength(3);
+    expect(lines.at(-1)?.endsWith("…")).toBe(true);
+    expect(lines.every((line) => visibleWidth(line) <= width)).toBe(true);
+  });
 });

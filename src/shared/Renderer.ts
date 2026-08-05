@@ -9,6 +9,7 @@ import {
   Container,
   getCapabilities,
   hyperlink,
+  truncateToWidth,
   visibleWidth,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
@@ -49,6 +50,7 @@ class ToolTitle implements Component {
   private body = "";
   private markerColor: ThemeColor = "success";
   private useSpinner = false;
+  private maxLines: number | undefined;
   private invalidateFn: (() => void) | undefined;
   private spinnerIndex = 0;
   private spinnerTimer: ReturnType<typeof setInterval> | undefined;
@@ -57,6 +59,7 @@ class ToolTitle implements Component {
     text: string,
     theme: Theme,
     pad: boolean | undefined,
+    maxLines: number | undefined,
     spinner?: {
       readonly body: string;
       readonly markerColor: ThemeColor;
@@ -67,6 +70,7 @@ class ToolTitle implements Component {
     this.text = text;
     this.theme = theme;
     this.pad = pad ?? this.pad;
+    this.maxLines = maxLines;
     this.useSpinner = spinner !== undefined;
     if (spinner) {
       this.body = spinner.body;
@@ -111,6 +115,14 @@ class ToolTitle implements Component {
           )
         );
       }
+    }
+
+    if (this.maxLines !== undefined && out.length > this.maxLines) {
+      const capped = out.slice(0, this.maxLines);
+      const last = capped.at(-1) ?? "";
+      capped[capped.length - 1] =
+        width <= 1 ? "…" : truncateToWidth(last, width - 1, "") + "…";
+      return capped;
     }
 
     return out;
@@ -264,6 +276,7 @@ export class Renderer {
     readonly separator?: string;
     readonly pad?: boolean;
     readonly useSpinner?: boolean;
+    readonly maxLines?: number;
   }): Component {
     const { label, title, theme, context, labelColor } = args;
     const markerColor = Renderer.markerColorFor(
@@ -285,6 +298,7 @@ export class Renderer {
       markerText + bodyText,
       theme,
       args.pad,
+      args.maxLines,
       args.useSpinner
         ? {
             body: bodyText,
@@ -309,6 +323,7 @@ export class Renderer {
     readonly separator?: string;
     readonly pad?: boolean;
     readonly useSpinner?: boolean;
+    readonly maxLines?: number;
   }): Component {
     const state = args.context.state as StatefulToolCallTitleState;
     const component = Renderer.renderToolCallTitle({
