@@ -13,17 +13,18 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
  * 2. `previousScreen` stores raw screen lines, not placement-converted lines,
  *    so the row comparison is inconsistent and `imagesNeedRedraw` is true on
  *    every scroll frame (crop params always differ).
- * 3. When `imagesNeedRedraw` is true, ALL rows are force-redrawn (the row-skip
- *    gate is disabled), not just the changed rows.
+ * 3. When `imagesNeedRedraw` is true, `deleteAllKittyPlacements()` nukes ALL
+ *    image placements and ALL rows are force-redrawn — causing flicker.
  *
  * The fix:
  * - Always run `prepareKittyScreen()` for Kitty protocol, so image lines use
  *   placement-only commands (~50 bytes) instead of re-transmitting base64.
  * - Store prepared (placement-converted) lines in `previousScreen` so the next
  *   frame compares placement vs placement consistently.
- * - After `deleteAllKittyPlacements()` (still needed — Kitty has no per-image
- *   placement deletion), only redraw image rows + changed text rows, not ALL
- *   rows. Unchanged text rows are skipped.
+ * - For non-full-redraw frames, delete placements for ONLY the image IDs on
+ *   changed rows (via `a=d,d=p,i=X`) instead of `deleteAllKittyPlacements()`.
+ *   This keeps unchanged images on screen without re-placing them.
+ * - Only redraw changed rows — unchanged text AND image rows are skipped.
  */
 
 const PATCH_STATE = Symbol.for("hd-agent.kitty-image-fix");
@@ -83,6 +84,8 @@ type TuiAltScreenInstance = {
 const OSC133_ZONE_PREFIX = /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/;
 const BEGIN_SYNCHRONIZED_OUTPUT = "\x1b[?2026h";
 const END_SYNCHRONIZED_OUTPUT = "\x1b[?2026l";
+const KITTY_PREFIX = "\x1b_G";
+const KITTY_TERMINATOR = "\x1b\\";
 
 // Layout/render helpers imported from pi-tui's dist (not all exported from index).
 type LayoutModule = {
@@ -94,16 +97,9 @@ type LayoutModule = {
   ) => { lines: string[]; primaryScrollView?: unknown };
 };
 
-type KittyImagePlacement = {
-  imageId: number;
-  sequence: string;
-  replacementLine: string;
-};
-
 type TerminalImageModule = {
   isImageLine: (line: string) => boolean;
   deleteAllKittyPlacements: () => string;
-  getKittyImagePlacement: (line: string) => KittyImagePlacement | undefined;
 };
 
 type UtilsModule = {
@@ -130,6 +126,45 @@ function loadModules(piTuiDistDir: string): void {
   utilsMod = require("./utils.js") as UtilsModule;
 }
 
+/**
+ * Extract the image ID (`i=` param) from a Kitty graphics command line.
+ * Works with both transmission lines (`a=T,...;base64`) and placement-only
+ * lines (`a=p,q=2,...`) — the upstream `getKittyImagePlacement()` only handles
+ * transmission lines because it requires a `;` separator.
+ */
+function extractKittyImageId(line: string): number | undefined {
+  const seqStart = line.indexOf(KITTY_PREFIX);
+  if (seqStart === -1) {
+    return undefined;
+  }
+  const paramsStart = seqStart + KITTY_PREFIX.length;
+  // Find end of control params: either `;` (transmission) or `\x1b\\` (placement-only)
+  const semiIdx = line.indexOf(";", paramsStart);
+  const termIdx = line.indexOf(KITTY_TERMINATOR, paramsStart);
+  let paramsEnd: number;
+  if (semiIdx !== -1 && (termIdx === -1 || semiIdx < termIdx)) {
+    paramsEnd = semiIdx;
+  } else if (termIdx !== -1) {
+    paramsEnd = termIdx;
+  } else {
+    return undefined;
+  }
+  const params = line.slice(paramsStart, paramsEnd);
+  for (const param of params.split(",")) {
+    const eqIdx = param.indexOf("=");
+    if (eqIdx === -1) {
+      continue;
+    }
+    if (param.slice(0, eqIdx) === "i") {
+      const val = Number(param.slice(eqIdx + 1));
+      if (Number.isInteger(val) && val > 0) {
+        return val;
+      }
+    }
+  }
+  return undefined;
+}
+
 function isTuiAltScreenConstructor(value: unknown): value is TuiAltScreenLike {
   if (typeof value !== "function") {
     return false;
@@ -141,9 +176,8 @@ function isTuiAltScreenConstructor(value: unknown): value is TuiAltScreenLike {
 }
 
 /**
- * The patched doRender — a copy of the upstream method with the three fixes
- * described in the file-level comment. Accesses private fields via `any` cast
- * because they are not on the public type surface.
+ * The patched doRender — a copy of the upstream method with the fixes
+ * described in the file-level comment.
  */
 function patchedDoRender(this: TuiAltScreenInstance): void {
   if (this.stopped || !this.altScreenActive) {
@@ -186,18 +220,9 @@ function patchedDoRender(this: TuiAltScreenInstance): void {
       ? this.prepareKittyScreen(screen)
       : { lines: screen, evictedImageDeletion: "" };
 
-  let buffer = BEGIN_SYNCHRONIZED_OUTPUT;
-  // Detect if any image row changed (crop params, new image, removed image).
   const preparedLines = preparedKittyScreen.lines;
-  const imagesNeedRedraw =
-    !fullRedraw &&
-    this.imageProtocol === "kitty" &&
-    preparedLines.some(
-      (line, row) =>
-        line !== this.previousScreen[row] &&
-        (terminalImageMod!.isImageLine(line) ||
-          terminalImageMod!.isImageLine(this.previousScreen[row] ?? ""))
-    );
+
+  let buffer = BEGIN_SYNCHRONIZED_OUTPUT;
   if (fullRedraw) {
     this.fullRedrawCount += 1;
     const clearImages =
@@ -205,29 +230,38 @@ function patchedDoRender(this: TuiAltScreenInstance): void {
         ? terminalImageMod!.deleteAllKittyPlacements()
         : this.deleteKittyImages();
     buffer += `${clearImages}\x1b[2J`;
-  } else if (imagesNeedRedraw) {
-    // Kitty has no per-image placement deletion, so we must delete all
-    // placements. But unlike upstream, we only redraw image rows + changed
-    // text rows — unchanged text rows are skipped.
-    if (this.imageProtocol === "iterm2") {
-      buffer += "\x1b[2J";
-    } else if (this.imageProtocol === "kitty") {
-      buffer += terminalImageMod!.deleteAllKittyPlacements();
+  } else if (this.imageProtocol === "kitty") {
+    // Delete placements for ONLY the image IDs on changed rows, instead of
+    // deleteAllKittyPlacements(). This keeps unchanged images on screen
+    // without re-placing them, eliminating flicker.
+    const changedImageIds = new Set<number>();
+    for (let row = 0; row < height; row++) {
+      if (preparedLines[row] === this.previousScreen[row]) {
+        continue;
+      }
+      const oldLine = this.previousScreen[row] ?? "";
+      const newLine = preparedLines[row] ?? "";
+      if (terminalImageMod!.isImageLine(oldLine)) {
+        const id = extractKittyImageId(oldLine);
+        if (id !== undefined) {
+          changedImageIds.add(id);
+        }
+      }
+      if (terminalImageMod!.isImageLine(newLine)) {
+        const id = extractKittyImageId(newLine);
+        if (id !== undefined) {
+          changedImageIds.add(id);
+        }
+      }
+    }
+    for (const imageId of changedImageIds) {
+      buffer += `\x1b_Ga=d,d=p,i=${imageId},q=2\x1b\\`;
     }
   }
   buffer += preparedKittyScreen.evictedImageDeletion;
   for (let row = 0; row < height; row++) {
     if (!fullRedraw && preparedLines[row] === this.previousScreen[row]) {
-      // After deleteAllKittyPlacements(), unchanged image rows must still be
-      // re-placed because their placement was deleted.
-      if (
-        imagesNeedRedraw &&
-        terminalImageMod!.isImageLine(preparedLines[row] ?? "")
-      ) {
-        // fall through to render
-      } else {
-        continue;
-      }
+      continue;
     }
     buffer += `\x1b[${row + 1};1H\x1b[2K${preparedLines[row] ?? ""}`;
   }
