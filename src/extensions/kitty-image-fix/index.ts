@@ -21,9 +21,10 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
  *   placement-only commands (~50 bytes) instead of re-transmitting base64.
  * - Remove the `imagesNeedRedraw` gate on row skipping — compare prepared lines
  *   row-by-row so only changed rows are redrawn.
- * - Remove `deleteAllKittyPlacements()` for non-full-redraw frames. `\x1b[2K`
- *   on changed rows erases placements on those lines, and `a=p` overwrites old
- *   placements at the same position.
+ * - For non-full-redraw frames, delete placements for ONLY the image IDs on
+ *   changed rows (via `a=d,d=p,i=X`) instead of `deleteAllKittyPlacements()`.
+ *   `\x1b[2K` only clears text cells, not Kitty placements, so targeted
+ *   deletion is needed before re-placing.
  * - Store prepared (placement-converted) lines in `previousScreen` so the next
  *   frame compares placement vs placement.
  */
@@ -96,9 +97,16 @@ type LayoutModule = {
   ) => { lines: string[]; primaryScrollView?: unknown };
 };
 
+type KittyImagePlacement = {
+  imageId: number;
+  sequence: string;
+  replacementLine: string;
+};
+
 type TerminalImageModule = {
   isImageLine: (line: string) => boolean;
   deleteAllKittyPlacements: () => string;
+  getKittyImagePlacement: (line: string) => KittyImagePlacement | undefined;
 };
 
 type UtilsModule = {
@@ -189,6 +197,26 @@ function patchedDoRender(this: TuiAltScreenInstance): void {
         ? terminalImageMod!.deleteAllKittyPlacements()
         : this.deleteKittyImages();
     buffer += `${clearImages}\x1b[2J`;
+  } else if (this.imageProtocol === "kitty") {
+    // \x1b[2K only clears text cells, not Kitty placements. Delete placements
+    // for ONLY the image IDs on changed rows before re-placing, instead of
+    // nuking all placements (which causes flicker on unchanged images).
+    const changedImageIds = new Set<number>();
+    for (let row = 0; row < height; row++) {
+      if (preparedKittyScreen.lines[row] === this.previousScreen[row]) {
+        continue;
+      }
+      const oldLine = this.previousScreen[row] ?? "";
+      if (terminalImageMod!.isImageLine(oldLine)) {
+        const placement = terminalImageMod!.getKittyImagePlacement(oldLine);
+        if (placement) {
+          changedImageIds.add(placement.imageId);
+        }
+      }
+    }
+    for (const imageId of changedImageIds) {
+      buffer += `\x1b_Ga=d,d=p,i=${imageId},q=2\x1b\\`;
+    }
   }
   buffer += preparedKittyScreen.evictedImageDeletion;
   for (let row = 0; row < height; row++) {
