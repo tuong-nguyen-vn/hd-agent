@@ -16,6 +16,13 @@ type CodeToken = {
   readonly lang?: string;
 };
 
+function isMermaid(token: CodeToken): boolean {
+  return (
+    token.type === "code" &&
+    token.lang?.trim().split(/\s+/, 1)[0]?.toLowerCase() === "mermaid"
+  );
+}
+
 type RenderToken = (
   this: unknown,
   token: CodeToken,
@@ -98,7 +105,7 @@ function patchMarkdown(Markdown: MarkdownConstructor): boolean {
     nextTokenType?: string,
     styleContext?: unknown
   ): string[] {
-    if (token.type === "code") {
+    if (token.type === "code" && !isMermaid(token)) {
       return renderAmpCodeBlock(getMarkdownTheme(this), token, nextTokenType);
     }
     return originalRenderToken.call(

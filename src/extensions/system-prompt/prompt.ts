@@ -46,7 +46,7 @@ function defaultOsDescription(): string {
 
 const DIAGRAMS_BLOCK = [
   "<diagrams>",
-  "When a diagram would explain architecture, workflows, data flow, state transitions, or relationships better than prose alone, create it with a `diagram` code block in your response. Use plain text or box-drawing characters, preferably rounded-corner boxes (\u256d, \u256e, \u2570, \u256f), inside `diagram` blocks. Keep diagrams readable when rendered as monospaced text. Only write Mermaid syntax for diagrams if the user explicitly asks for Mermaid diagrams.",
+  "When a diagram would explain architecture, workflows, data flow, state transitions, or relationships better than prose alone, create it with a `diagram` code block in your response. Use plain text or box-drawing characters, preferably rounded-corner boxes (\u256d, \u256e, \u2570, \u256f), inside `diagram` blocks. Keep diagrams readable when rendered as monospaced text. Only write Mermaid syntax for diagrams if the user explicitly asks for Mermaid diagrams. When using Mermaid, keep diagrams narrow enough for a terminal viewport (max ~60 columns wide): prefer `flowchart TD` over `LR`, use short labels, avoid subgraphs, and split complex diagrams into multiple smaller ones.",
   "",
   "Guidelines for clean diagrams:",
   "- Keep each box to 1-2 short lines. Long text inside boxes causes misalignment; shorten labels or abbreviate.",
