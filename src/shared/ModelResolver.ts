@@ -4,7 +4,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 export type ResolvedModel = {
   readonly model: Model<Api>;
   readonly apiKey: string | undefined;
-  readonly headers: Record<string, string> | undefined;
+  readonly headers: Record<string, string | null> | undefined;
 };
 
 /**

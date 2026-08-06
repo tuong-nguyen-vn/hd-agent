@@ -70,14 +70,20 @@ function errResult(text: string): AgentToolResult<PainterDetails> {
 
 function authHeaders(
   apiKey: string | undefined,
-  headers: Record<string, string> | undefined
+  headers: Record<string, string | null> | undefined
 ): Record<string, string> {
   const hasAuth = Object.keys(headers ?? {}).some(
     (k) => k.toLowerCase() === "authorization"
   );
+  const filtered: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers ?? {})) {
+    if (v !== null) {
+      filtered[k] = v;
+    }
+  }
   return {
     ...(apiKey && !hasAuth ? { authorization: `Bearer ${apiKey}` } : {}),
-    ...headers,
+    ...filtered,
   };
 }
 
@@ -125,7 +131,7 @@ function fileToBase64(path: string): Promise<string> {
 
 function googleAuthHeaders(
   apiKey: string | undefined,
-  headers: Record<string, string> | undefined
+  headers: Record<string, string | null> | undefined
 ): Record<string, string> {
   const hasGoogle = Object.keys(headers ?? {}).some(
     (k) => k.toLowerCase() === "x-goog-api-key"

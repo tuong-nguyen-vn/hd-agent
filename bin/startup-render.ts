@@ -57,7 +57,7 @@ if (piCli && interactive && (await powerlineEnabled())) {
   const piTuiEntry = requireFromPi.resolve("@earendil-works/pi-tui");
   const piTui = (await import(
     pathToFileURL(join(dirname(piTuiEntry), "tui.js")).href
-  )) as { readonly TUI: typeof TuiType };
+  )) as { readonly TUI: new (...args: never[]) => TuiType };
   const { TUI } = piTui;
   const originalRequestRender = TUI.prototype.requestRender;
   const renderState: { pendingTui?: TuiType } = {};

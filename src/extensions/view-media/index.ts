@@ -116,6 +116,18 @@ function renderTitle(
   });
 }
 
+function filterNullHeaders(
+  headers: Record<string, string | null> | undefined
+): Record<string, string> {
+  const filtered: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers ?? {})) {
+    if (v !== null) {
+      filtered[k] = v;
+    }
+  }
+  return filtered;
+}
+
 async function describeWithVision(
   resolved: ResolvedModel,
   base64: string,
@@ -166,7 +178,7 @@ async function describeWithVision(
     headers: {
       "content-type": "application/json",
       ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
-      ...headers,
+      ...filterNullHeaders(headers),
     },
     body: JSON.stringify({
       model: model.id,
@@ -219,7 +231,7 @@ async function describeWithGoogle(
   mimeType: string,
   prompt: string,
   signal: AbortSignal | undefined,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string | null>
 ): Promise<{ description: string; model: string }> {
   const endpoint = `${base}/models/${encodeURIComponent(model)}:generateContent`;
   const resp = await fetch(endpoint, {
@@ -228,7 +240,7 @@ async function describeWithGoogle(
     headers: {
       "content-type": "application/json",
       ...(key ? { "x-goog-api-key": key, authorization: `Bearer ${key}` } : {}),
-      ...extraHeaders,
+      ...filterNullHeaders(extraHeaders),
     },
     body: JSON.stringify({
       contents: [
@@ -267,7 +279,7 @@ async function describeWithAnthropic(
   mimeType: string,
   prompt: string,
   signal: AbortSignal | undefined,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string | null>
 ): Promise<{ description: string; model: string }> {
   const endpoint = `${base.endsWith("/v1") ? base : `${base}/v1`}/messages`;
   const resp = await fetch(endpoint, {
@@ -277,7 +289,7 @@ async function describeWithAnthropic(
       "content-type": "application/json",
       "anthropic-version": "2023-06-01",
       ...(key ? { "x-api-key": key, authorization: `Bearer ${key}` } : {}),
-      ...extraHeaders,
+      ...filterNullHeaders(extraHeaders),
     },
     body: JSON.stringify({
       model,
