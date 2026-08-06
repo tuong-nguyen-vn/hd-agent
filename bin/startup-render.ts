@@ -42,74 +42,84 @@ const powerlineEnabled = async (): Promise<boolean> => {
   }
 };
 
-if (piCli && interactive && (await powerlineEnabled())) {
-  const piDistDir = dirname(piCli);
-  const settingsModule = (await import(
-    pathToFileURL(join(piDistDir, "core", "settings-manager.js")).href
-  )) as {
-    readonly SettingsManager: {
-      readonly prototype: { getQuietStartup(): boolean };
-    };
-  };
-  settingsModule.SettingsManager.prototype.getQuietStartup = () => true;
-
-  const requireFromPi = createRequire(piCli);
-  const piTuiEntry = requireFromPi.resolve("@earendil-works/pi-tui");
-  const piTui = (await import(
-    pathToFileURL(join(dirname(piTuiEntry), "tui.js")).href
-  )) as {
-    readonly TuiBase?: new (...args: never[]) => TuiType;
-    readonly TUI?: new (...args: never[]) => TuiType;
-  };
-  // pi-tui <0.84.0 exports a TUI class; 0.84.0+ exports TuiBase instead.
-  const TuiCtor = piTui.TuiBase ?? piTui.TUI;
-  if (TuiCtor) {
-    const originalRequestRender = TuiCtor.prototype.requestRender;
-    const renderState: { pendingTui?: TuiType } = {};
-    let released = false;
-    let failsafe: ReturnType<typeof setTimeout> | null = null;
-
-    const patchRequestRender = (): void => {
-      TuiCtor.prototype.requestRender = function (force = false): void {
-        if (!released) {
-          renderState.pendingTui = this;
-          return;
-        }
-        originalRequestRender.call(this, force);
+// The preload must never crash pi — if the render-suppression patch fails
+// (e.g. pi-tui structure changed after a pi update but before hd-agent is
+// updated), pi should still launch so the user can run pi update --extensions.
+try {
+  if (piCli && interactive && (await powerlineEnabled())) {
+    const piDistDir = dirname(piCli);
+    const settingsModule = (await import(
+      pathToFileURL(join(piDistDir, "core", "settings-manager.js")).href
+    )) as {
+      readonly SettingsManager: {
+        readonly prototype: { getQuietStartup(): boolean };
       };
     };
+    settingsModule.SettingsManager.prototype.getQuietStartup = () => true;
 
-    const suppress = (): void => {
-      if (!released) {
-        return;
-      }
-      released = false;
+    const requireFromPi = createRequire(piCli);
+    const piTuiEntry = requireFromPi.resolve("@earendil-works/pi-tui");
+    const piTui = (await import(
+      pathToFileURL(join(dirname(piTuiEntry), "tui.js")).href
+    )) as {
+      readonly TuiBase?: new (...args: never[]) => TuiType;
+      readonly TUI?: new (...args: never[]) => TuiType;
+    };
+    // pi-tui <0.84.0 exports a TUI class; 0.84.0+ exports TuiBase instead.
+    const TuiCtor = piTui.TuiBase ?? piTui.TUI;
+    if (TuiCtor) {
+      const originalRequestRender = TuiCtor.prototype.requestRender;
+      const renderState: { pendingTui?: TuiType } = {};
+      let released = false;
+      let failsafe: ReturnType<typeof setTimeout> | null = null;
+
+      const patchRequestRender = (): void => {
+        TuiCtor.prototype.requestRender = function (force = false): void {
+          if (!released) {
+            renderState.pendingTui = this;
+            return;
+          }
+          originalRequestRender.call(this, force);
+        };
+      };
+
+      const suppress = (): void => {
+        if (!released) {
+          return;
+        }
+        released = false;
+        patchRequestRender();
+        failsafe = setTimeout(release, FAILSAFE_MS);
+        failsafe.unref();
+      };
+
+      const release = (tui?: TuiType): void => {
+        if (released) {
+          return;
+        }
+        released = true;
+        if (failsafe) {
+          clearTimeout(failsafe);
+          failsafe = null;
+        }
+        TuiCtor.prototype.requestRender = originalRequestRender;
+        const target = tui ?? renderState.pendingTui;
+        if (target) {
+          originalRequestRender.call(target, true);
+        }
+        renderState.pendingTui = undefined;
+      };
+
       patchRequestRender();
       failsafe = setTimeout(release, FAILSAFE_MS);
       failsafe.unref();
-    };
 
-    const release = (tui?: TuiType): void => {
-      if (released) {
-        return;
-      }
-      released = true;
-      if (failsafe) {
-        clearTimeout(failsafe);
-        failsafe = null;
-      }
-      TuiCtor.prototype.requestRender = originalRequestRender;
-      const target = tui ?? renderState.pendingTui;
-      if (target) {
-        originalRequestRender.call(target, true);
-      }
-      renderState.pendingTui = undefined;
-    };
-
-    patchRequestRender();
-    failsafe = setTimeout(release, FAILSAFE_MS);
-    failsafe.unref();
-
-    (globalThis as Record<symbol, unknown>)[STATE_KEY] = { suppress, release };
-  } // TuiCtor
+      (globalThis as Record<symbol, unknown>)[STATE_KEY] = {
+        suppress,
+        release,
+      };
+    }
+  }
+} catch {
+  // Silently skip render suppression on failure — pi still launches.
 }
