@@ -100,13 +100,17 @@ export default function (pi: ExtensionAPI): void {
     }
   };
 
-  pi.on("session_start", async (event, ctx) => {
-    // Re-arm the preload render-suppression before any await so pi's default
-    // UI doesn't flash before the custom editor is installed. On startup the
-    // preload already suppresses; /new needs it re-armed here.
+  // Re-arm the preload render-suppression before pi tears down the current
+  // session and renders its default editor. session_before_switch fires
+  // before resetExtensionUI()/renderCurrentSessionState(), while session_start
+  // fires only after the default UI has already been rendered.
+  pi.on("session_before_switch", (event) => {
     if (event.reason === "new") {
       StartupRender.suppress();
     }
+  });
+
+  pi.on("session_start", async (_event, ctx) => {
     await apply(ctx);
   });
 
