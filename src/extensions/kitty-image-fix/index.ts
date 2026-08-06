@@ -8,25 +8,22 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
  * Monkey-patch TuiAltScreen.doRender to eliminate Kitty image flickering when
  * scrolling. The upstream implementation (pi-tui <= 0.84.0) has three problems:
  *
- * 1. `imagesNeedRedraw` is true whenever any image line changes (including
- *    crop-parameter-only changes from scroll), which triggers
- *    `deleteAllKittyPlacements()` — nuking ALL image placements every frame.
- * 2. When `imagesNeedRedraw` is true, ALL rows are force-redrawn (the row-skip
- *    gate is disabled), not just the changed rows.
- * 3. `prepareKittyScreen()` (which converts already-uploaded image lines to
+ * 1. `prepareKittyScreen()` (which converts already-uploaded image lines to
  *    cheap placement-only `a=p` commands) only runs when `redrawImages=true`.
+ * 2. `previousScreen` stores raw screen lines, not placement-converted lines,
+ *    so the row comparison is inconsistent and `imagesNeedRedraw` is true on
+ *    every scroll frame (crop params always differ).
+ * 3. When `imagesNeedRedraw` is true, ALL rows are force-redrawn (the row-skip
+ *    gate is disabled), not just the changed rows.
  *
  * The fix:
  * - Always run `prepareKittyScreen()` for Kitty protocol, so image lines use
  *   placement-only commands (~50 bytes) instead of re-transmitting base64.
- * - Remove the `imagesNeedRedraw` gate on row skipping — compare prepared lines
- *   row-by-row so only changed rows are redrawn.
- * - For non-full-redraw frames, delete placements for ONLY the image IDs on
- *   changed rows (via `a=d,d=p,i=X`) instead of `deleteAllKittyPlacements()`.
- *   `\x1b[2K` only clears text cells, not Kitty placements, so targeted
- *   deletion is needed before re-placing.
  * - Store prepared (placement-converted) lines in `previousScreen` so the next
- *   frame compares placement vs placement.
+ *   frame compares placement vs placement consistently.
+ * - After `deleteAllKittyPlacements()` (still needed — Kitty has no per-image
+ *   placement deletion), only redraw image rows + changed text rows, not ALL
+ *   rows. Unchanged text rows are skipped.
  */
 
 const PATCH_STATE = Symbol.for("hd-agent.kitty-image-fix");
@@ -190,6 +187,17 @@ function patchedDoRender(this: TuiAltScreenInstance): void {
       : { lines: screen, evictedImageDeletion: "" };
 
   let buffer = BEGIN_SYNCHRONIZED_OUTPUT;
+  // Detect if any image row changed (crop params, new image, removed image).
+  const preparedLines = preparedKittyScreen.lines;
+  const imagesNeedRedraw =
+    !fullRedraw &&
+    this.imageProtocol === "kitty" &&
+    preparedLines.some(
+      (line, row) =>
+        line !== this.previousScreen[row] &&
+        (terminalImageMod!.isImageLine(line) ||
+          terminalImageMod!.isImageLine(this.previousScreen[row] ?? ""))
+    );
   if (fullRedraw) {
     this.fullRedrawCount += 1;
     const clearImages =
@@ -197,36 +205,31 @@ function patchedDoRender(this: TuiAltScreenInstance): void {
         ? terminalImageMod!.deleteAllKittyPlacements()
         : this.deleteKittyImages();
     buffer += `${clearImages}\x1b[2J`;
-  } else if (this.imageProtocol === "kitty") {
-    // \x1b[2K only clears text cells, not Kitty placements. Delete placements
-    // for ONLY the image IDs on changed rows before re-placing, instead of
-    // nuking all placements (which causes flicker on unchanged images).
-    const changedImageIds = new Set<number>();
-    for (let row = 0; row < height; row++) {
-      if (preparedKittyScreen.lines[row] === this.previousScreen[row]) {
-        continue;
-      }
-      const oldLine = this.previousScreen[row] ?? "";
-      if (terminalImageMod!.isImageLine(oldLine)) {
-        const placement = terminalImageMod!.getKittyImagePlacement(oldLine);
-        if (placement) {
-          changedImageIds.add(placement.imageId);
-        }
-      }
-    }
-    for (const imageId of changedImageIds) {
-      buffer += `\x1b_Ga=d,d=p,i=${imageId},q=2\x1b\\`;
+  } else if (imagesNeedRedraw) {
+    // Kitty has no per-image placement deletion, so we must delete all
+    // placements. But unlike upstream, we only redraw image rows + changed
+    // text rows — unchanged text rows are skipped.
+    if (this.imageProtocol === "iterm2") {
+      buffer += "\x1b[2J";
+    } else if (this.imageProtocol === "kitty") {
+      buffer += terminalImageMod!.deleteAllKittyPlacements();
     }
   }
   buffer += preparedKittyScreen.evictedImageDeletion;
   for (let row = 0; row < height; row++) {
-    if (
-      !fullRedraw &&
-      preparedKittyScreen.lines[row] === this.previousScreen[row]
-    ) {
-      continue;
+    if (!fullRedraw && preparedLines[row] === this.previousScreen[row]) {
+      // After deleteAllKittyPlacements(), unchanged image rows must still be
+      // re-placed because their placement was deleted.
+      if (
+        imagesNeedRedraw &&
+        terminalImageMod!.isImageLine(preparedLines[row] ?? "")
+      ) {
+        // fall through to render
+      } else {
+        continue;
+      }
     }
-    buffer += `\x1b[${row + 1};1H\x1b[2K${preparedKittyScreen.lines[row] ?? ""}`;
+    buffer += `\x1b[${row + 1};1H\x1b[2K${preparedLines[row] ?? ""}`;
   }
   if (cursorPos) {
     buffer += `\x1b[${cursorPos.row + 1};${Math.min(width, cursorPos.col) + 1}H`;
