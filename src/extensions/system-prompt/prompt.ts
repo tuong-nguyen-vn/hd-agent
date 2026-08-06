@@ -5,6 +5,7 @@ import {
   INVESTIGATE_BEFORE_ACTING_BLOCK,
   OUTPUT_EFFICIENCY_BLOCK,
   PRAGMATISM_AND_SCOPE_BLOCK,
+  SUBAGENT_DELEGATION_BLOCK,
   TOOL_USE_BLOCK,
   VERIFICATION_BLOCK,
 } from "./blocks";
@@ -95,6 +96,7 @@ export function buildSystemPrompt(opts: BuildOptions): string {
   sections.push(VERIFICATION_BLOCK);
   sections.push(EXECUTING_ACTIONS_WITH_CARE_BLOCK);
   sections.push(TOOL_USE_BLOCK);
+  sections.push(SUBAGENT_DELEGATION_BLOCK);
   sections.push(OUTPUT_EFFICIENCY_BLOCK);
   sections.push(DIAGRAMS_BLOCK);
 

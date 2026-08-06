@@ -63,6 +63,15 @@ export const TOOL_USE_BLOCK = [
   "</tool_use>",
 ].join("\n");
 
+export const SUBAGENT_DELEGATION_BLOCK = [
+  "<subagent_delegation>",
+  "Use the **Search** subagent (agent=\"Search\") for broad codebase discovery — finding files, symbols, and patterns across the codebase — instead of running many manual grep/glob calls yourself.",
+  "Use the **Oracle** subagent (agent=\"Oracle\") to verify complex plans, review completed work when asked, find difficult bugs across many files, or get an alternative perspective when struggling. Provide a compact delegation brief: Objective, Scope/files, Known findings with evidence, Constraints, and Questions.",
+  "Do NOT delegate to Oracle for file reads, simple searches, web browsing, or basic code changes — handle those directly.",
+  "If no subagent or Search/Oracle agent is available, skip delegation and do the work directly.",
+  "</subagent_delegation>",
+].join("\n");
+
 export const OUTPUT_EFFICIENCY_BLOCK = [
   "<output_efficiency>",
   "Go straight to the point. Try the simplest approach first without going in circles. Be extra concise.",

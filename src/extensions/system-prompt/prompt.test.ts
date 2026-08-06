@@ -50,6 +50,7 @@ describe("buildSystemPrompt", () => {
       "<verification>",
       "<executing_actions_with_care>",
       "<tool_use>",
+      "<subagent_delegation>",
       "<output_efficiency>",
       "<diagrams>",
       "<environment>",
