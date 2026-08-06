@@ -10,14 +10,17 @@ async function findPiCli(): Promise<string> {
     return envCli;
   }
 
-  const pathCli = await resolvePathPiCli();
-  if (pathCli) {
-    return pathCli;
-  }
-
+  // Prefer the bun-managed global install so `pi update` can self-update.
+  // An npm/nvm-installed pi on PATH would fail self-update with
+  // "pi cannot self-update this installation".
   const globalCli = resolveGlobalPiCli();
   if (globalCli) {
     return globalCli;
+  }
+
+  const pathCli = await resolvePathPiCli();
+  if (pathCli) {
+    return pathCli;
   }
 
   try {

@@ -59,13 +59,18 @@ install_bun() {
 install_pi() {
   if pi_cli=$(find_bun_pi_cli); then
     log "Pi is already installed ($(bun "$pi_cli" --version 2>/dev/null || printf 'version unknown'))"
-    return
+  else
+    log "Installing Pi"
+    bun install -g "$PI_PACKAGE"
+    refresh_path
+    find_bun_pi_cli >/dev/null 2>&1 || command -v pi >/dev/null 2>&1 || fail "Pi installation completed but the pi command was not found."
   fi
 
-  log "Installing Pi"
-  bun install -g "$PI_PACKAGE"
+  # Always update Pi so bun-managed installs stay current. npm/nvm-managed
+  # installs cannot self-update and are left alone.
+  log "Updating Pi"
+  bun install -g "$PI_PACKAGE@latest" || true
   refresh_path
-  find_bun_pi_cli >/dev/null 2>&1 || command -v pi >/dev/null 2>&1 || fail "Pi installation completed but the pi command was not found."
 }
 
 find_bun_pi_cli() {
