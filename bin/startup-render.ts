@@ -57,53 +57,59 @@ if (piCli && interactive && (await powerlineEnabled())) {
   const piTuiEntry = requireFromPi.resolve("@earendil-works/pi-tui");
   const piTui = (await import(
     pathToFileURL(join(dirname(piTuiEntry), "tui.js")).href
-  )) as { readonly TuiBase: new (...args: never[]) => TuiType };
-  const { TuiBase } = piTui;
-  const originalRequestRender = TuiBase.prototype.requestRender;
-  const renderState: { pendingTui?: TuiType } = {};
-  let released = false;
-  let failsafe: ReturnType<typeof setTimeout> | null = null;
+  )) as {
+    readonly TuiBase?: new (...args: never[]) => TuiType;
+    readonly TUI?: new (...args: never[]) => TuiType;
+  };
+  // pi-tui <0.84.0 exports a TUI class; 0.84.0+ exports TuiBase instead.
+  const TuiCtor = piTui.TuiBase ?? piTui.TUI;
+  if (TuiCtor) {
+    const originalRequestRender = TuiCtor.prototype.requestRender;
+    const renderState: { pendingTui?: TuiType } = {};
+    let released = false;
+    let failsafe: ReturnType<typeof setTimeout> | null = null;
 
-  const patchRequestRender = (): void => {
-    TuiBase.prototype.requestRender = function (force = false): void {
+    const patchRequestRender = (): void => {
+      TuiCtor.prototype.requestRender = function (force = false): void {
+        if (!released) {
+          renderState.pendingTui = this;
+          return;
+        }
+        originalRequestRender.call(this, force);
+      };
+    };
+
+    const suppress = (): void => {
       if (!released) {
-        renderState.pendingTui = this;
         return;
       }
-      originalRequestRender.call(this, force);
+      released = false;
+      patchRequestRender();
+      failsafe = setTimeout(release, FAILSAFE_MS);
+      failsafe.unref();
     };
-  };
 
-  const suppress = (): void => {
-    if (!released) {
-      return;
-    }
-    released = false;
+    const release = (tui?: TuiType): void => {
+      if (released) {
+        return;
+      }
+      released = true;
+      if (failsafe) {
+        clearTimeout(failsafe);
+        failsafe = null;
+      }
+      TuiCtor.prototype.requestRender = originalRequestRender;
+      const target = tui ?? renderState.pendingTui;
+      if (target) {
+        originalRequestRender.call(target, true);
+      }
+      renderState.pendingTui = undefined;
+    };
+
     patchRequestRender();
     failsafe = setTimeout(release, FAILSAFE_MS);
     failsafe.unref();
-  };
 
-  const release = (tui?: TuiType): void => {
-    if (released) {
-      return;
-    }
-    released = true;
-    if (failsafe) {
-      clearTimeout(failsafe);
-      failsafe = null;
-    }
-    TuiBase.prototype.requestRender = originalRequestRender;
-    const target = tui ?? renderState.pendingTui;
-    if (target) {
-      originalRequestRender.call(target, true);
-    }
-    renderState.pendingTui = undefined;
-  };
-
-  patchRequestRender();
-  failsafe = setTimeout(release, FAILSAFE_MS);
-  failsafe.unref();
-
-  (globalThis as Record<symbol, unknown>)[STATE_KEY] = { suppress, release };
+    (globalThis as Record<symbol, unknown>)[STATE_KEY] = { suppress, release };
+  } // TuiCtor
 }
