@@ -46,26 +46,7 @@ function defaultOsDescription(): string {
 
 const DIAGRAMS_BLOCK = [
   "<diagrams>",
-  "When a diagram would explain architecture, workflows, data flow, state transitions, or relationships better than prose alone, create it with a `diagram` code block in your response. Use plain text or box-drawing characters, preferably rounded-corner boxes (\u256d, \u256e, \u2570, \u256f), inside `diagram` blocks. Keep diagrams readable when rendered as monospaced text. Only write Mermaid syntax for diagrams if the user explicitly asks for Mermaid diagrams. When using Mermaid, keep diagrams narrow enough for a terminal viewport (max ~60 columns wide): prefer `flowchart TD` over `LR`, use short labels, avoid subgraphs, and split complex diagrams into multiple smaller ones.",
-  "",
-  "Guidelines for clean diagrams:",
-  "- Keep each box to 1-2 short lines. Long text inside boxes causes misalignment; shorten labels or abbreviate.",
-  "- Every box must be a complete rectangle: verify exactly 4 corners and 4 sealed edges. Never leave stray characters (|, -, \u2502) outside a box.",
-  "- Never let text overflow a box boundary \u2014 widen the box or shorten the text.",
-  "- Use one consistent line weight throughout (mixing \u2502 with \u2503 or \u2500 with \u2501 breaks alignment).",
-  "- Prefer simple top-to-bottom or left-to-right flows. Avoid crossing lines.",
-  "",
-  "Example:",
-  "```diagram",
-  "\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e     \u256d\u2500\u2500\u2500\u2500\u2500\u256e     \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e",
-  "\u2502 Client \u2502\u2500\u2500\u2500\u2500\u25b6\u2502 API \u2502\u2500\u2500\u2500\u2500\u25b6\u2502 Database \u2502",
-  "\u2570\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u256f     \u2570\u2500\u2500\u252c\u2500\u2500\u256f     \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
-  "     \u2502            \u2502",
-  "     \u2502            \u25bc",
-  "     \u2502        \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e",
-  "     \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25b6\u2502 Worker \u2502",
-  "              \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
-  "```",
+  "When a diagram would explain architecture, workflows, data flow, state transitions, or relationships better than prose alone, create it as a Mermaid diagram in a `mermaid` code block. Keep diagrams narrow enough for a terminal viewport (max ~60 columns wide): prefer `flowchart TD` over `LR`, use short labels, avoid subgraphs, and split complex diagrams into multiple smaller ones.",
   "</diagrams>",
 ].join("\n");
 

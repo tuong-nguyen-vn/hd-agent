@@ -24,7 +24,7 @@ describe("buildSystemPrompt", () => {
     });
 
     expect(prompt).toContain("<diagrams>");
-    expect(prompt).toContain("```diagram");
+    expect(prompt).toContain("mermaid");
     expect(prompt).toContain("</diagrams>");
 
     const sysIdx = prompt.indexOf("</system_instructions>");
