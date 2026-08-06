@@ -62,13 +62,26 @@ if (piCli && interactive && (await powerlineEnabled())) {
   const originalRequestRender = TUI.prototype.requestRender;
   const renderState: { pendingTui?: TuiType } = {};
   let released = false;
+  let failsafe: ReturnType<typeof setTimeout> | null = null;
 
-  TUI.prototype.requestRender = function (force = false): void {
+  const patchRequestRender = (): void => {
+    TUI.prototype.requestRender = function (force = false): void {
+      if (!released) {
+        renderState.pendingTui = this;
+        return;
+      }
+      originalRequestRender.call(this, force);
+    };
+  };
+
+  const suppress = (): void => {
     if (!released) {
-      renderState.pendingTui = this;
       return;
     }
-    originalRequestRender.call(this, force);
+    released = false;
+    patchRequestRender();
+    failsafe = setTimeout(release, FAILSAFE_MS);
+    failsafe.unref();
   };
 
   const release = (tui?: TuiType): void => {
@@ -76,7 +89,10 @@ if (piCli && interactive && (await powerlineEnabled())) {
       return;
     }
     released = true;
-    clearTimeout(failsafe);
+    if (failsafe) {
+      clearTimeout(failsafe);
+      failsafe = null;
+    }
     TUI.prototype.requestRender = originalRequestRender;
     const target = tui ?? renderState.pendingTui;
     if (target) {
@@ -85,8 +101,9 @@ if (piCli && interactive && (await powerlineEnabled())) {
     renderState.pendingTui = undefined;
   };
 
-  const failsafe = setTimeout(release, FAILSAFE_MS);
+  patchRequestRender();
+  failsafe = setTimeout(release, FAILSAFE_MS);
   failsafe.unref();
 
-  (globalThis as Record<symbol, unknown>)[STATE_KEY] = { release };
+  (globalThis as Record<symbol, unknown>)[STATE_KEY] = { suppress, release };
 }
