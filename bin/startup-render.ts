@@ -57,15 +57,15 @@ if (piCli && interactive && (await powerlineEnabled())) {
   const piTuiEntry = requireFromPi.resolve("@earendil-works/pi-tui");
   const piTui = (await import(
     pathToFileURL(join(dirname(piTuiEntry), "tui.js")).href
-  )) as { readonly TUI: new (...args: never[]) => TuiType };
-  const { TUI } = piTui;
-  const originalRequestRender = TUI.prototype.requestRender;
+  )) as { readonly TuiBase: new (...args: never[]) => TuiType };
+  const { TuiBase } = piTui;
+  const originalRequestRender = TuiBase.prototype.requestRender;
   const renderState: { pendingTui?: TuiType } = {};
   let released = false;
   let failsafe: ReturnType<typeof setTimeout> | null = null;
 
   const patchRequestRender = (): void => {
-    TUI.prototype.requestRender = function (force = false): void {
+    TuiBase.prototype.requestRender = function (force = false): void {
       if (!released) {
         renderState.pendingTui = this;
         return;
@@ -93,7 +93,7 @@ if (piCli && interactive && (await powerlineEnabled())) {
       clearTimeout(failsafe);
       failsafe = null;
     }
-    TUI.prototype.requestRender = originalRequestRender;
+    TuiBase.prototype.requestRender = originalRequestRender;
     const target = tui ?? renderState.pendingTui;
     if (target) {
       originalRequestRender.call(target, true);
