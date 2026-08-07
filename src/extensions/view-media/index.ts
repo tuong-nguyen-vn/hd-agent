@@ -64,6 +64,10 @@ function modelSupportsImages(model: unknown): boolean {
   );
 }
 
+function modelKey(model: { provider: string; id: string }): string {
+  return `${model.provider}/${model.id}`;
+}
+
 function errResult(text: string): AgentToolResult<ViewMediaDetails> {
   return {
     content: [{ type: "text", text }],
@@ -431,7 +435,8 @@ export default function (pi: ExtensionAPI): void {
         mimeType,
       };
 
-      const directToModel = await PimSettings.getViewMediaDirectToModel();
+      const key = ctx.model ? modelKey(ctx.model) : "";
+      const directToModel = await PimSettings.getViewMediaDirectToModel(key);
       if (directToModel) {
         const preview = await buildPreview(base64, mimeType);
         if (!modelSupportsImages(ctx.model)) {
@@ -591,7 +596,12 @@ export default function (pi: ExtensionAPI): void {
       "Toggle direct-to-model mode, or force with /vision-direct true|false",
     handler: async (args, ctx) => {
       const arg = (args ?? "").trim().toLowerCase();
-      const current = await PimSettings.getViewMediaDirectToModel();
+      const key = ctx.model ? modelKey(ctx.model) : "";
+      if (!key) {
+        ctx.ui.notify("No active model", "error");
+        return;
+      }
+      const current = await PimSettings.getViewMediaDirectToModel(key);
       let next: boolean;
       if (arg === "true" || arg === "false") {
         next = arg === "true";
@@ -609,13 +619,11 @@ export default function (pi: ExtensionAPI): void {
         return;
       }
       const viewMedia = await PimSettings.get("viewMedia");
-      await PimSettings.set("viewMedia", { ...viewMedia, directToModel: next });
-      ctx.ui.notify(
-        next
-          ? "Direct-to-model enabled — images sent to the main model"
-          : "Vision fallback enabled — images described by a vision model",
-        "info"
-      );
+      await PimSettings.set("viewMedia", {
+        ...viewMedia,
+        directToModel: { ...viewMedia.directToModel, [key]: next },
+      });
+      ctx.ui.notify(`Direct-to-model: ${next ? "ON" : "OFF"}`, "info");
     },
   });
 }

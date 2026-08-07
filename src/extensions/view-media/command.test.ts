@@ -36,8 +36,12 @@ function makeCtx(
   };
 }
 
-const imageModel = { id: "gpt-4o", input: ["text", "image"] };
-const textOnlyModel = { id: "gpt-3.5", input: ["text"] };
+const imageModel = {
+  id: "gpt-4o",
+  provider: "openai",
+  input: ["text", "image"],
+};
+const textOnlyModel = { id: "gpt-3.5", provider: "openai", input: ["text"] };
 
 const originalGet = PimSettings.get;
 const originalSet = PimSettings.set;
@@ -61,7 +65,10 @@ describe("/vision-direct command", () => {
       configurable: true,
     });
     Object.defineProperty(PimSettings, "get", {
-      value: async () => ({ model: undefined, directToModel }),
+      value: async () => ({
+        model: undefined,
+        directToModel: directToModel ? { "openai/gpt-4o": true } : {},
+      }),
       configurable: true,
     });
     Object.defineProperty(PimSettings, "set", {
@@ -78,7 +85,7 @@ describe("/vision-direct command", () => {
     expect(notifications).toEqual([
       {
         type: "info",
-        message: "Direct-to-model enabled — images sent to the main model",
+        message: "Direct-to-model: ON",
       },
     ]);
   });
@@ -105,7 +112,7 @@ describe("/vision-direct command", () => {
     expect(notifications).toEqual([
       {
         type: "info",
-        message: "Vision fallback enabled — images described by a vision model",
+        message: "Direct-to-model: OFF",
       },
     ]);
   });
@@ -118,7 +125,7 @@ describe("/vision-direct command", () => {
     expect(notifications).toEqual([
       {
         type: "info",
-        message: "Direct-to-model enabled — images sent to the main model",
+        message: "Direct-to-model: ON",
       },
     ]);
   });
@@ -131,7 +138,7 @@ describe("/vision-direct command", () => {
     expect(notifications).toEqual([
       {
         type: "info",
-        message: "Vision fallback enabled — images described by a vision model",
+        message: "Direct-to-model: OFF",
       },
     ]);
   });
@@ -168,7 +175,7 @@ describe("/vision-direct command", () => {
     expect(notifications).toEqual([
       {
         type: "info",
-        message: "Vision fallback enabled — images described by a vision model",
+        message: "Direct-to-model: OFF",
       },
     ]);
   });
