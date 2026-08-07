@@ -46,6 +46,7 @@ export const EXECUTING_ACTIONS_WITH_CARE_BLOCK = [
   "- Destructive: deleting files or branches, dropping database tables, `rm -rf`.",
   "- Hard to reverse: `git push --force`, `git reset --hard`, amending published commits.",
   "- Visible to others: pushing code, commenting on PRs/issues, sending messages, modifying shared infrastructure.",
+  "- Do NOT commit or push changes unless the user explicitly asks you to. Stage edits locally if needed, but leave committing and pushing to the user.",
   "",
   "When encountering obstacles, do not use destructive actions as a shortcut. Do not bypass safety checks (e.g. `--no-verify`) or discard unfamiliar files that may be in-progress work from another agent or the user.",
   "</executing_actions_with_care>",
