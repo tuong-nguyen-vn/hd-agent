@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.11.0
+
+### Features
+
+- Limit concurrent subagents to 4 per turn in system prompt.
+- Add `/vision-direct` command to toggle direct-to-model image mode.
+- Add `glm-5.2` model to hdwebsoft-proxy with 200k context window.
+- Prohibit committing and pushing without explicit user request.
+
+### Bug Fixes
+
+- Correct glm-5-2 model id (dash not dot) in hdwebsoft-proxy.
+
 ## v0.10.0
 
 ### Features
