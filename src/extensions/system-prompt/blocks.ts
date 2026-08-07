@@ -70,8 +70,8 @@ export const SUBAGENT_DELEGATION_BLOCK = [
   'Use the **Oracle** subagent (agent="Oracle") to verify complex plans, review completed work when asked, find difficult bugs across many files, or get an alternative perspective when struggling. Provide a compact delegation brief: Objective, Scope/files, Known findings with evidence, Constraints, and Questions.',
   "Do NOT delegate to Oracle for file reads, simple searches, web browsing, or basic code changes — handle those directly.",
   "If no subagent or Search/Oracle agent is available, skip delegation and do the work directly.",
-  '',
-  'Limit concurrent subagents to **at most 4 per turn**. Prefer 2-3 for most tasks; use 4 only when the codebase genuinely splits into independent areas. If you need more, split into multiple turns — dispatch the first batch, act on results, then dispatch the next. Exceeding 4 wastes tokens on overlapping scope and redundant file reads.',
+  "",
+  "Limit concurrent subagents to **at most 4 per turn**. Prefer 2-3 for most tasks; use 4 only when the codebase genuinely splits into independent areas. If you need more, split into multiple turns — dispatch the first batch, act on results, then dispatch the next. Exceeding 4 wastes tokens on overlapping scope and redundant file reads.",
   "</subagent_delegation>",
 ].join("\n");
 

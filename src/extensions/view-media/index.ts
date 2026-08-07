@@ -564,8 +564,16 @@ export default function (pi: ExtensionAPI): void {
             showCollapsedSuccess: true,
           });
 
+      // When the image is sent directly to the model (source: "direct"),
+      // pi's own renderer already displays the image content block — skip
+      // our terminal preview to avoid showing it twice.
       const previewMimeType = details?.previewMimeType ?? details?.mimeType;
-      if (details?.previewData && previewMimeType && !options.isPartial) {
+      if (
+        details?.previewData &&
+        previewMimeType &&
+        !options.isPartial &&
+        details.source !== "direct"
+      ) {
         container.addChild(
           new Image(details.previewData, previewMimeType, {
             fallbackColor: (s: string) => theme.fg("toolOutput", s),
