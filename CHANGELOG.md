@@ -1,5 +1,70 @@
 # Changelog
 
+## v0.10.0
+
+### Features
+
+- Use Mermaid diagrams by default instead of box-drawing for architecture/workflow visualizations.
+- Encourage parallel Search subagents in system prompt for faster codebase discovery.
+- Add subagent delegation guidance to system prompt with Oracle and Search agent patterns.
+- Implement `rpiv-ask-user-question` extension with dynamic import and testing.
+- Show provider name next to model in powerline footer.
+- Add `mimo-v2.5` model to hdwebsoft-proxy with 1M context, 128K max output.
+- Add `/usage-hdwebsoft` command showing hdwebsoft-proxy quota with recovery window and account count.
+- Show loading spinner and success/failure mark in `/usage-hdwebsoft`.
+- Enhance child process environment configuration for HERDR integration.
+- Suppress retryable error text during auto-retry, show error once after exhaustion.
+- Enhance Oracle agent capabilities and update tool descriptions.
+- Introduce input type for model configuration in Devin provider.
+- Increase context window for Tuong Nguyen proxy.
+- Add one-command installer for easy setup.
+- Enhance rendering logic for spinner animation in subagents.
+- Add getting-started guide in English and Vietnamese.
+- Document Exa/Jina API keys, thinking levels, and subagent model config.
+
+### Bug Fixes
+
+- Skip Mermaid code blocks in markdown-code patch to avoid double-processing.
+- Wrap preload in try-catch so pi never crashes on version mismatch.
+- Fallback to TUI class for pi-tui <0.84.0 in startup-render.
+- Prefer bun-managed pi and always update it in install.sh.
+- Patch `TuiBase.prototype` instead of removed `TUI` class.
+- Adapt to pi 0.84.0 breaking changes.
+- Suppress pi default UI flash on `/new` via `session_before_switch`.
+- Cap long bash titles to stabilize scrolling.
+- Declare `@juicesharp/rpiv-ask-user-question` dependency.
+- Patch transitive npm vulnerabilities via overrides.
+- Align usage bars in one column across families; roll minutes to hours.
+- Label only the first reset as partial in `/usage-hdwebsoft` window.
+- Render `/usage` widget as component so it is not truncated at 10 lines.
+- Restore heavy braille spinner frames for non-subagent tools.
+- Show hd-agent in the resume session hint instead of pi.
+- Prefer `deepseek-v4-flash-free` as Search agent default model.
+- Color subagent title and status line with accent while running.
+- Replace `swe-1-7` with `deepseek-v4-flash` in defaults and comments.
+- Skip unknown models in comma-separated list instead of throwing.
+- Replace `claude-sonnet-5` with `grok-4.5-medium` as Oracle backup.
+- Add `gpt-5.6-luna` as last Oracle fallback model.
+- Force re-fetch launcher and harden Pi CLI discovery.
+- Migrate legacy Pim installation.
+- Update Devin model allowlist and remove deprecated entries.
+
+### Improvements
+
+- Bump `pi-coding-agent` peer dependency to `>=0.84.0`.
+- Slow spinner cadence and spin while waiting to cut flicker.
+- Guide Oracle delegation context in docs.
+- Sync agents config example with subagent model list.
+- Update Oracle and Search model lists in docs.
+- Focus settings on exa, painter, viewMedia, and agents only.
+- Remove powerline and Pi settings from getting-started guide.
+- Mention all three launcher bins in AGENTS.md and CLAUDE.md.
+- Rename Pim to HD Agent and update related documentation.
+- Replace spinner frames with static markers for improved performance.
+- Simplify spinner animation logic and update related tests.
+- Remove `ACTIVE_YELLOW` constant and update subagent rendering logic.
+- Update bundled subagent models and docs.
+
 ## v0.9.0
 
 ### Features
