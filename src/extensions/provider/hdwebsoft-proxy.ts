@@ -213,7 +213,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         },
       },
       {
-        id: "glm-5.2",
+        id: "glm-5-2",
         name: "GLM 5.2",
         api: "openai-completions",
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
