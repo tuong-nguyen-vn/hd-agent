@@ -431,6 +431,41 @@ export default function (pi: ExtensionAPI): void {
         mimeType,
       };
 
+      const directToModel = await PimSettings.getViewMediaDirectToModel();
+      if (directToModel) {
+        const preview = await buildPreview(base64, mimeType);
+        if (!modelSupportsImages(ctx.model)) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "view_media: direct-to-model mode is enabled but the current model cannot read images. Run /vision-direct to switch back to vision fallback.",
+              },
+            ],
+            details: {
+              isError: true,
+              mimeType,
+              bytes: buffer.length,
+              previewData: preview.data,
+              previewMimeType: preview.mimeType,
+            } satisfies ViewMediaDetails,
+          };
+        }
+        const note = args.question?.trim()
+          ? `The image is attached (question: ${args.question.trim()}).`
+          : "The image is attached.";
+        return {
+          content: [{ type: "text" as const, text: note }, imageBlock],
+          details: {
+            mimeType,
+            bytes: buffer.length,
+            source: "direct" as const,
+            previewData: preview.data,
+            previewMimeType: preview.mimeType,
+          } satisfies ViewMediaDetails,
+        };
+      }
+
       const fallbackToMainModel = async (reason: string) => {
         const supportsImages = modelSupportsImages(ctx.model);
         if (!supportsImages) {
@@ -454,6 +489,7 @@ export default function (pi: ExtensionAPI): void {
         const note = args.question?.trim()
           ? `The image is attached (question: ${args.question.trim()}).`
           : "The image is attached.";
+        const preview = await buildPreview(base64, mimeType);
         return {
           content: [
             {
@@ -466,6 +502,8 @@ export default function (pi: ExtensionAPI): void {
             mimeType,
             bytes: buffer.length,
             source: "direct" as const,
+            previewData: preview.data,
+            previewMimeType: preview.mimeType,
           } satisfies ViewMediaDetails,
         };
       };
@@ -537,6 +575,39 @@ export default function (pi: ExtensionAPI): void {
       }
 
       return container;
+    },
+  });
+
+  pi.registerCommand("vision-direct", {
+    description:
+      "Toggle direct-to-model mode, or force with /vision-direct true|false",
+    handler: async (args, ctx) => {
+      const arg = (args ?? "").trim().toLowerCase();
+      const current = await PimSettings.getViewMediaDirectToModel();
+      let next: boolean;
+      if (arg === "true" || arg === "false") {
+        next = arg === "true";
+      } else if (arg === "") {
+        next = !current;
+      } else {
+        ctx.ui.notify("Usage: /vision-direct [true|false]", "error");
+        return;
+      }
+      if (next && !modelSupportsImages(ctx.model)) {
+        ctx.ui.notify(
+          "Cannot enable direct-to-model: current model does not support image input",
+          "error"
+        );
+        return;
+      }
+      const viewMedia = await PimSettings.get("viewMedia");
+      await PimSettings.set("viewMedia", { ...viewMedia, directToModel: next });
+      ctx.ui.notify(
+        next
+          ? "Direct-to-model enabled — images sent to the main model"
+          : "Vision fallback enabled — images described by a vision model",
+        "info"
+      );
     },
   });
 }

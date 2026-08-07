@@ -63,7 +63,7 @@ describe("PimSettings", () => {
       exa: { apiKey: "exa-test" },
       jina: { apiKey: "jina-test" },
       painter: {},
-      viewMedia: {},
+      viewMedia: { directToModel: false },
       readSession: {},
       sessionTitle: {},
       agents: {},
@@ -91,6 +91,7 @@ describe("PimSettings", () => {
   test("loads dedicated tool models", async () => {
     await PimSettings.set("viewMedia", {
       model: "vision-model",
+      directToModel: false,
     });
 
     await expect(PimSettings.getViewMediaModel()).resolves.toBe("vision-model");

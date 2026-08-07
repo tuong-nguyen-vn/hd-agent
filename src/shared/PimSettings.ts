@@ -44,8 +44,11 @@ const Schema = Type.Object({
       // A single model id, "provider/model", or a comma-separated list tried
       // in order as fallbacks (mirrors subagent agent model config).
       model: Type.Optional(Type.String()),
+      // When true, view_media sends the raw image directly to the main model
+      // instead of calling a dedicated vision model for a text description.
+      directToModel: Type.Boolean({ default: false }),
     },
-    { default: {} }
+    { default: { directToModel: false } }
   ),
   readSession: Type.Object(
     {
@@ -142,6 +145,10 @@ export class PimSettings {
       PimSettings.normalize((await PimSettings.get("viewMedia")).model) ??
       "gemini-3.6-flash"
     );
+  }
+
+  public static async getViewMediaDirectToModel(): Promise<boolean> {
+    return (await PimSettings.get("viewMedia")).directToModel;
   }
 
   public static async getReadSessionModel(): Promise<string> {
