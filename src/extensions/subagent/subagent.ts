@@ -275,8 +275,13 @@ export async function runSubagent(
     const candidates = resolveSubagentModelCandidates(parentCtx, agent);
     const models = candidates.length > 0 ? candidates : [undefined];
 
+    let partialContext = "";
+
     for (let i = 0; i < models.length; i++) {
       const model = models[i];
+      const effectivePrompt = partialContext
+        ? `${prompt}\n\nA previous model attempt failed after making some progress. Here is its partial output — build on it rather than starting from scratch:\n${partialContext}`
+        : prompt;
 
       // Retry the same model candidate up to MAX_SAME_MODEL_RETRIES times
       // before falling back to the next candidate. Only retry transient
@@ -284,11 +289,12 @@ export async function runSubagent(
       // turns completed) — these are typically provider-side hiccups
       // (empty_stream, connection resets, brief stalls) that resolve on
       // a quick retry. Once the subagent has made any progress, the
-      // failure is considered non-transient and we don't retry.
+      // failure is considered non-transient and we don't retry the same
+      // model — but we do fall back to the next candidate below.
       let attempt: SubagentAttemptResult | undefined;
       for (let r = 0; r <= MAX_SAME_MODEL_RETRIES; r++) {
         attempt = await runSubagentAttempt(
-          prompt,
+          effectivePrompt,
           parentCtx,
           agent,
           model,
@@ -313,16 +319,22 @@ export async function runSubagent(
       }
 
       const finalAttempt = attempt!;
-      const failedBeforeAnyProgress =
-        finalAttempt.snapshot.toolCalls.length === 0 &&
-        finalAttempt.snapshot.usage.turns === 0 &&
-        (finalAttempt.thrown !== undefined ||
-          finalAttempt.snapshot.stopReason === "error" ||
-          finalAttempt.stalled);
+      // Fall back to the next candidate on any failure, even after the
+      // current model already made progress (tool calls, turns). The
+      // partial output is passed as context so the next candidate can
+      // build on it rather than restarting from scratch.
+      const failed =
+        finalAttempt.thrown !== undefined ||
+        finalAttempt.snapshot.stopReason === "error" ||
+        finalAttempt.stalled;
       const hasMoreCandidates = i < models.length - 1;
 
-      if (!failedBeforeAnyProgress || !hasMoreCandidates || signal?.aborted) {
+      if (!failed || !hasMoreCandidates || signal?.aborted) {
         return finalizeAttempt(finalAttempt);
+      }
+
+      if (finalAttempt.snapshot.finalOutput) {
+        partialContext = finalAttempt.snapshot.finalOutput;
       }
     }
 

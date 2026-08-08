@@ -807,4 +807,62 @@ describe("runSubagent with a named agent", () => {
     // 3 attempts on first model (1 initial + 2 retries), 1 on second = 4 total
     expect(sessions.length).toBe(0);
   });
+
+  test("falls back to the next candidate even after the first made progress", async () => {
+    // First model: completes a tool call and produces partial text, then
+    // errors mid-session. Previously this would throw immediately; now it
+    // should fall back to the next candidate, passing partial output as
+    // context.
+    let secondPrompt: string | undefined;
+    const partialThenError = new FakeSession(async (session) => {
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({
+        type: "message_end",
+        message: assistant(["found a bug in auth.ts"], {
+          stopReason: "toolUse",
+        }),
+      });
+      session.emit({
+        type: "tool_execution_end",
+        toolCallId: "1",
+        toolName: "read",
+        result: {},
+        isError: false,
+      });
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({
+        type: "message_end",
+        message: assistant(["partial analysis"], {
+          stopReason: "error",
+          errorMessage: "rate limit exceeded",
+        }),
+      });
+    });
+    const healthy = new FakeSession(async (session, prompt) => {
+      secondPrompt = prompt;
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({
+        type: "message_end",
+        message: assistant(["completed analysis"]),
+      });
+    });
+    const sessions = [partialThenError, healthy];
+
+    const result = await runSubagent(
+      "find bugs",
+      projectCtx,
+      undefined,
+      undefined,
+      async () => sessions.shift() as FakeSession,
+      undefined,
+      "multimodel"
+    );
+
+    expect(result.content).toEqual([
+      { type: "text", text: "completed analysis" },
+    ]);
+    // The second model should have received the partial output as context
+    expect(secondPrompt).toContain("partial analysis");
+    expect(sessions.length).toBe(0);
+  });
 });
