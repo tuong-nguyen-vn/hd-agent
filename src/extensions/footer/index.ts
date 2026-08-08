@@ -62,7 +62,9 @@ async function installAmpChrome(
   }));
   ctx.ui.setEditorComponent((tui, theme, keybindings) => {
     activeTui = tui;
-    setTimeout(() => StartupRender.release(tui), 0);
+    // Release without passing the Proxy — release() uses the real TUI
+    // captured during blocked requestRender calls, which is more reliable.
+    setTimeout(() => StartupRender.release(), 0);
     return new AmpEditor(tui, theme, keybindings, {
       pi,
       ctx,

@@ -69,27 +69,56 @@ try {
     const TuiCtor = piTui.TuiBase ?? piTui.TUI;
     if (TuiCtor) {
       const originalRequestRender = TuiCtor.prototype.requestRender;
-      const renderState: { pendingTui?: TuiType } = {};
+      const originalRequestImmediateRender = TuiCtor.prototype
+        .requestImmediateRender as ((this: TuiType) => void) | undefined;
+
       let released = false;
       let failsafe: ReturnType<typeof setTimeout> | null = null;
+      // Captured from the real TUI instance (not Pi's Proxy) during blocked
+      // requestRender calls. Used by release() to force a final render.
+      let activeTui: TuiType | undefined;
 
-      const patchRequestRender = (): void => {
-        TuiCtor.prototype.requestRender = function (force = false): void {
+      // Install permanent gated wrappers instead of repeatedly swapping the
+      // prototype. This is safe under Pi 0.84.1's createInteractiveTuiReference
+      // Proxy, which caches method references — every cached reference points
+      // to the same stable wrapper that checks `released` at call time.
+      TuiCtor.prototype.requestRender = function (force = false): void {
+        if (!released) {
+          // eslint-disable-next-line @typescript-eslint/no-this-alias
+          activeTui = this;
+          return;
+        }
+        originalRequestRender.call(this, force);
+      };
+
+      if (typeof originalRequestImmediateRender === "function") {
+        TuiCtor.prototype.requestImmediateRender = function (): void {
           if (!released) {
-            renderState.pendingTui = this;
+            // eslint-disable-next-line @typescript-eslint/no-this-alias
+            activeTui = this;
             return;
           }
-          originalRequestRender.call(this, force);
+          originalRequestImmediateRender.call(this);
         };
-      };
+      }
 
       const suppress = (): void => {
         if (!released) {
           return;
         }
         released = false;
-        patchRequestRender();
-        failsafe = setTimeout(release, FAILSAFE_MS);
+        // Cancel any render already queued on the active TUI. A pending
+        // nextTick callback (from requestImmediateRender or scheduleRender)
+        // would call doRender() directly, bypassing our gated wrappers.
+        if (activeTui) {
+          const t = activeTui as unknown as {
+            renderRequested?: boolean;
+            cancelRenderTimer?: () => void;
+          };
+          t.renderRequested = false;
+          t.cancelRenderTimer?.();
+        }
+        failsafe = setTimeout(() => release(), FAILSAFE_MS);
         failsafe.unref();
       };
 
@@ -102,16 +131,19 @@ try {
           clearTimeout(failsafe);
           failsafe = null;
         }
-        TuiCtor.prototype.requestRender = originalRequestRender;
-        const target = tui ?? renderState.pendingTui;
+        // Prefer the real TUI captured during blocked renders over the Proxy
+        // that Pi's editor factory passes in. If none was captured yet (e.g.
+        // release before any blocked call), fall back to the argument.
+        const target = activeTui ?? tui;
         if (target) {
           originalRequestRender.call(target, true);
         }
-        renderState.pendingTui = undefined;
+        activeTui = undefined;
       };
 
-      patchRequestRender();
-      failsafe = setTimeout(release, FAILSAFE_MS);
+      // Start suppressed for initial startup.
+      released = false;
+      failsafe = setTimeout(() => release(), FAILSAFE_MS);
       failsafe.unref();
 
       (globalThis as Record<symbol, unknown>)[STATE_KEY] = {
