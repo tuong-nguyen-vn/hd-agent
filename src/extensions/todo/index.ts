@@ -20,6 +20,10 @@ import {
 const WIDGET_ID = "pim-todo";
 
 export default function (pi: ExtensionAPI): void {
+  // Temporarily disabled.
+  if (false) {
+    return;
+  }
   let pendingRefresh: ReturnType<typeof setImmediate> | undefined;
 
   const refreshWidget = (ctx: ExtensionContext): void => {
