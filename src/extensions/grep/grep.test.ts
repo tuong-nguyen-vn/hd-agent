@@ -131,10 +131,10 @@ describe("findMatches", () => {
 
   test("matches escaped dots and alternation as regex syntax", async () => {
     const root = await tempRoot();
-    const schema = join(root, "src", "extensions", "todo", "schema.ts");
+    const schema = join(root, "src", "extensions", "sample", "schema.ts");
     const helper = join(root, "src", "shared", "arrays.ts");
 
-    await mkdir(join(root, "src", "extensions", "todo"), { recursive: true });
+    await mkdir(join(root, "src", "extensions", "sample"), { recursive: true });
     await mkdir(join(root, "src", "shared"), { recursive: true });
     await writeFile(schema, "const x = Type.Union([Type.String()]);\n", "utf8");
     await writeFile(

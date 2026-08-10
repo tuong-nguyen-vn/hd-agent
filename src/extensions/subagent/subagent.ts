@@ -792,9 +792,6 @@ function deriveToolTitle(toolName: string, args: unknown): string {
   if (name === "search" || name === "web_search") {
     return firstLine(a.query ?? a.task);
   }
-  if (name === "todo") {
-    return "update todo";
-  }
   if (name === "subagent") {
     const agent = firstLine(a.agent);
     const prompt = firstLine(a.prompt);

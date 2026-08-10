@@ -87,38 +87,6 @@ function makeRenderer(logsMode = "text"): {
   };
 }
 
-function todoStart(
-  todos: readonly unknown[],
-  toolCallId = "todo-1"
-): AgentSessionEvent {
-  return todoStartWithArgs({ todos }, toolCallId);
-}
-
-function todoStartWithArgs(
-  args: unknown,
-  toolCallId = "todo-1"
-): AgentSessionEvent {
-  return {
-    type: "tool_execution_start",
-    toolCallId,
-    toolName: "todo",
-    args,
-  } as AgentSessionEvent;
-}
-
-function todoEnd(
-  todos: readonly unknown[],
-  toolCallId = "todo-1"
-): AgentSessionEvent {
-  return {
-    type: "tool_execution_end",
-    toolCallId,
-    toolName: "todo",
-    result: { content: [], details: { todos } },
-    isError: false,
-  } as AgentSessionEvent;
-}
-
 function assistantText(text: string): readonly AgentSessionEvent[] {
   return [
     { type: "message_start" } as AgentSessionEvent,
@@ -135,14 +103,6 @@ function assistantText(text: string): readonly AgentSessionEvent[] {
       message: { role: "assistant", stopReason: "toolUse" },
     } as AgentSessionEvent,
   ];
-}
-
-async function flush(renderer: Renderer): Promise<void> {
-  await (
-    renderer as unknown as {
-      readonly flushEdit: (state: "running") => Promise<void>;
-    }
-  ).flushEdit("running");
 }
 
 function applyPatchStart(
@@ -388,105 +348,6 @@ describe("Telegram Renderer edit/write stats", () => {
     renderer.handleEvent(toolEndWithDiff("write", undefined, "w-2"));
     await renderer.finish("", "ok");
     expect(api.sent.map((m) => m.text)).toEqual(["✏️ <code>bar.ts</code>"]);
-  });
-});
-
-describe("Telegram Renderer todo status", () => {
-  test("renders the latest in-progress todo in bold", async () => {
-    const { api, renderer } = makeRenderer();
-
-    renderer.handleEvent(
-      todoStart([
-        { content: "First task", status: "in_progress" },
-        { content: "Second <task> & verify", status: "in_progress" },
-      ])
-    );
-    await renderer.finish("", "ok");
-
-    expect(api.sent.map((msg) => msg.text)).toEqual([
-      "📋 <b>Second &lt;task&gt; &amp; verify</b>",
-    ]);
-  });
-
-  test("keeps todo entries in event order instead of replacing the prior one", async () => {
-    const { api, renderer } = makeRenderer();
-
-    renderer.handleEvent(
-      todoStart([{ content: "Remember to buy milk", status: "in_progress" }])
-    );
-    await flush(renderer);
-
-    for (const event of assistantText(
-      "First item is in progress. Now let me finish it and start the next one:"
-    )) {
-      renderer.handleEvent(event);
-    }
-    renderer.handleEvent(
-      todoStart(
-        [
-          { content: "Remember to buy milk", status: "completed" },
-          { content: "Remember to get water", status: "in_progress" },
-        ],
-        "todo-2"
-      )
-    );
-    await renderer.finish("", "ok");
-
-    expect(api.sent.map((msg) => msg.text)).toEqual([
-      "📋 <b>Remember to buy milk</b>",
-    ]);
-    expect(api.edited.map((msg) => msg.text)).toEqual([
-      [
-        "📋 <b>Remember to buy milk</b>",
-        "<p>First item is in progress. Now let me finish it and start the next one:</p>",
-        "📋 <b>Remember to get water</b>",
-      ].join(""),
-    ]);
-  });
-
-  test("does not render todo calls with no in-progress item", async () => {
-    const { api, renderer } = makeRenderer();
-
-    renderer.handleEvent(
-      todoStart([
-        { content: "Plan", status: "pending" },
-        { content: "Done", status: "completed" },
-      ])
-    );
-    await renderer.finish("", "ok");
-
-    expect(api.sent).toEqual([]);
-    expect(api.edited).toEqual([]);
-  });
-
-  test("ignores malformed todo args", async () => {
-    const { api, renderer } = makeRenderer();
-
-    expect(() =>
-      renderer.handleEvent(todoStartWithArgs({ text: "done" }))
-    ).not.toThrow();
-    await renderer.finish("", "ok");
-
-    expect(api.sent).toEqual([]);
-    expect(api.edited).toEqual([]);
-  });
-
-  test("does not emit a new todo entry when no item remains in progress", async () => {
-    const { api, renderer } = makeRenderer();
-
-    renderer.handleEvent(
-      todoStart([{ content: "Build feature", status: "in_progress" }])
-    );
-    await flush(renderer);
-    renderer.handleEvent(
-      todoEnd([{ content: "Build feature", status: "completed" }])
-    );
-    await flush(renderer);
-
-    expect(api.sent.map((msg) => msg.text)).toEqual([
-      "📋 <b>Build feature</b>",
-    ]);
-    expect(api.edited).toEqual([]);
   });
 });
 
