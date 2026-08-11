@@ -8,6 +8,9 @@ import { Levenshtein } from "./Levenshtein";
 
 // Lazy-loaded on first call (not fired at module load) to avoid triggering
 // a background import of pi-ai that competes for CPU during startup.
+// Kick-start the import immediately so it resolves in parallel with the
+// rest of startup; Tools.ready is awaited in _init's session_start to
+// guarantee completion before the first tool call.
 let cachedValidate: typeof ValidateFn | undefined;
 let validatePromise: Promise<void> | undefined;
 
@@ -18,6 +21,10 @@ function ensureValidate(): void {
     });
   }
 }
+
+// Start the import as soon as Tools.ts is loaded (during extension
+// registration, before the agent loop begins).
+ensureValidate();
 
 function validateToolArguments(
   ...args: Parameters<typeof ValidateFn>

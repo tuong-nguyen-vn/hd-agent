@@ -2,6 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { Tools } from "../../shared/Tools";
 
 const SPLASH_ID = "pim-splash";
 
@@ -76,7 +77,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
 
   let splashShown = false;
 
-  pi.on("session_start", (event, ctx) => {
+  pi.on("session_start", async (event, ctx) => {
+    await Tools.ready;
     ctx.ui.setHiddenThinkingLabel("✓ Thinking...");
 
     if (event.reason !== "startup" && event.reason !== "new") {
