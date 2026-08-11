@@ -5,14 +5,12 @@ import type {
   SessionEntry,
   SessionInfo,
   Theme,
+  buildSessionContext as BuildSessionContext,
+  migrateSessionEntries as MigrateSessionEntries,
+  parseSessionEntries as ParseSessionEntries,
+  SessionManager as SessionManagerType,
 } from "@earendil-works/pi-coding-agent";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import {
-  buildSessionContext,
-  migrateSessionEntries,
-  parseSessionEntries,
-  SessionManager,
-} from "@earendil-works/pi-coding-agent";
 import {
   Renderer,
   type StatefulToolCallTitleContext,
@@ -50,8 +48,20 @@ type ReadSessionDeps = {
 };
 
 const defaultDeps: ReadSessionDeps = {
-  listSessions: (cwd, sessionDir) => SessionManager.list(cwd, sessionDir),
+  listSessions: async (cwd, sessionDir) => {
+    const { SessionManager } =
+      (await import("@earendil-works/pi-coding-agent")) as {
+        SessionManager: typeof SessionManagerType;
+      };
+    return SessionManager.list(cwd, sessionDir);
+  },
   readSession: async (path, expectedId) => {
+    const { parseSessionEntries, migrateSessionEntries, buildSessionContext } =
+      (await import("@earendil-works/pi-coding-agent")) as {
+        parseSessionEntries: typeof ParseSessionEntries;
+        migrateSessionEntries: typeof MigrateSessionEntries;
+        buildSessionContext: typeof BuildSessionContext;
+      };
     const entries = parseSessionEntries(
       await Bun.file(path).text()
     ) as FileEntry[];

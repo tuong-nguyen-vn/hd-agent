@@ -16,8 +16,8 @@ import { registerTuongNguyenProxy } from "./tuongnguyen-proxy";
  * for a key and stores it in `~/.pi/agent/auth.json`, same as any built-in
  * provider.
  */
-export default async function (pi: ExtensionAPI): Promise<void> {
+export default function (pi: ExtensionAPI): void {
   registerTuongNguyenProxy(pi);
   registerHdwebsoftProxy(pi);
-  await registerHdwebsoftBackup(pi);
+  registerHdwebsoftBackup(pi);
 }

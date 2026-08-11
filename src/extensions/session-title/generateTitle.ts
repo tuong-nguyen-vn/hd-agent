@@ -1,5 +1,4 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { completeSimple } from "@earendil-works/pi-ai/compat";
 import type { AssistantMessage, Context, Model } from "@earendil-works/pi-ai";
 import { ModelResolver } from "../../shared/ModelResolver";
 import { PimSettings } from "../../shared/PimSettings";
@@ -79,6 +78,7 @@ export async function runTitleAttempt(
       },
     ],
   };
+  const { completeSimple } = await import("@earendil-works/pi-ai/compat");
   const message = await completeSimple(resolved.model, context, {
     apiKey: resolved.apiKey,
     headers: resolved.headers,

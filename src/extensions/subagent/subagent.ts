@@ -4,12 +4,10 @@ import type {
   AgentToolResult,
   AgentToolUpdateCallback,
   ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
-import {
-  createAgentSession,
-  DefaultResourceLoader,
-  getAgentDir,
-  SessionManager,
+  createAgentSession as CreateAgentSession,
+  DefaultResourceLoader as DefaultResourceLoaderType,
+  getAgentDir as GetAgentDir,
+  SessionManager as SessionManagerType,
 } from "@earendil-works/pi-coding-agent";
 import type {
   AssistantMessage,
@@ -123,6 +121,17 @@ export async function createSdkSubagentSession(
   model: Model<any> | undefined
 ): Promise<SubagentSession> {
   const systemPrompt = agent?.systemPrompt.trim();
+  const {
+    createAgentSession,
+    DefaultResourceLoader,
+    getAgentDir,
+    SessionManager,
+  } = (await import("@earendil-works/pi-coding-agent")) as {
+    createAgentSession: typeof CreateAgentSession;
+    DefaultResourceLoader: typeof DefaultResourceLoaderType;
+    getAgentDir: typeof GetAgentDir;
+    SessionManager: typeof SessionManagerType;
+  };
   const loader = new DefaultResourceLoader({
     cwd: parentCtx.cwd,
     agentDir: getAgentDir(),

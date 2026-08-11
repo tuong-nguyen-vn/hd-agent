@@ -2,8 +2,11 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { type Static, Type } from "typebox";
-import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
-import { stripFrontmatter } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  Theme,
+  stripFrontmatter as StripFrontmatter,
+} from "@earendil-works/pi-coding-agent";
 import { Levenshtein } from "../../shared/Levenshtein";
 import {
   Renderer,
@@ -358,6 +361,10 @@ export default function (pi: ExtensionAPI): void {
 
       try {
         const rawContent = readFileSync(skill.filePath, "utf-8");
+        const { stripFrontmatter } =
+          (await import("@earendil-works/pi-coding-agent")) as {
+            stripFrontmatter: typeof StripFrontmatter;
+          };
         const body = stripFrontmatter(rawContent).trim();
         loaded.add(skill.filePath);
         return {

@@ -1,12 +1,19 @@
 import { readdir, readFile, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  CONFIG_DIR_NAME,
-  getAgentDir,
-  parseFrontmatter,
-} from "@earendil-works/pi-coding-agent";
+import type { parseFrontmatter as ParseFrontmatter } from "@earendil-works/pi-coding-agent";
 import { PimSettings } from "../../shared/PimSettings";
+
+// Inlined from pi-coding-agent to avoid importing it at module load time.
+const CONFIG_DIR_NAME = ".pi";
+function getAgentDir(): string {
+  const envDir = process.env["PI_CODING_AGENT_DIR"];
+  if (envDir) {
+    return envDir.startsWith("~/") ? join(homedir(), envDir.slice(2)) : envDir;
+  }
+  return join(homedir(), ".pi", "agent");
+}
 
 const BUNDLED_AGENTS_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -62,6 +69,10 @@ async function loadAgentConfig(
     return undefined;
   }
 
+  const { parseFrontmatter } =
+    (await import("@earendil-works/pi-coding-agent")) as {
+      parseFrontmatter: typeof ParseFrontmatter;
+    };
   const { frontmatter, body } =
     parseFrontmatter<Record<string, string>>(content);
   if (!frontmatter.name || !frontmatter.description) {

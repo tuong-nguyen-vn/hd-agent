@@ -2,8 +2,8 @@ import type {
   AgentToolResult,
   ExtensionAPI,
   Theme,
+  convertToPng as ConvertToPng,
 } from "@earendil-works/pi-coding-agent";
-import { convertToPng } from "@earendil-works/pi-coding-agent";
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { getCapabilities, Image } from "@earendil-works/pi-tui";
@@ -121,6 +121,10 @@ async function buildPreview(
   if (mimeType === "image/png" || getCapabilities().images !== "kitty") {
     return { data: base64, mimeType };
   }
+  const { convertToPng } =
+    (await import("@earendil-works/pi-coding-agent")) as {
+      convertToPng: typeof ConvertToPng;
+    };
   const converted = await convertToPng(base64, mimeType).catch(() => null);
   return converted ?? { data: base64, mimeType };
 }

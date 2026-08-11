@@ -17,8 +17,8 @@ const skill: Skill = {
 };
 
 describe("formatSkillsForAmpPrompt", () => {
-  test("directs the model to invoke the skill tool instead of reading SKILL.md", () => {
-    const prompt = formatSkillsForAmpPrompt([skill]);
+  test("directs the model to invoke the skill tool instead of reading SKILL.md", async () => {
+    const prompt = await formatSkillsForAmpPrompt([skill]);
 
     expect(prompt).toContain(
       "Use the skill tool to invoke a skill when the task matches its description."

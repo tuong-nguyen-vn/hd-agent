@@ -2,9 +2,34 @@ import type {
   ExtensionAPI,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import { validateToolArguments } from "@earendil-works/pi-ai";
+import type { validateToolArguments as ValidateFn } from "@earendil-works/pi-ai";
 import type { Static, TSchema } from "typebox";
 import { Levenshtein } from "./Levenshtein";
+
+// Lazy-loaded on first call (not fired at module load) to avoid triggering
+// a background import of pi-ai that competes for CPU during startup.
+let cachedValidate: typeof ValidateFn | undefined;
+let validatePromise: Promise<void> | undefined;
+
+function ensureValidate(): void {
+  if (!cachedValidate && !validatePromise) {
+    validatePromise = import("@earendil-works/pi-ai").then((mod) => {
+      cachedValidate = mod.validateToolArguments as typeof ValidateFn;
+    });
+  }
+}
+
+function validateToolArguments(
+  ...args: Parameters<typeof ValidateFn>
+): ReturnType<typeof ValidateFn> {
+  ensureValidate();
+  if (!cachedValidate) {
+    throw new Error(
+      "Tools.validateToolArguments called before pi-ai finished loading"
+    );
+  }
+  return cachedValidate(...args);
+}
 
 type Issue = { readonly path: string; readonly message: string };
 
@@ -19,6 +44,12 @@ type JsonSchema = {
 };
 
 export class Tools {
+  /** Resolves when the lazy pi-ai import has completed. */
+  static get ready(): Promise<void> {
+    ensureValidate();
+    return validatePromise ?? Promise.resolve();
+  }
+
   /**
    * Wrap a tool definition so pi's validator errors get rewritten before they
    * reach the model. Pi runs `prepareArguments` before validation, so we call

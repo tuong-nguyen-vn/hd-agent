@@ -7,7 +7,6 @@ import type { TUI } from "@earendil-works/pi-tui";
 import { PimSettings } from "../../shared/PimSettings";
 import { PromptHistory } from "../../shared/PromptHistory";
 import { StartupRender } from "../../shared/StartupRender";
-import { AmpEditor } from "./AmpEditor";
 import { EMPTY_GIT, fetchGitStatus, watchGitDir } from "./git";
 
 let activeGitRefresh: (() => void) | null = null;
@@ -32,6 +31,7 @@ async function installAmpChrome(
   }
   activeChromeCleanup?.();
 
+  const { AmpEditor } = await import("./AmpEditor");
   const initialHistory = await PromptHistory.load();
 
   let gitState = EMPTY_GIT;

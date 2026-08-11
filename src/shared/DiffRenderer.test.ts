@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { DiffLines, type ToolDiffHunk } from "./DiffLines";
 import { DiffRenderer, type DiffHighlighter } from "./DiffRenderer";
 
@@ -91,6 +91,10 @@ describe("DiffRenderer.highlightHunkLines", () => {
 });
 
 describe("DiffRenderer.render", () => {
+  beforeAll(async () => {
+    await DiffRenderer.ready;
+  });
+
   const stubTheme = {
     name: "pim-dark",
     fg: (_color: string, text: string) => text,

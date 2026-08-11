@@ -1,8 +1,25 @@
-import {
-  getLanguageFromPath,
-  highlightCode,
-  type Theme,
+import type {
+  getLanguageFromPath as GetLanguageFromPath,
+  highlightCode as HighlightCode,
+  Theme,
 } from "@earendil-works/pi-coding-agent";
+
+// Lazy-loaded on first render call (not fired at module load) to avoid
+// triggering a background import of pi-coding-agent that competes for CPU
+// during the critical startup path.
+let cachedGetLanguage: typeof GetLanguageFromPath | undefined;
+let cachedHighlight: typeof HighlightCode | undefined;
+let diffPromise: Promise<void> | undefined;
+
+function ensureDiffImports(): void {
+  if (!cachedGetLanguage && !diffPromise) {
+    diffPromise = import("@earendil-works/pi-coding-agent").then((mod) => {
+      cachedGetLanguage = mod.getLanguageFromPath as typeof GetLanguageFromPath;
+      cachedHighlight = mod.highlightCode as typeof HighlightCode;
+    });
+  }
+}
+void diffPromise;
 import type {
   IntraLineRange,
   ToolDiff,
@@ -25,6 +42,11 @@ type DiffBackgrounds = {
 };
 
 export class DiffRenderer {
+  /** Resolves when the lazy pi-coding-agent import has completed. */
+  static get ready(): Promise<void> {
+    ensureDiffImports();
+    return diffPromise ?? Promise.resolve();
+  }
   private static readonly TAB = "   ";
   // A single flat tone per line (no brighter intra-line emphasis band)
   // matches Amp's evenly-colored added/removed rows.
@@ -50,7 +72,8 @@ export class DiffRenderer {
       return "";
     }
 
-    const lang = getLanguageFromPath(toolDiff.path);
+    ensureDiffImports();
+    const lang = cachedGetLanguage!(toolDiff.path);
     const highlighter = DiffRenderer.makeHighlighter(lang);
     const numberWidth = DiffRenderer.computeNumberWidth(toolDiff.hunks);
     const backgrounds = DiffRenderer.backgroundsFor(theme);
@@ -136,7 +159,7 @@ export class DiffRenderer {
       return (block) => DiffRenderer.detab(block).split("\n");
     }
 
-    return (block) => highlightCode(DiffRenderer.detab(block), lang);
+    return (block) => cachedHighlight!(DiffRenderer.detab(block), lang);
   }
 
   private static detab(text: string): string {

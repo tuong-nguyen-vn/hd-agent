@@ -2,11 +2,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import {
-  AssistantMessageComponent,
-  type ExtensionAPI,
-} from "@earendil-works/pi-coding-agent";
-import { isRetryableAssistantError } from "@earendil-works/pi-ai";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const PATCH_STATE = Symbol.for("pim.silent-retry");
 
@@ -25,6 +21,8 @@ type AssistantMessageConstructor = Function & {
   readonly prototype: AssistantMessagePrototype;
 };
 
+type IsRetryableAssistantError = (error: unknown) => boolean;
+
 function isAssistantMessageConstructor(
   value: unknown
 ): value is AssistantMessageConstructor {
@@ -36,15 +34,30 @@ function isAssistantMessageConstructor(
   );
 }
 
+// Lazy-loaded to avoid importing pi-coding-agent and pi-ai values at module
+// load time, which triggers loading a second copy from hd-agent's own
+// node_modules (~700-1000ms). The dynamic import uses Bun's native import
+// and runs in the factory, not at module-import time.
+let cachedIsRetryable: IsRetryableAssistantError | undefined;
+
+async function getIsRetryableAssistantError(): Promise<IsRetryableAssistantError> {
+  if (cachedIsRetryable) {
+    return cachedIsRetryable;
+  }
+  const { isRetryableAssistantError } =
+    (await import("@earendil-works/pi-ai")) as {
+      isRetryableAssistantError: IsRetryableAssistantError;
+    };
+  cachedIsRetryable = isRetryableAssistantError;
+  return isRetryableAssistantError;
+}
+
 // Pi can have multiple pi-coding-agent copies (hoisted + nested). Patch every
 // reachable one so the live UI instance is covered.
 async function resolveAssistantMessageConstructors(): Promise<
   AssistantMessageConstructor[]
 > {
   const constructors = new Set<AssistantMessageConstructor>();
-  if (isAssistantMessageConstructor(AssistantMessageComponent)) {
-    constructors.add(AssistantMessageComponent);
-  }
 
   const entries = new Set<string>();
   const argv1 = process.argv[1];
@@ -92,7 +105,9 @@ async function resolveAssistantMessageConstructors(): Promise<
         AssistantMessageComponent?: unknown;
       };
       if (isAssistantMessageConstructor(mod.AssistantMessageComponent)) {
-        constructors.add(mod.AssistantMessageComponent);
+        constructors.add(
+          mod.AssistantMessageComponent as AssistantMessageConstructor
+        );
       }
     } catch {
       // Ignore unreadable copies; the others may still be the live one.
@@ -111,6 +126,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
 }
 
 async function applySilentRetryPatches(): Promise<number> {
+  const isRetryableAssistantError = await getIsRetryableAssistantError();
   let patched = 0;
   for (const ctor of await resolveAssistantMessageConstructors()) {
     const prototype = ctor.prototype;
@@ -130,9 +146,7 @@ async function applySilentRetryPatches(): Promise<number> {
       if (
         message.stopReason === "error" &&
         !message.content.some((c) => c.type === "toolCall") &&
-        isRetryableAssistantError(
-          message as Parameters<typeof isRetryableAssistantError>[0]
-        )
+        isRetryableAssistantError(message)
       ) {
         // Pass a copy without stopReason so the original updateContent skips
         // the "Error: <message>" line. The original message object keeps

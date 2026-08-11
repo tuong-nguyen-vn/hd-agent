@@ -1,6 +1,6 @@
-import {
-  SessionManager,
-  type SessionInfo,
+import type {
+  SessionManager as SessionManagerType,
+  SessionInfo,
 } from "@earendil-works/pi-coding-agent";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
 
@@ -82,8 +82,13 @@ export class SessionSuggestionEngine {
     private readonly cwd: string,
     private readonly sessionDir: string,
     private readonly currentSessionId: () => string,
-    private readonly load: SessionLoader = (workspace) =>
-      SessionManager.list(workspace, sessionDir)
+    private readonly load: SessionLoader = async (workspace) => {
+      const { SessionManager } =
+        (await import("@earendil-works/pi-coding-agent")) as {
+          SessionManager: typeof SessionManagerType;
+        };
+      return SessionManager.list(workspace, sessionDir);
+    }
   ) {}
 
   public async rank(

@@ -22,7 +22,7 @@
         "prettier": "^3.8.4",
       },
       "peerDependencies": {
-        "@earendil-works/pi-coding-agent": ">=0.82.0",
+        "@earendil-works/pi-coding-agent": ">=0.84.0",
       },
       "optionalPeers": [
         "@earendil-works/pi-coding-agent",

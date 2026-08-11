@@ -2,10 +2,10 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import {
-  UserMessageComponent,
-  type ExtensionAPI,
-  type Theme,
+import type {
+  UserMessageComponent as UserMessageComponentType,
+  ExtensionAPI,
+  Theme,
 } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 
@@ -14,7 +14,7 @@ const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
 const PATCH_STATE = Symbol.for("pim.user-message-renderer");
 
-type UserMessagePrototype = UserMessageComponent & {
+type UserMessagePrototype = UserMessageComponentType & {
   [PATCH_STATE]?: {
     theme: Theme;
   };
@@ -45,9 +45,6 @@ async function resolveUserMessageConstructors(): Promise<
   UserMessageConstructor[]
 > {
   const constructors = new Set<UserMessageConstructor>();
-  if (isUserMessageConstructor(UserMessageComponent)) {
-    constructors.add(UserMessageComponent);
-  }
 
   const entries = new Set<string>();
   const argv1 = process.argv[1];

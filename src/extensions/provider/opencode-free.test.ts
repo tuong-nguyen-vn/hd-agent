@@ -1,141 +1,66 @@
-import { existsSync, rmSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
-import { fetchOpencodeFreeModels } from "./opencode-free";
-
-const CACHE_FILE = join(
-  homedir(),
-  ".pi",
-  "agent",
-  ".cache",
-  "opencode-free-meta.json"
-);
+import { getOpencodeFreeModels } from "./opencode-free";
 
 describe("opencode-free", () => {
-  it("fetches live free models from Zen + models.dev", async () => {
-    const models = await fetchOpencodeFreeModels();
-    expect(models.length).toBeGreaterThan(0);
+  it("returns a static free-model list without network", () => {
+    const models = getOpencodeFreeModels();
+    expect(models.length).toBe(3);
 
-    // All must be free (big-pickle or *-free)
-    for (const m of models) {
-      expect(m.id === "big-pickle" || m.id.endsWith("-free")).toBe(true);
+    const ids = models.map((m) => m.id);
+    expect(ids).toContain("big-pickle");
+    expect(ids).toContain("deepseek-v4-flash-free");
+    expect(ids).toContain("mimo-v2.5-free");
+  });
+
+  it("all models point at OpenCode Zen with cost 0", () => {
+    for (const m of getOpencodeFreeModels()) {
+      expect(m.baseUrl).toBe("https://opencode.ai/zen/v1");
+      expect(m.api).toBe("openai-completions");
+      expect(m.cost).toEqual({
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+      });
+      expect(m.reasoning).toBe(true);
+      expect(m.input).toEqual(["text"]);
     }
-
-    // All point directly at OpenCode Zen with cost 0
-    const sample = models[0]!;
-    expect(sample.baseUrl).toBe("https://opencode.ai/zen/v1");
-    expect(sample.api).toBe("openai-completions");
-    expect(sample.cost).toEqual({
-      input: 0,
-      output: 0,
-      cacheRead: 0,
-      cacheWrite: 0,
-    });
-    expect(sample.reasoning).toBe(true);
-    expect(sample.input).toEqual(["text"]);
   });
 
-  it("pins thinking to high only, everything else null", async () => {
-    const models = await fetchOpencodeFreeModels();
-    const map = models[0]!.thinkingLevelMap!;
-    expect(map).toEqual({
-      off: null,
-      minimal: null,
-      low: null,
-      medium: null,
-      high: "high",
-      xhigh: null,
-      max: null,
-    });
+  it("pins thinking to high only, everything else null", () => {
+    for (const m of getOpencodeFreeModels()) {
+      expect(m.thinkingLevelMap).toEqual({
+        off: null,
+        minimal: null,
+        low: null,
+        medium: null,
+        high: "high",
+        xhigh: null,
+        max: null,
+      });
+    }
   });
 
-  it("uses models.dev metadata when available (ctx/maxTokens)", async () => {
-    const models = await fetchOpencodeFreeModels();
-    // deepseek-v4-flash-free is a known free model with ctx=200000, out=128000
-    const ds = models.find((m) => m.id === "deepseek-v4-flash-free");
-    expect(ds).toBeDefined();
-    expect(ds!.contextWindow).toBe(200000);
-    expect(ds!.maxTokens).toBe(128000);
-    expect(ds!.name).toBeTruthy();
+  it("has sensible context window and max tokens defaults", () => {
+    for (const m of getOpencodeFreeModels()) {
+      expect(m.contextWindow).toBeGreaterThan(0);
+      expect(m.maxTokens).toBeGreaterThan(0);
+    }
   });
 
-  it("caches models.dev metadata to disk", async () => {
-    // Clean slate
-    rmSync(CACHE_FILE, { force: true });
-    expect(existsSync(CACHE_FILE)).toBe(false);
-
-    // First call populates cache
-    await fetchOpencodeFreeModels();
-    expect(existsSync(CACHE_FILE)).toBe(true);
-
-    // Cache file has expected shape
-    const cached = JSON.parse(readFileSync(CACHE_FILE, "utf8"));
-    expect(cached.fetchedAt).toBeGreaterThan(0);
-    expect(typeof cached.models).toBe("object");
-    expect(Object.keys(cached.models).length).toBeGreaterThan(0);
-  });
-
-  it("strips 'Free' and marketing suffixes from display names", async () => {
-    const models = await fetchOpencodeFreeModels();
-    for (const m of models) {
-      // No "free" anywhere (case-insensitive) in the display name
+  it("strips 'Free' from display names", () => {
+    for (const m of getOpencodeFreeModels()) {
       expect(m.name.toLowerCase()).not.toContain("free");
-      // No trailing parenthetical like "(New)"
-      expect(m.name).not.toMatch(/\([^)]*\)/);
-    }
-    // Spot-check a known rename
-    const ds = models.find((m) => m.id === "deepseek-v4-flash-free");
-    expect(ds!.name).toBe("DeepSeek V4 Flash");
-  });
-
-  it("returns [] when Zen API is unreachable", async () => {
-    // Monkey-patch global fetch to simulate network failure for the Zen URL.
-    const original = globalThis.fetch;
-    globalThis.fetch = ((input: any) => {
-      const url = typeof input === "string" ? input : (input?.url ?? "");
-      if (url.includes("opencode.ai")) {
-        return Promise.reject(new Error("network down"));
-      }
-      return original(input);
-    }) as any;
-
-    try {
-      const models = await fetchOpencodeFreeModels();
-      expect(models).toEqual([]);
-    } finally {
-      globalThis.fetch = original;
     }
   });
 
-  it("returns empty meta (not throw) when models.dev is unreachable", async () => {
-    // Zen works, models.dev fails → should still return models with defaults.
-    const original = globalThis.fetch;
-    let modelsDevCalled = false;
-    globalThis.fetch = (async (input: any) => {
-      const url = typeof input === "string" ? input : (input?.url ?? "");
-      if (url.includes("models.dev")) {
-        modelsDevCalled = true;
-        throw new Error("models.dev down");
-      }
-      return original(input as any);
-    }) as any;
-
-    // Clear cache so models.dev is actually attempted
-    rmSync(CACHE_FILE, { force: true });
-
-    try {
-      const models = await fetchOpencodeFreeModels();
-      expect(modelsDevCalled).toBe(true);
-      // Still got models from Zen, with fallback metadata
-      expect(models.length).toBeGreaterThan(0);
-      // All fall back to 200K / 32K since models.dev is unreachable
-      for (const m of models) {
-        expect(m.contextWindow).toBe(200000);
-        expect(m.maxTokens).toBe(32000);
-      }
-    } finally {
-      globalThis.fetch = original;
+  it("sets compat flags for OpenAI completions API", () => {
+    for (const m of getOpencodeFreeModels()) {
+      expect(m.compat).toEqual({
+        supportsDeveloperRole: false,
+        supportsReasoningEffort: true,
+        maxTokensField: "max_tokens",
+      });
     }
   });
 });

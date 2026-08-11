@@ -5,13 +5,24 @@ import type {
   Context,
   SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
-import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ProviderModelConfig,
 } from "@earendil-works/pi-coding-agent";
 
 type DevinAuthExtension = (pi: ExtensionAPI) => Promise<void> | void;
+
+// Lazy-loaded: createAssistantMessageEventStream is only needed when the
+// devin provider streams (inside session_start), not at module import time.
+let cachedCreateStream: (() => AssistantMessageEventStream) | undefined;
+let createStreamPromise: Promise<void> | undefined;
+function ensureCreateStream(): void {
+  if (!cachedCreateStream && !createStreamPromise) {
+    createStreamPromise = import("@earendil-works/pi-ai").then((mod) => {
+      cachedCreateStream = mod.createAssistantMessageEventStream;
+    });
+  }
+}
 
 const INPUT_TEXT_ONLY: ("text" | "image")[] = ["text"];
 
@@ -132,7 +143,13 @@ function wrapDevinStreamSimple(
     options?: SimpleStreamOptions
   ): AssistantMessageEventStream => {
     const upstream = streamSimple(model, context, options);
-    const out = createAssistantMessageEventStream();
+    ensureCreateStream();
+    if (!cachedCreateStream) {
+      throw new Error(
+        "devin streamSimple called before pi-ai finished loading"
+      );
+    }
+    const out = cachedCreateStream();
     void (async () => {
       try {
         for await (const ev of upstream) {
@@ -215,10 +232,30 @@ function withDevinModelFilter(pi: ExtensionAPI): ExtensionAPI {
   return wrapped;
 }
 
-export default async function (pi: ExtensionAPI): Promise<void> {
-  const moduleName: string = "pi-devin-auth/extensions/index.js";
-  const { default: devinAuth } = (await import(moduleName)) as {
-    readonly default: DevinAuthExtension;
-  };
-  await devinAuth(withDevinModelFilter(pi));
+export default function (pi: ExtensionAPI): void {
+  let initialized = false;
+
+  // Deferred to session_start so the pi-devin-auth dynamic import doesn't
+  // block the critical startup path. pi-devin-auth registers the "devin"
+  // provider with fallback models immediately, then refreshes with the live
+  // Cognition catalog after login/session_start — both paths work from
+  // session_start since the model registry is already bound by then.
+  pi.on("session_start", async () => {
+    if (initialized) {
+      return;
+    }
+    initialized = true;
+    try {
+      const moduleName: string = "pi-devin-auth/extensions/index.js";
+      const { default: devinAuth } = (await import(moduleName)) as {
+        readonly default: DevinAuthExtension;
+      };
+      await devinAuth(withDevinModelFilter(pi));
+    } catch (error) {
+      console.error(
+        "hd-agent: failed to load pi-devin-auth:",
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  });
 }

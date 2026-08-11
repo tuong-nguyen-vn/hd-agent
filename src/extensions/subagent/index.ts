@@ -1,10 +1,20 @@
+import { homedir } from "node:os";
 import { join } from "node:path";
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Tools } from "../../shared/Tools";
 import { renderCall, renderResult } from "./render";
 import { subagentSchema, type SubagentInput } from "./schema";
 import { runSubagent, type SubagentDetails } from "./subagent";
+
+// Inlined from pi-coding-agent's getAgentDir to avoid importing
+// pi-coding-agent values at module load time.
+function getAgentDir(): string {
+  const envDir = process.env["PI_CODING_AGENT_DIR"];
+  if (envDir) {
+    return envDir.startsWith("~/") ? join(homedir(), envDir.slice(2)) : envDir;
+  }
+  return join(homedir(), ".pi", "agent");
+}
 
 export default function (pi: ExtensionAPI): void {
   Tools.register<typeof subagentSchema, SubagentDetails>(pi, {

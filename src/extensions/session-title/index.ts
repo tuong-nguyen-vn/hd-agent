@@ -2,9 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { buildSessionContext } from "@earendil-works/pi-coding-agent";
 import { buildTranscript } from "../read-session/transcript";
-import { generateSessionTitle } from "./generateTitle";
 
 // Small transcript budget: titling only needs the gist of the session, and
 // keeping it short makes the (typically cheap/fast) title model quick.
@@ -30,6 +28,8 @@ export default function (pi: ExtensionAPI): void {
     }
 
     const entries = ctx.sessionManager.buildContextEntries();
+    const { buildSessionContext } =
+      await import("@earendil-works/pi-coding-agent");
     const { messages } = buildSessionContext(entries);
     const hasExchange =
       messages.some((m) => m.role === "user") &&
@@ -49,6 +49,7 @@ export default function (pi: ExtensionAPI): void {
     generating = true;
     attemptedSessionId = sessionId;
     try {
+      const { generateSessionTitle } = await import("./generateTitle");
       const title = await generateSessionTitle(transcript, ctx);
       if (title && !ctx.sessionManager.getSessionName()) {
         pi.setSessionName(title);

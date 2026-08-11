@@ -116,7 +116,8 @@ describe("Tools.rewriteValidationError", () => {
     );
   });
 
-  test("tagged union with discriminator match shows only matched branch errors", () => {
+  test("tagged union with discriminator match shows only matched branch errors", async () => {
+    await Tools.ready;
     const params = Type.Object({
       schedule: Type.Union([
         Type.Object({ type: Type.Literal("once"), at: Type.String() }),
