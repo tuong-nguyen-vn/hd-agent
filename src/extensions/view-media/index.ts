@@ -19,13 +19,44 @@ import { Tools } from "../../shared/Tools";
 
 const PREVIEW_LINES = 5;
 
-const IMAGE_EXT: Readonly<Record<string, string>> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  gif: "image/gif",
-  webp: "image/webp",
-  bmp: "image/bmp",
+// Conservative local cap for inline base64 payloads. Gemini documents 20 MB
+// for inline audio; video allows up to 100 MB and PDF up to 50 MB, but the
+// Files API is recommended above 20 MB for all kinds. Using 20 MB uniformly
+// avoids oversized inline requests and base64 overhead. Files API uploads
+// are intentionally out of scope.
+export const MAX_INLINE_BYTES = 20 * 1024 * 1024;
+
+type MediaKind = "image" | "video" | "audio" | "pdf";
+
+type DetectedMedia = {
+  readonly kind: MediaKind;
+  readonly mimeType: string;
+};
+
+const MEDIA_EXT: Readonly<Record<string, DetectedMedia>> = {
+  png: { kind: "image", mimeType: "image/png" },
+  jpg: { kind: "image", mimeType: "image/jpeg" },
+  jpeg: { kind: "image", mimeType: "image/jpeg" },
+  gif: { kind: "image", mimeType: "image/gif" },
+  webp: { kind: "image", mimeType: "image/webp" },
+  bmp: { kind: "image", mimeType: "image/bmp" },
+  mp4: { kind: "video", mimeType: "video/mp4" },
+  mpeg: { kind: "video", mimeType: "video/mpeg" },
+  mpg: { kind: "video", mimeType: "video/mpeg" },
+  mov: { kind: "video", mimeType: "video/mov" },
+  avi: { kind: "video", mimeType: "video/avi" },
+  flv: { kind: "video", mimeType: "video/x-flv" },
+  webm: { kind: "video", mimeType: "video/webm" },
+  wmv: { kind: "video", mimeType: "video/wmv" },
+  "3gp": { kind: "video", mimeType: "video/3gpp" },
+  wav: { kind: "audio", mimeType: "audio/wav" },
+  mp3: { kind: "audio", mimeType: "audio/mpeg" },
+  aiff: { kind: "audio", mimeType: "audio/aiff" },
+  aac: { kind: "audio", mimeType: "audio/aac" },
+  ogg: { kind: "audio", mimeType: "audio/ogg" },
+  flac: { kind: "audio", mimeType: "audio/flac" },
+  m4a: { kind: "audio", mimeType: "audio/m4a" },
+  pdf: { kind: "pdf", mimeType: "application/pdf" },
 };
 
 type ViewMediaInput = {
@@ -35,6 +66,7 @@ type ViewMediaInput = {
 
 type ViewMediaDetails = {
   readonly isError?: boolean;
+  readonly kind?: MediaKind;
   readonly mimeType?: string;
   readonly bytes?: number;
   readonly source?: "direct" | "vision-fallback";
@@ -50,9 +82,9 @@ type ViewMediaRenderContext = StatefulToolCallTitleContext & {
   readonly cwd: string;
 };
 
-function mimeFromPath(p: string): string | undefined {
+export function mediaFromPath(p: string): DetectedMedia | undefined {
   const m = p.toLowerCase().match(/\.([a-z0-9]+)$/);
-  return m?.[1] ? IMAGE_EXT[m[1]] : undefined;
+  return m?.[1] ? MEDIA_EXT[m[1]] : undefined;
 }
 
 function modelSupportsImages(model: unknown): boolean {
@@ -68,11 +100,12 @@ function modelKey(model: { provider: string; id: string }): string {
   return `${model.provider}/${model.id}`;
 }
 
-function errResult(text: string): AgentToolResult<ViewMediaDetails> {
-  return {
-    content: [{ type: "text", text }],
-    details: { isError: true },
-  };
+export function assertMediaSize(bytes: number, path: string): void {
+  if (bytes > MAX_INLINE_BYTES) {
+    throw new Error(
+      `view_media: "${path}" is ${bytes} bytes, exceeding the ${MAX_INLINE_BYTES}-byte inline Gemini limit. Use a smaller file; Files API uploads are not supported by this tool.`
+    );
+  }
 }
 
 /**
@@ -132,6 +165,15 @@ function filterNullHeaders(
   return filtered;
 }
 
+function mediaPrompt(kind: MediaKind, question: string): string {
+  return (
+    question?.trim() ||
+    (kind === "image"
+      ? "Describe this image concisely: key objects, text (OCR), colors, layout. Be factual and specific."
+      : `Analyze this ${kind} file concisely. Describe the relevant content, key details, and any text or speech. Be factual and specific.`)
+  );
+}
+
 async function describeWithVision(
   resolved: ResolvedModel,
   base64: string,
@@ -142,9 +184,7 @@ async function describeWithVision(
   const { model, apiKey, headers } = resolved;
   const api = model.api;
   const base = model.baseUrl;
-  const prompt =
-    question?.trim() ||
-    "Describe this image concisely: key objects, text (OCR), colors, layout. Be factual and specific.";
+  const prompt = mediaPrompt("image", question);
 
   if (api === "google-generative-ai") {
     return await describeWithGoogle(
@@ -275,6 +315,58 @@ async function describeWithGoogle(
   return { description, model };
 }
 
+async function describeWithGeminiMedia(
+  resolved: ResolvedModel,
+  base64: string,
+  mimeType: string,
+  kind: Exclude<MediaKind, "image">,
+  question: string,
+  signal: AbortSignal | undefined
+): Promise<{ description: string; model: string }> {
+  const { model, apiKey, headers } = resolved;
+  const endpoint = `${model.baseUrl}/models/${encodeURIComponent(model.id)}:generateContent`;
+  const resp = await fetch(endpoint, {
+    method: "POST",
+    signal,
+    headers: {
+      "content-type": "application/json",
+      ...(apiKey
+        ? { "x-goog-api-key": apiKey, authorization: `Bearer ${apiKey}` }
+        : {}),
+      ...filterNullHeaders(headers),
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: mediaPrompt(kind, question) },
+            { inlineData: { mimeType, data: base64 } },
+          ],
+        },
+      ],
+      generationConfig: { maxOutputTokens: 1024 },
+    }),
+  });
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => "");
+    throw new Error(
+      `view_media: Gemini ${kind} request for "${model.id}" at ${endpoint} returned ${resp.status}: ${detail.slice(0, 300)}`
+    );
+  }
+  const data = (await resp.json()) as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+    }>;
+  };
+  const description = (data.candidates?.[0]?.content?.parts ?? [])
+    .map((part) => part.text ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+  return { description, model: model.id };
+}
+
 async function describeWithAnthropic(
   base: string,
   key: string | undefined,
@@ -330,9 +422,9 @@ async function describeWithAnthropic(
 }
 
 /**
- * Tries each model candidate in order, returning a vision-fallback result for
- * the first one that succeeds. Returns undefined when no candidate is
- * usable (so the caller can fall back to the main model). Exported for tests.
+ * Tries each model candidate in order, returning a result for the first
+ * authenticated candidate that succeeds. Non-image media is Gemini-only.
+ * Exported for tests.
  */
 export async function runVisionFallback(
   registry: ModelRegistry,
@@ -342,10 +434,14 @@ export async function runVisionFallback(
   bytes: number,
   question: string,
   signal: AbortSignal | undefined,
-  _modelRef: string
+  _modelRef: string,
+  kind: MediaKind = "image"
 ): Promise<AgentToolResult<ViewMediaDetails> | undefined> {
   for (const candidate of candidates) {
     if (!candidate.input.includes("image")) {
+      continue;
+    }
+    if (kind !== "image" && candidate.api !== "google-generative-ai") {
       continue;
     }
     let resolved: ResolvedModel;
@@ -356,23 +452,36 @@ export async function runVisionFallback(
     }
 
     try {
-      const { description, model: visionModel } = await describeWithVision(
-        resolved,
-        base64,
-        mimeType,
-        question,
-        signal
-      );
-      const preview = await buildPreview(base64, mimeType);
+      const { description, model: visionModel } =
+        kind === "image"
+          ? await describeWithVision(
+              resolved,
+              base64,
+              mimeType,
+              question,
+              signal
+            )
+          : await describeWithGeminiMedia(
+              resolved,
+              base64,
+              mimeType,
+              kind,
+              question,
+              signal
+            );
+      const preview =
+        kind === "image" ? await buildPreview(base64, mimeType) : undefined;
       return {
         content: [{ type: "text" as const, text: description }],
         details: {
+          kind,
           mimeType,
           bytes,
           source: "vision-fallback" as const,
           visionModel,
-          previewData: preview.data,
-          previewMimeType: preview.mimeType,
+          ...(preview
+            ? { previewData: preview.data, previewMimeType: preview.mimeType }
+            : {}),
         } satisfies ViewMediaDetails,
       };
     } catch {
@@ -389,13 +498,14 @@ export default function (pi: ExtensionAPI): void {
     name: "view_media",
     label: "view_media",
     description:
-      "View an image file. Renders it inline in the terminal and returns a description. " +
-      "Use this for screenshots, diagrams, photos, mockups, or any image the user references. " +
-      "Uses the configured view_media model to describe the image; tries comma-separated fallback models then falls back to the current model if all fail.",
-    promptSnippet: "View an image file",
+      "View an image, video, audio, or PDF file and return a description. " +
+      "Images render inline in the terminal; non-image media uses Gemini inline analysis. " +
+      "Uses the configured view_media model and comma-separated fallbacks.",
+    promptSnippet: "View a media file",
     parameters: Type.Object({
       path: Type.String({
-        description: "Path to the image file (relative or absolute)",
+        description:
+          "Path to an image, video, audio, or PDF file (relative or absolute)",
       }),
       question: Type.Optional(
         Type.String({
@@ -411,22 +521,25 @@ export default function (pi: ExtensionAPI): void {
       const args = params as ViewMediaInput;
       const absPath = Paths.resolve(args.path, ctx.cwd);
 
-      const mimeType = mimeFromPath(absPath);
-      if (!mimeType) {
-        return errResult(
-          `view_media: unsupported file type for "${args.path}". Supported: ${Object.keys(IMAGE_EXT).join(", ")}.`
+      const detected = mediaFromPath(absPath);
+      if (!detected) {
+        throw new Error(
+          `view_media: unsupported file type for "${args.path}". Supported image, video, audio, and PDF extensions: ${Object.keys(MEDIA_EXT).join(", ")}.`
         );
       }
 
-      if (!(await Bun.file(absPath).exists())) {
-        return errResult(`view_media: file not found: "${args.path}"`);
+      const file = Bun.file(absPath);
+      if (!(await file.exists())) {
+        throw new Error(`view_media: file not found: "${args.path}"`);
       }
+      assertMediaSize(file.size, args.path);
 
       if (signal?.aborted) {
         throw new Error("view_media aborted before execution.");
       }
 
-      const buffer = Buffer.from(await Bun.file(absPath).arrayBuffer());
+      const mimeType = detected.mimeType;
+      const buffer = Buffer.from(await file.arrayBuffer());
       const base64 = buffer.toString("base64");
 
       const imageBlock = {
@@ -437,7 +550,7 @@ export default function (pi: ExtensionAPI): void {
 
       const key = ctx.model ? modelKey(ctx.model) : "";
       const directToModel = await PimSettings.getViewMediaDirectToModel(key);
-      if (directToModel) {
+      if (directToModel && detected.kind === "image") {
         const preview = await buildPreview(base64, mimeType);
         if (!modelSupportsImages(ctx.model)) {
           return {
@@ -449,6 +562,7 @@ export default function (pi: ExtensionAPI): void {
             ],
             details: {
               isError: true,
+              kind: detected.kind,
               mimeType,
               bytes: buffer.length,
               previewData: preview.data,
@@ -462,6 +576,7 @@ export default function (pi: ExtensionAPI): void {
         return {
           content: [{ type: "text" as const, text: note }, imageBlock],
           details: {
+            kind: detected.kind,
             mimeType,
             bytes: buffer.length,
             source: "direct" as const,
@@ -472,6 +587,11 @@ export default function (pi: ExtensionAPI): void {
       }
 
       const fallbackToMainModel = async (reason: string) => {
+        if (detected.kind !== "image") {
+          throw new Error(
+            `view_media: no compatible Gemini google-generative-ai model could analyze ${detected.kind} "${args.path}". ${reason}`
+          );
+        }
         const supportsImages = modelSupportsImages(ctx.model);
         if (!supportsImages) {
           const preview = await buildPreview(base64, mimeType);
@@ -484,6 +604,7 @@ export default function (pi: ExtensionAPI): void {
             ],
             details: {
               isError: true,
+              kind: detected.kind,
               mimeType,
               bytes: buffer.length,
               previewData: preview.data,
@@ -504,6 +625,7 @@ export default function (pi: ExtensionAPI): void {
             imageBlock,
           ],
           details: {
+            kind: detected.kind,
             mimeType,
             bytes: buffer.length,
             source: "direct" as const,
@@ -528,7 +650,8 @@ export default function (pi: ExtensionAPI): void {
         buffer.length,
         args.question ?? "",
         signal,
-        modelRef
+        modelRef,
+        detected.kind
       );
       if (result !== undefined) {
         return result;

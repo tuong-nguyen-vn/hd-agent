@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
-import { runVisionFallback } from "./index";
+import {
+  assertMediaSize,
+  MAX_INLINE_BYTES,
+  mediaFromPath,
+  runVisionFallback,
+} from "./index";
 
 function makeModel(
   provider: string,
@@ -236,5 +241,248 @@ describe("runVisionFallback", () => {
       "missing"
     );
     expect(result).toBeUndefined();
+  });
+});
+
+describe("mediaFromPath", () => {
+  test("detects image extensions", () => {
+    expect(mediaFromPath("photo.png")?.kind).toBe("image");
+    expect(mediaFromPath("photo.jpg")?.mimeType).toBe("image/jpeg");
+    expect(mediaFromPath("a/b/c.webp")?.kind).toBe("image");
+  });
+
+  test("detects video extensions", () => {
+    expect(mediaFromPath("clip.mp4")?.kind).toBe("video");
+    expect(mediaFromPath("clip.mp4")?.mimeType).toBe("video/mp4");
+    expect(mediaFromPath("vid.webm")?.kind).toBe("video");
+    expect(mediaFromPath("old.3gp")?.kind).toBe("video");
+    expect(mediaFromPath("clip.mpg")?.mimeType).toBe("video/mpeg");
+    expect(mediaFromPath("clip.mov")?.mimeType).toBe("video/mov");
+  });
+
+  test("detects audio extensions", () => {
+    expect(mediaFromPath("song.mp3")?.kind).toBe("audio");
+    expect(mediaFromPath("song.mp3")?.mimeType).toBe("audio/mpeg");
+    expect(mediaFromPath("voice.wav")?.kind).toBe("audio");
+    expect(mediaFromPath("music.flac")?.kind).toBe("audio");
+    expect(mediaFromPath("track.m4a")?.mimeType).toBe("audio/m4a");
+  });
+
+  test("detects PDF", () => {
+    expect(mediaFromPath("doc.pdf")?.kind).toBe("pdf");
+    expect(mediaFromPath("doc.pdf")?.mimeType).toBe("application/pdf");
+  });
+
+  test("returns undefined for unsupported extensions", () => {
+    expect(mediaFromPath("file.xyz")).toBeUndefined();
+    expect(mediaFromPath("noext")).toBeUndefined();
+  });
+
+  test("is case-insensitive", () => {
+    expect(mediaFromPath("PHOTO.PNG")?.kind).toBe("image");
+    expect(mediaFromPath("Clip.MP4")?.kind).toBe("video");
+  });
+});
+
+describe("assertMediaSize", () => {
+  test("passes under the limit", () => {
+    assertMediaSize(1024, "small.mp4");
+    assertMediaSize(MAX_INLINE_BYTES, "at-limit.mp4");
+  });
+
+  test("throws over the limit", () => {
+    expect(() => assertMediaSize(MAX_INLINE_BYTES + 1, "big.mp4")).toThrow(
+      /exceeding the .*-byte inline Gemini limit/
+    );
+  });
+});
+
+describe("runVisionFallback non-image media", () => {
+  const base64 = "AAAA";
+
+  test("sends video to Gemini inlineData and returns text", async () => {
+    const model = makeModel("google", "gemini-flash", {
+      api: "google-generative-ai",
+      baseUrl: "https://google.example.com/v1beta",
+    });
+    const registry = makeRegistry([model], new Set(["google"]));
+    let capturedBody: any;
+    mockFetch((url, init) => {
+      capturedBody = JSON.parse((init?.body as string) ?? "{}");
+      return {
+        status: 200,
+        body: {
+          candidates: [
+            { content: { parts: [{ text: "A cat playing piano" }] } },
+          ],
+        },
+      };
+    });
+
+    const result = await runVisionFallback(
+      registry,
+      [model],
+      base64,
+      "video/mp4",
+      100,
+      "",
+      undefined,
+      "gemini-flash",
+      "video"
+    );
+
+    expect(result).toBeDefined();
+    expect(result!.content[0]).toMatchObject({ text: "A cat playing piano" });
+    expect(result!.details.kind).toBe("video");
+    expect(result!.details.previewData).toBeUndefined();
+    // Verify Gemini inlineData payload structure
+    const parts = capturedBody.contents[0].parts;
+    expect(parts[1].inlineData.mimeType).toBe("video/mp4");
+    expect(parts[1].inlineData.data).toBe(base64);
+  });
+
+  test("sends audio to Gemini inlineData", async () => {
+    const model = makeModel("google", "gemini-flash", {
+      api: "google-generative-ai",
+    });
+    const registry = makeRegistry([model], new Set(["google"]));
+    let capturedBody: any;
+    mockFetch((_url, init) => {
+      capturedBody = JSON.parse((init?.body as string) ?? "{}");
+      return {
+        status: 200,
+        body: {
+          candidates: [
+            { content: { parts: [{ text: "Someone saying hello" }] } },
+          ],
+        },
+      };
+    });
+
+    const result = await runVisionFallback(
+      registry,
+      [model],
+      base64,
+      "audio/mpeg",
+      100,
+      "",
+      undefined,
+      "gemini-flash",
+      "audio"
+    );
+
+    expect(result).toBeDefined();
+    expect(result!.details.kind).toBe("audio");
+    expect(result!.content[0]).toMatchObject({ text: "Someone saying hello" });
+    // Verify Gemini inlineData payload structure
+    const parts = capturedBody.contents[0].parts;
+    expect(parts[1].inlineData.mimeType).toBe("audio/mpeg");
+    expect(parts[1].inlineData.data).toBe(base64);
+  });
+
+  test("sends PDF to Gemini inlineData", async () => {
+    const model = makeModel("google", "gemini-flash", {
+      api: "google-generative-ai",
+    });
+    const registry = makeRegistry([model], new Set(["google"]));
+    let capturedBody: any;
+    mockFetch((_url, init) => {
+      capturedBody = JSON.parse((init?.body as string) ?? "{}");
+      return {
+        status: 200,
+        body: {
+          candidates: [{ content: { parts: [{ text: "Invoice #1234" }] } }],
+        },
+      };
+    });
+
+    const result = await runVisionFallback(
+      registry,
+      [model],
+      base64,
+      "application/pdf",
+      100,
+      "",
+      undefined,
+      "gemini-flash",
+      "pdf"
+    );
+
+    expect(result).toBeDefined();
+    expect(result!.details.kind).toBe("pdf");
+    expect(result!.content[0]).toMatchObject({ text: "Invoice #1234" });
+    // Verify Gemini inlineData payload structure
+    const parts = capturedBody.contents[0].parts;
+    expect(parts[1].inlineData.mimeType).toBe("application/pdf");
+    expect(parts[1].inlineData.data).toBe(base64);
+  });
+
+  test("skips non-Gemini candidates for video", async () => {
+    const openai = makeModel("openai", "gpt-4o");
+    const google = makeModel("google", "gemini-flash", {
+      api: "google-generative-ai",
+    });
+    const registry = makeRegistry(
+      [openai, google],
+      new Set(["openai", "google"])
+    );
+    let calls = 0;
+    mockFetch((url) => {
+      calls++;
+      if (url.includes("/chat/completions")) {
+        return {
+          status: 200,
+          body: { choices: [{ message: { content: "x" } }] },
+        };
+      }
+      return {
+        status: 200,
+        body: {
+          candidates: [{ content: { parts: [{ text: "from gemini" }] } }],
+        },
+      };
+    });
+
+    const result = await runVisionFallback(
+      registry,
+      [openai, google],
+      base64,
+      "video/mp4",
+      100,
+      "",
+      undefined,
+      "gpt-4o, gemini-flash",
+      "video"
+    );
+
+    expect(result).toBeDefined();
+    expect(result!.details.visionModel).toBe("gemini-flash");
+    // Only the Gemini endpoint should have been called
+    expect(calls).toBe(1);
+  });
+
+  test("returns undefined when no Gemini candidate exists for non-image", async () => {
+    const openai = makeModel("openai", "gpt-4o");
+    const registry = makeRegistry([openai], new Set(["openai"]));
+    let called = false;
+    mockFetch(() => {
+      called = true;
+      return { status: 200, body: {} };
+    });
+
+    const result = await runVisionFallback(
+      registry,
+      [openai],
+      base64,
+      "video/mp4",
+      100,
+      "",
+      undefined,
+      "gpt-4o",
+      "video"
+    );
+
+    expect(result).toBeUndefined();
+    expect(called).toBe(false);
   });
 });
