@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.12.0
+
+### Features
+
+- Extend `view_media` with video, audio, and PDF support via Gemini `inlineData` payloads. Non-image media is routed exclusively through Gemini `google-generative-ai` models; non-Gemini providers are skipped with clear errors. A conservative 20 MB `MAX_INLINE_BYTES` cap applies to all media kinds. Images retain inline terminal preview; non-image media returns text description only.
+- Replace per-startup OpenCode Zen network fetch with a static free-model list.
+- Lazy-load `pi-mcp-adapter` and `pi-devin-auth` to `session_start` handlers.
+- Convert all static value imports from `@earendil-works/pi-coding-agent` and `@earendil-works/pi-ai` to dynamic imports or type-only imports across 22 extensions and shared modules, eliminating the second-copy module load (~1000ms) that blocked the startup critical path. `createAgentSessionRuntime`: 2800-3400ms -> 829-1033ms (~70% reduction).
+- Add `gpt-5.6-terra` model and update `gpt-5.6-sol` config.
+- Store direct-to-model setting per model and simplify notify text.
+- Fall back to next model candidate even after subagent made progress.
+- Suppress `requestImmediateRender` and cancel pending renders on session reset.
+
+### Bug Fixes
+
+- Skip duplicate image preview when direct-to-model is enabled.
+
 ## v0.11.0
 
 ### Features
