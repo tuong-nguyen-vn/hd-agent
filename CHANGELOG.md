@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.12.1
+
+### Bug Fixes
+
+- Strip unsupported JSON Schema keywords (`minimum`, `maximum`, `minLength`, etc.) from tool schemas sent to the API, fixing Anthropic 400 errors. Constraints are still enforced locally via `prepareArguments` validation and runtime clamping in each tool.
+
 ## v0.12.0
 
 ### Features
