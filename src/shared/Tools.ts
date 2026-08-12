@@ -66,13 +66,13 @@ function stripUnsupportedSchemaKeywords(schema: unknown): unknown {
   if (schema === null || typeof schema !== "object") {
     return schema;
   }
-  const result: Record<PropertyKey, unknown> = {};
-  for (const key of Reflect.ownKeys(schema as object)) {
-    if (typeof key === "string" && UNSUPPORTED_SCHEMA_KEYWORDS.has(key)) {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(schema)) {
+    if (UNSUPPORTED_SCHEMA_KEYWORDS.has(key)) {
       continue;
     }
     result[key] = stripUnsupportedSchemaKeywords(
-      (schema as Record<PropertyKey, unknown>)[key]
+      (schema as Record<string, unknown>)[key]
     );
   }
   return result;
