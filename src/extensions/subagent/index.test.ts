@@ -39,6 +39,10 @@ describe("subagent extension registration", () => {
     expect(tool?.name).toBe("subagent");
     expect(tool?.executionMode).toBe("parallel");
     expect(tool?.promptSnippet).toBeUndefined();
-    expect(tool?.parameters).toBe(subagentSchema);
+    expect(tool?.parameters).toBeDefined();
+    const wireProps = (tool!.parameters as Record<string, unknown>)
+      .properties as Record<string, Record<string, unknown>>;
+    expect(Object.keys(wireProps).sort()).toEqual(["agent", "prompt"]);
+    expect(wireProps.prompt).not.toHaveProperty("minLength");
   });
 });

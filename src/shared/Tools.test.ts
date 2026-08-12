@@ -391,3 +391,46 @@ describe("Tools.register", () => {
     );
   });
 });
+
+describe("Tools.wrap schema sanitization", () => {
+  test("strips minimum/maximum from wire schema but keeps for validation", () => {
+    const params = Type.Object({
+      limit: Type.Integer({ minimum: 1, maximum: 100 }),
+      name: Type.String({ minLength: 1, maxLength: 50 }),
+    });
+    const wrapped = Tools.wrap({
+      name: "t",
+      label: "t",
+      description: "test",
+      parameters: params,
+      async execute() {
+        return { content: [{ type: "text", text: "" }], details: {} };
+      },
+    });
+    const wire = wrapped.parameters as unknown as Record<string, unknown>;
+    const props = wire.properties as Record<string, Record<string, unknown>>;
+    expect(props.limit).not.toHaveProperty("minimum");
+    expect(props.limit).not.toHaveProperty("maximum");
+    expect(props.name).not.toHaveProperty("minLength");
+    expect(props.name).not.toHaveProperty("maxLength");
+    expect(props.limit).toHaveProperty("type");
+  });
+
+  test("validation still rejects out-of-range values", () => {
+    const params = Type.Object({
+      limit: Type.Integer({ minimum: 1, maximum: 100 }),
+    });
+    const wrapped = Tools.wrap({
+      name: "t",
+      label: "t",
+      description: "test",
+      parameters: params,
+      async execute() {
+        return { content: [{ type: "text", text: "" }], details: {} };
+      },
+    });
+    expect(() => wrapped.prepareArguments!({ limit: 999 })).toThrow(
+      "limit: must be <= 100"
+    );
+  });
+});

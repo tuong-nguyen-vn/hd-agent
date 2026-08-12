@@ -40,6 +40,44 @@ function validateToolArguments(
 
 type Issue = { readonly path: string; readonly message: string };
 
+// JSON Schema validation keywords that some providers (notably Anthropic)
+// reject in tool input schemas. Stripping them from the wire schema keeps
+// the constraints available for local validation (prepareArguments) while
+// avoiding 400 errors from strict providers.
+const UNSUPPORTED_SCHEMA_KEYWORDS: ReadonlySet<string> = new Set([
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "format",
+  "minItems",
+  "maxItems",
+  "uniqueItems",
+]);
+
+function stripUnsupportedSchemaKeywords(schema: unknown): unknown {
+  if (Array.isArray(schema)) {
+    return schema.map(stripUnsupportedSchemaKeywords);
+  }
+  if (schema === null || typeof schema !== "object") {
+    return schema;
+  }
+  const result: Record<PropertyKey, unknown> = {};
+  for (const key of Reflect.ownKeys(schema as object)) {
+    if (typeof key === "string" && UNSUPPORTED_SCHEMA_KEYWORDS.has(key)) {
+      continue;
+    }
+    result[key] = stripUnsupportedSchemaKeywords(
+      (schema as Record<PropertyKey, unknown>)[key]
+    );
+  }
+  return result;
+}
+
 type JsonSchema = {
   readonly type?: string;
   readonly const?: unknown;
@@ -75,6 +113,7 @@ export class Tools {
     const schema = def.parameters as unknown as JsonSchema;
     return {
       ...def,
+      parameters: stripUnsupportedSchemaKeywords(def.parameters) as TParams,
       prepareArguments: (rawArgs: unknown): Static<TParams> => {
         const prepared = def.prepareArguments
           ? def.prepareArguments(rawArgs)
