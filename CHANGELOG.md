@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.13.0
+
+### Features
+
+- Add `deepseek-v4-pro` model to both hdwebsoft-proxy and tuongnguyen-proxy.
+- Add `deepseek-v4-pro` to Oracle subagent model fallback list (before `gpt-5.6-luna`).
+
 ## v0.12.1
 
 ### Bug Fixes
