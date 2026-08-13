@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.13.1
+
+### Bug Fixes
+
+- Bridge `ask_user_question`'s `rpiv:ask-user:blocked` event to Herdr's `herdr:blocked` channel so Herdr reports the pane as `blocked` (not `working`) while the questionnaire is open. Herdr treats pi as a full lifecycle authority and skips screen detection, so without this bridge the questionnaire's wait was invisible to Herdr's status and notifications.
+
 ## v0.13.0
 
 ### Features
