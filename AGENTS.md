@@ -36,5 +36,6 @@ Read the topic doc only when its trigger applies to keep context lean.
 | --- | --- |
 | touching the Pi API surface (tools, events, ExtensionContext, commands, etc.) | [docs/pi-api.md](./docs/pi-api.md) |
 | writing or changing a tool's `execute()` return, error handling, or truncation UX | [docs/tool-output.md](./docs/tool-output.md) |
+| writing or changing a component's `render(width)`, `renderCall`/`renderResult`, or anything drawn per frame | [docs/rendering.md](./docs/rendering.md) |
 
 If a task spans multiple areas, read each relevant doc.

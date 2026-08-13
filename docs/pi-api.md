@@ -37,19 +37,20 @@ Sibling docs: `compaction.md`, `custom-provider.md`, `keybindings.md`, `models.m
 **Shared utilities** (all in `src/shared/`):
 
 - `Tools` — `register(pi, def)` / `wrap(def)`. Validation error rewriting, enum coercion, unknown-key detection.
-- `Renderer` — `renderToolCallTitle`, `renderStatefulToolCallTitle`, `renderBorderedResult`, `makePrefixedBlock`. Standard rendering primitives.
+- `Renderer` — `renderToolCallTitle`, `renderStatefulToolCallTitle`, `renderBorderedResult`, `makePrefixedBlock`. Standard rendering primitives; their components cache rendered lines because the TUI re-renders every frame (see [rendering.md](./rendering.md)).
 - `DiffView` / `DiffRenderer` / `DiffLines` — Diff computation, syntax-highlighted rendering, stats formatting. Used by edit and write.
 - `EditMatcher` — Multi-strategy string matching for the edit tool (simple, line-trimmed, whitespace-normalized, indentation-flexible, escape-normalized, unicode-normalized, block-anchor, context-aware).
 - `FsErrors` — `statOrThrow(path)` with "did you mean" sibling suggestions for ENOENT.
 - `Fs` — `readJsonOrEmpty`, `writeAtomic` (atomic rename with mode preservation).
 - `Paths` — `resolve`, `displayRelative`, `expandHome`, `abbreviateHome`, `titleOr`, `cwdSuffix` (renders ` (in: <relative>)` for a cwd different from the workspace root; abbreviates home for paths outside it), `requireAbsolute` (expands `~` and throws `Path must be absolute, not relative: …` for relative paths — used by the `cwd` param on bash/grep/glob).
 - `PimSettings` — `get`/`set` for persistent user toggles (`tps`, `powerline`).
-- `OutputBudget` — 32KB byte cap, 2000-char line truncation, `applyByteCap` for item lists.
+- `OutputBudget` — 32KB byte cap, 2000-char line truncation, `truncateUtf8` (codepoint-safe cut), `applyByteCap` for item lists.
+- `SpillCache` — spill oversized tool output to `~/.pim/cache` (0600): `write` for one-shot payloads, `openSync` for incremental streaming writes, `installSweeper` for the idempotent sweep (7-day TTL + 1GB total budget, oldest-first eviction).
 - `FileScanner` — Recursive file scanning with gitignore + exclusion support.
 - `GitignoreFilter` — Reads `.gitignore` chains from root to nearest `.git` directory.
 - `GlobExclusions` — Compiles exclude globs for `FileScanner`.
 - `McpClient` — MCP JSON-RPC/SSE client for external tool services.
-- `FuzzyMatcher` / `Levenshtein` / `Lines` — Fuzzy matching, string distance, line utilities.
+- `FuzzyMatcher` / `Levenshtein` / `Lines` — Fuzzy matching, string distance, line utilities (`Lines.splitNormalized` skips the normalize pass for content already run through `Lines.normalize`).
 
 ## Tool `cwd` parameter
 
