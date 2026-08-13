@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.15.0
+
+### Features
+
+- Prewarm the subagent SDK loader in the background shortly after session start, cutting the first subagent call's setup from ~1.3s to under 100ms (the jiti extension-compile cache is process-global).
+- Cap SKILL.md content at the 32KB output budget when invoking a skill, with a bracketed pointer to the read tool for the remainder, so an oversized skill cannot flood the model context.
+- Cache the Telegram task-scheduler store in memory, invalidated by the tasks directory's mtime (external edits) and by the scheduler's own writes; the idle 10s poll now costs one `stat` instead of a readdir plus re-reading every task file.
+
 ## v0.14.0
 
 ### Features
