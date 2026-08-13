@@ -13,11 +13,16 @@ import type { GitState } from "./git";
 
 const GIT_BRANCH_ICON = "\ue725";
 
+export type FooterStats = {
+  readonly cost: number;
+  readonly contextText: string;
+};
+
 type AmpEditorOptions = {
   readonly pi: ExtensionAPI;
   readonly ctx: ExtensionContext;
   readonly getGitState: () => GitState;
-  readonly getCost: () => number;
+  readonly getStats: () => FooterStats;
   readonly initialHistory: readonly string[];
 };
 
@@ -62,7 +67,7 @@ export function fitBorder(
   return `${border("─")}${leftText}${border("─".repeat(gap))}${rightText}${border("─")}`;
 }
 
-function formatTokens(tokens: number): string {
+export function formatTokens(tokens: number): string {
   if (tokens < 1_000) {
     return String(tokens);
   }
@@ -72,7 +77,7 @@ function formatTokens(tokens: number): string {
   return `${(tokens / 1_000_000).toFixed(1)}M`;
 }
 
-function formatContext(ctx: ExtensionContext): string {
+export function formatContext(ctx: ExtensionContext): string {
   const usage = ctx.getContextUsage();
   const contextWindow = usage?.contextWindow ?? ctx.model?.contextWindow;
   if (!usage || !contextWindow || usage.percent === null) {
@@ -144,16 +149,18 @@ export class AmpEditor extends CustomEditor {
         ? `${ctx.model.provider}/${ctx.model.id}`
         : (ctx.model?.id ?? "no model");
     const level = pi.getThinkingLevel();
-    const cost = this.options.getCost();
+    // Cost/context scan the whole session — served from an event-invalidated
+    // cache so typing does no per-keystroke session walks.
+    const stats = this.options.getStats();
     const path = Paths.abbreviateHome(ctx.sessionManager.getCwd());
     const git = formatGit(this.options.getGitState(), theme);
     const border = (text: string) => this.borderColor(text);
 
-    const topLeft = theme.fg("muted", ` ${formatContext(ctx)} `);
+    const topLeft = theme.fg("muted", ` ${stats.contextText} `);
     const topRight =
       theme.fg("success", ` ${level} `) + theme.fg("muted", `${model} `);
     const bottomLeft =
-      cost > 0 ? theme.fg("muted", ` $${cost.toFixed(2)} `) : "";
+      stats.cost > 0 ? theme.fg("muted", ` $${stats.cost.toFixed(2)} `) : "";
     const bottomRight =
       theme.fg("muted", ` ${path}`) + git + theme.fg("muted", " ");
 

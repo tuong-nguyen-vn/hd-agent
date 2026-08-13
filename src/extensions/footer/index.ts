@@ -10,6 +10,7 @@ import { StartupRender } from "../../shared/StartupRender";
 import { EMPTY_GIT, fetchGitStatus, watchGitDir } from "./git";
 
 let activeGitRefresh: (() => void) | null = null;
+let activeStatsInvalidate: (() => void) | null = null;
 let activeChromeCleanup: (() => void) | null = null;
 
 export function getTotalCost(ctx: ExtensionContext): number {
@@ -31,8 +32,23 @@ async function installAmpChrome(
   }
   activeChromeCleanup?.();
 
-  const { AmpEditor } = await import("./AmpEditor");
+  const { AmpEditor, formatContext } = await import("./AmpEditor");
   const initialHistory = await PromptHistory.load();
+
+  // Cost/context walk every session entry — O(entries) per call. The editor
+  // renders on every keystroke, so serve both from a cache invalidated on
+  // session-mutating events instead of recomputing per render.
+  let statsCache: { cost: number; contextText: string } | null = null;
+  const getStats = (): { cost: number; contextText: string } => {
+    statsCache ??= {
+      cost: getTotalCost(ctx),
+      contextText: formatContext(ctx),
+    };
+    return statsCache;
+  };
+  activeStatsInvalidate = () => {
+    statsCache = null;
+  };
 
   let gitState = EMPTY_GIT;
   let activeTui: TUI | undefined;
@@ -69,7 +85,7 @@ async function installAmpChrome(
       pi,
       ctx,
       getGitState: () => gitState,
-      getCost: () => getTotalCost(ctx),
+      getStats,
       initialHistory,
     });
   });
@@ -81,6 +97,7 @@ async function installAmpChrome(
       debounceTimer = null;
     }
     activeGitRefresh = null;
+    activeStatsInvalidate = null;
     activeTui = undefined;
     activeChromeCleanup = null;
   };
@@ -119,6 +136,18 @@ export default function (pi: ExtensionAPI): void {
   pi.on("tool_execution_end", () => {
     activeGitRefresh?.();
   });
+
+  // Any event that lands a message, changes the branch, or swaps the model
+  // can move cost/context; invalidate so the next render recomputes.
+  const invalidateStats = (): void => {
+    activeStatsInvalidate?.();
+  };
+  pi.on("message_end", invalidateStats);
+  pi.on("agent_start", invalidateStats);
+  pi.on("agent_end", invalidateStats);
+  pi.on("session_compact", invalidateStats);
+  pi.on("session_tree", invalidateStats);
+  pi.on("model_select", invalidateStats);
 
   pi.on("session_shutdown", () => {
     activeChromeCleanup?.();

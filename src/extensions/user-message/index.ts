@@ -13,11 +13,20 @@ const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
 const PATCH_STATE = Symbol.for("pim.user-message-renderer");
+const RENDER_CACHE = Symbol.for("pim.user-message-render-cache");
+
+type RenderCache = {
+  baseLines: string[];
+  width: number;
+  theme: Theme;
+  result: string[];
+};
 
 type UserMessagePrototype = UserMessageComponentType & {
   [PATCH_STATE]?: {
     theme: Theme;
   };
+  [RENDER_CACHE]?: RenderCache;
 };
 
 type UserMessageConstructor = Function & {
@@ -149,7 +158,33 @@ export default function (pi: ExtensionAPI): void {
       prototype.render = function (width: number): string[] {
         const lines = originalRender.call(this, width);
         const state = prototype[PATCH_STATE];
-        return state ? renderAmpUserMessage(lines, width, state.theme) : lines;
+        if (!state) {
+          return lines;
+        }
+        // The TUI re-renders every frame; re-styling runs grapheme
+        // segmentation per line. The base component caches its content, so
+        // when the incoming lines are unchanged (`===` hits the identical-ref
+        // fast path for all but the two OSC-marked boundary lines), reuse the
+        // previous result.
+        const self = this as UserMessagePrototype;
+        const cache = self[RENDER_CACHE];
+        if (
+          cache &&
+          cache.width === width &&
+          cache.theme === state.theme &&
+          cache.baseLines.length === lines.length &&
+          cache.baseLines.every((line, i) => line === lines[i])
+        ) {
+          return cache.result;
+        }
+        const result = renderAmpUserMessage(lines, width, state.theme);
+        self[RENDER_CACHE] = {
+          baseLines: lines,
+          width,
+          theme: state.theme,
+          result,
+        };
+        return result;
       };
     }
   });

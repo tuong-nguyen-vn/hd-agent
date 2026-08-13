@@ -60,6 +60,10 @@ class MarkdownTitle implements Component {
   private theme: Theme | undefined;
   private context: RenderContext | undefined;
   private labelColor: ThemeColor | undefined;
+  // Rendering parses the title as markdown; the TUI calls render() on every
+  // frame, so cache per width and rebuild only after set()/invalidate().
+  private cachedWidth: number | undefined;
+  private cachedLines: string[] | undefined;
 
   public set(args: {
     readonly label: string;
@@ -73,9 +77,20 @@ class MarkdownTitle implements Component {
     this.theme = args.theme;
     this.context = args.context;
     this.labelColor = args.labelColor;
+    this.invalidate();
   }
 
   public render(width: number): string[] {
+    if (this.cachedLines && this.cachedWidth === width) {
+      return this.cachedLines;
+    }
+    const lines = this.renderUncached(width);
+    this.cachedWidth = width;
+    this.cachedLines = lines;
+    return lines;
+  }
+
+  private renderUncached(width: number): string[] {
     const theme = this.theme;
     const context = this.context;
     if (!theme || !context) {
@@ -115,7 +130,10 @@ class MarkdownTitle implements Component {
     return out;
   }
 
-  public invalidate(): void {}
+  public invalidate(): void {
+    this.cachedWidth = undefined;
+    this.cachedLines = undefined;
+  }
 }
 
 export function formatCallTitle(prompt: string | undefined): string {
@@ -134,6 +152,8 @@ class SubagentStatusView implements Component {
   private theme: Theme | undefined;
   private isPartial = false;
   private context: RenderContext | undefined;
+  private cachedWidth: number | undefined;
+  private cachedLines: string[] | undefined;
 
   public set(args: {
     readonly toolCalls: readonly SubagentToolCall[];
@@ -149,9 +169,20 @@ class SubagentStatusView implements Component {
     this.theme = args.theme;
     this.isPartial = args.isPartial;
     this.context = args.context;
+    this.invalidate();
   }
 
   public render(width: number): string[] {
+    if (this.cachedLines && this.cachedWidth === width) {
+      return this.cachedLines;
+    }
+    const lines = this.renderUncached(width);
+    this.cachedWidth = width;
+    this.cachedLines = lines;
+    return lines;
+  }
+
+  private renderUncached(width: number): string[] {
     const theme = this.theme;
     if (!theme) {
       return [];
@@ -191,7 +222,10 @@ class SubagentStatusView implements Component {
     return lines;
   }
 
-  public invalidate(): void {}
+  public invalidate(): void {
+    this.cachedWidth = undefined;
+    this.cachedLines = undefined;
+  }
 }
 
 function renderToolCallLine(
@@ -329,14 +363,18 @@ class SubagentResult implements Component {
   }
 
   public render(width: number): string[] {
-    const lines = this.statusView.render(width);
+    // Copy: statusView returns its cached array, which must not be mutated.
+    const lines = [...this.statusView.render(width)];
     if (this.bodyComponent) {
       lines.push(...this.bodyComponent.render(width));
     }
     return lines;
   }
 
-  public invalidate(): void {}
+  public invalidate(): void {
+    this.statusView.invalidate();
+    this.bodyComponent?.invalidate?.();
+  }
 }
 
 /**
@@ -390,17 +428,27 @@ function makePrefixedMarkdownBlock(args: MarkdownBlockArgs): Component {
     defaultStyle(args.theme, args.lineColor)
   );
 
+  let cachedWidth: number | undefined;
+  let cachedLines: string[] | undefined;
   return {
     render(width: number): string[] {
+      if (cachedLines && cachedWidth === width) {
+        return cachedLines;
+      }
       const inner = Math.max(1, width - args.prefix.width);
-      return markdown.render(inner).map((line) => {
+      const lines = markdown.render(inner).map((line) => {
         return (
           args.theme.fg("toolOutput", args.prefix.prefix) +
           trimRenderedLine(line)
         );
       });
+      cachedWidth = width;
+      cachedLines = lines;
+      return lines;
     },
     invalidate(): void {
+      cachedWidth = undefined;
+      cachedLines = undefined;
       markdown.invalidate();
     },
   };

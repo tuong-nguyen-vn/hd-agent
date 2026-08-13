@@ -54,6 +54,11 @@ class ToolTitle implements Component {
   private invalidateFn: (() => void) | undefined;
   private spinnerIndex = 0;
   private spinnerTimer: ReturnType<typeof setInterval> | undefined;
+  // The TUI re-renders every component on each frame (each keystroke); wrapping
+  // runs grapheme segmentation, so cache like pi-tui's Text does.
+  private cachedText: string | undefined;
+  private cachedWidth: number | undefined;
+  private cachedLines: string[] | undefined;
 
   public setText(
     text: string,
@@ -72,6 +77,7 @@ class ToolTitle implements Component {
     this.pad = pad ?? this.pad;
     this.maxLines = maxLines;
     this.useSpinner = spinner !== undefined;
+    this.clearCache();
     if (spinner) {
       this.body = spinner.body;
       this.markerColor = spinner.markerColor;
@@ -92,6 +98,22 @@ class ToolTitle implements Component {
         ) + this.body;
     }
 
+    if (
+      this.cachedLines &&
+      this.cachedText === this.text &&
+      this.cachedWidth === width
+    ) {
+      return this.cachedLines;
+    }
+
+    const lines = this.renderUncached(width, theme);
+    this.cachedText = this.text;
+    this.cachedWidth = width;
+    this.cachedLines = lines;
+    return lines;
+  }
+
+  private renderUncached(width: number, theme: Theme | undefined): string[] {
     if (!this.text || this.text.trim() === "") {
       return [];
     }
@@ -128,7 +150,15 @@ class ToolTitle implements Component {
     return out;
   }
 
-  public invalidate(): void {}
+  public invalidate(): void {
+    this.clearCache();
+  }
+
+  private clearCache(): void {
+    this.cachedText = undefined;
+    this.cachedWidth = undefined;
+    this.cachedLines = undefined;
+  }
 
   private padLine(line: string, width: number): string {
     if (!this.pad) {
@@ -344,8 +374,15 @@ export class Renderer {
     readonly lineColor?: ThemeColor;
   }): Component {
     const { text, theme, prefix, lineColor } = args;
+    // Inputs are fixed at creation, so the wrapped output only varies with
+    // width. Cache it — the TUI calls render() on every frame.
+    let cachedWidth: number | undefined;
+    let cachedLines: string[] | undefined;
     return {
       render(width: number): string[] {
+        if (cachedLines && cachedWidth === width) {
+          return cachedLines;
+        }
         const inner = Math.max(1, width - prefix.width);
         const out: string[] = [];
         for (const logical of text.split("\n")) {
@@ -354,9 +391,14 @@ export class Renderer {
             out.push(theme.fg("toolOutput", prefix.prefix) + body);
           }
         }
+        cachedWidth = width;
+        cachedLines = out;
         return out;
       },
-      invalidate() {},
+      invalidate() {
+        cachedWidth = undefined;
+        cachedLines = undefined;
+      },
     };
   }
 
