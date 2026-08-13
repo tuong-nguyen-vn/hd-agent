@@ -222,6 +222,33 @@ describe("skill tool", () => {
     });
   });
 
+  test("caps an oversized SKILL.md and points at the read tool", async () => {
+    const tool = registeredTool();
+    const dir = mkdtempSync(join(tmpdir(), "pim-skill-big-"));
+    tempDirs.push(dir);
+    const filePath = join(dir, "SKILL.md");
+    writeFileSync(
+      filePath,
+      `---\nname: agent-browser\n---\n\n${"instruction line\n".repeat(4000)}`
+    );
+
+    const result = await tool.execute(
+      "1",
+      { name: "agent-browser" },
+      undefined,
+      undefined,
+      context(skillPrompt(filePath), {})
+    );
+
+    const content = result.content[0];
+    if (!content || content.type !== "text") {
+      throw new Error("expected text content");
+    }
+    expect(Buffer.byteLength(content.text, "utf8")).toBeLessThan(33 * 1024);
+    expect(content.text).toContain("[skill tool: SKILL.md is ");
+    expect(content.text).toContain(filePath);
+  });
+
   test("returns suggestions without reading a skill file", async () => {
     const tool = registeredTool();
     const result = await tool.execute(

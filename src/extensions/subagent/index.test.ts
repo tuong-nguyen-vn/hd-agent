@@ -31,10 +31,11 @@ describe("subagent extension registration", () => {
         }
       | undefined;
     registerSubagent({
-      registerTool(def) {
-        tool = def;
+      on(): void {},
+      registerTool(def: unknown) {
+        tool = def as typeof tool;
       },
-    } as ExtensionAPI);
+    } as unknown as ExtensionAPI);
 
     expect(tool?.name).toBe("subagent");
     expect(tool?.executionMode).toBe("parallel");

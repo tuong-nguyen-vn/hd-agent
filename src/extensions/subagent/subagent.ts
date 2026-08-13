@@ -39,6 +39,37 @@ export const MAX_SAME_MODEL_RETRIES = 2;
 
 const inSubagent = new AsyncLocalStorage<true>();
 
+// jiti's extension-compile cache is process-global, so one throwaway
+// loader.reload() warms every later subagent session — including ones with
+// agent-specific system prompts — cutting the first call's setup from ~1.3s
+// to under 100ms.
+let loaderPrewarmed = false;
+
+export async function prewarmSubagentLoader(
+  cwd: string,
+  warm?: () => Promise<void>
+): Promise<void> {
+  if (loaderPrewarmed) {
+    return;
+  }
+  loaderPrewarmed = true;
+  try {
+    if (warm) {
+      await warm();
+      return;
+    }
+    const { DefaultResourceLoader, getAgentDir } =
+      (await import("@earendil-works/pi-coding-agent")) as {
+        DefaultResourceLoader: typeof DefaultResourceLoaderType;
+        getAgentDir: typeof GetAgentDir;
+      };
+    const loader = new DefaultResourceLoader({ cwd, agentDir: getAgentDir() });
+    await loader.reload();
+  } catch {
+    // Best effort — the first subagent call pays the cold cost instead.
+  }
+}
+
 export type SubagentUsage = {
   readonly input: number;
   readonly output: number;

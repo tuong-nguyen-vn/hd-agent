@@ -21,6 +21,12 @@ export class TaskScheduler {
   private readonly now: () => number;
   private timer: Timer | undefined;
   private inflight: Promise<void> | undefined;
+  private cache:
+    | {
+        readonly tasks: ReadonlyArray<ScheduledTask>;
+        readonly dirMtimeMs: number;
+      }
+    | undefined;
 
   public constructor(opts: TaskSchedulerOptions) {
     this.configDir = opts.configDir;
@@ -61,10 +67,35 @@ export class TaskScheduler {
     await run;
   }
 
+  // One stat per idle tick replaces a readdir plus a re-read of every task
+  // file: any external save/delete renames into the tasks dir, bumping its
+  // mtime and invalidating the cache. The scheduler's own writes invalidate
+  // explicitly (saveTask/deleteTask) because filesystem mtime granularity can
+  // be coarser than a write-then-read sequence within one tick.
+  private async loadTasks(): Promise<ReadonlyArray<ScheduledTask>> {
+    const dirMtimeMs = await TaskStore.dirMtimeMs(this.configDir);
+    if (this.cache && this.cache.dirMtimeMs === dirMtimeMs) {
+      return this.cache.tasks;
+    }
+    const tasks = await TaskStore.loadAll(this.configDir);
+    this.cache = { tasks, dirMtimeMs };
+    return tasks;
+  }
+
+  private async saveTask(task: ScheduledTask): Promise<void> {
+    await TaskStore.save(this.configDir, task);
+    this.cache = undefined;
+  }
+
+  private async deleteTask(id: string): Promise<void> {
+    await TaskStore.delete(this.configDir, id);
+    this.cache = undefined;
+  }
+
   public async list(
     sessionId: SessionId
   ): Promise<ReadonlyArray<ScheduledTask>> {
-    const all = await TaskStore.loadAll(this.configDir);
+    const all = await this.loadTasks();
     return all
       .filter(
         (t) =>
@@ -106,7 +137,7 @@ export class TaskScheduler {
       isolatedSession: input.isolatedSession ?? false,
       createdAt: new Date(this.now()).toISOString(),
     };
-    await TaskStore.save(this.configDir, task);
+    await this.saveTask(task);
     return task;
   }
 
@@ -115,7 +146,7 @@ export class TaskScheduler {
     if (!t) {
       return false;
     }
-    await TaskStore.delete(this.configDir, id);
+    await this.deleteTask(id);
     return true;
   }
 
@@ -132,7 +163,7 @@ export class TaskScheduler {
       return t;
     }
     const updated: ScheduledTask = { ...t, status };
-    await TaskStore.save(this.configDir, updated);
+    await this.saveTask(updated);
     return updated;
   }
 
@@ -149,7 +180,7 @@ export class TaskScheduler {
       return t;
     }
     const updated: ScheduledTask = { ...t, prompt };
-    await TaskStore.save(this.configDir, updated);
+    await this.saveTask(updated);
     return updated;
   }
 
@@ -162,7 +193,7 @@ export class TaskScheduler {
   }
 
   private async runTick(): Promise<void> {
-    const all = await TaskStore.loadAll(this.configDir);
+    const all = await this.loadTasks();
     const now = this.now();
     const fires: Promise<void>[] = [];
 
@@ -178,7 +209,7 @@ export class TaskScheduler {
       if (task.expires) {
         const expMs = Date.parse(task.expires);
         if (Number.isFinite(expMs) && now > expMs) {
-          await TaskStore.delete(this.configDir, task.id);
+          await this.deleteTask(task.id);
           continue;
         }
       }
@@ -186,9 +217,9 @@ export class TaskScheduler {
       if (now - nextMs > MISSED_TASK_WINDOW_MS) {
         const advanced = TaskScheduler.advanceNextRun(task, now);
         if (advanced) {
-          await TaskStore.save(this.configDir, advanced);
+          await this.saveTask(advanced);
         } else {
-          await TaskStore.delete(this.configDir, task.id);
+          await this.deleteTask(task.id);
         }
         console.warn(
           `[scheduler] task ${task.id} missed by >24h, advanced silently`
@@ -213,9 +244,9 @@ export class TaskScheduler {
     }
     const next = TaskScheduler.advanceNextRun(task, firedAt);
     if (next) {
-      await TaskStore.save(this.configDir, next);
+      await this.saveTask(next);
     } else {
-      await TaskStore.delete(this.configDir, task.id);
+      await this.deleteTask(task.id);
     }
   }
 

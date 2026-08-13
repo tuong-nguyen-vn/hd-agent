@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 
 import type { SessionId } from "./Session";
 import { TaskScheduler } from "./TaskScheduler";
@@ -208,6 +208,47 @@ describe("TaskScheduler.tick", () => {
     const reloaded = (await TaskStore.loadAll(tmp))[0]!;
     // Should advance to next top-of-hour after firing
     expect(Date.parse(reloaded.nextRun)).toBeGreaterThan(fireTime);
+  });
+});
+
+describe("TaskScheduler task cache", () => {
+  test("does not re-read the store while the tasks dir is unchanged", async () => {
+    const t0 = Date.parse("2026-05-14T12:00:00Z");
+    const { scheduler } = makeScheduler({ now: () => t0 });
+    await scheduler.create(sessionId, {
+      prompt: "cached",
+      schedule: { type: "interval", every: "1h" },
+    });
+    await scheduler.tick();
+
+    const spy = spyOn(TaskStore, "loadAll");
+    await scheduler.tick();
+    await scheduler.tick();
+    expect(spy).toHaveBeenCalledTimes(0);
+    spy.mockRestore();
+  });
+
+  test("externally saved tasks are picked up on the next tick", async () => {
+    const t0 = Date.parse("2026-05-14T12:00:00Z");
+    const { scheduler, fired } = makeScheduler({ now: () => t0 });
+    await scheduler.tick();
+    expect(fired).toHaveLength(0);
+
+    const due: ScheduledTask = {
+      id: "external",
+      prompt: "test",
+      chatId: sessionId.chatId,
+      threadId: sessionId.threadId,
+      schedule: { type: "interval", every: "1h" },
+      status: "active",
+      nextRun: new Date(t0 - 60_000).toISOString(),
+      expires: null,
+      isolatedSession: false,
+      createdAt: new Date(t0 - 3600_000).toISOString(),
+    };
+    await TaskStore.save(tmp, due);
+    await scheduler.tick();
+    expect(fired).toHaveLength(1);
   });
 });
 

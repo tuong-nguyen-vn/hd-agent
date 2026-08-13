@@ -4,7 +4,15 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Tools } from "../../shared/Tools";
 import { renderCall, renderResult } from "./render";
 import { subagentSchema, type SubagentInput } from "./schema";
-import { runSubagent, type SubagentDetails } from "./subagent";
+import {
+  prewarmSubagentLoader,
+  runSubagent,
+  type SubagentDetails,
+} from "./subagent";
+
+// Deferred so the jiti compile pass runs after the session's initial paint
+// and setup instead of competing with them for the event loop.
+const PREWARM_DELAY_MS = 3_000;
 
 // Inlined from pi-coding-agent's getAgentDir to avoid importing
 // pi-coding-agent values at module load time.
@@ -17,6 +25,13 @@ function getAgentDir(): string {
 }
 
 export default function (pi: ExtensionAPI): void {
+  pi.on("session_start", (_event, ctx) => {
+    const timer = setTimeout(() => {
+      void prewarmSubagentLoader(ctx.cwd);
+    }, PREWARM_DELAY_MS);
+    timer.unref?.();
+  });
+
   Tools.register<typeof subagentSchema, SubagentDetails>(pi, {
     name: "subagent",
     label: "subagent",

@@ -8,6 +8,7 @@ import type {
   stripFrontmatter as StripFrontmatter,
 } from "@earendil-works/pi-coding-agent";
 import { Levenshtein } from "../../shared/Levenshtein";
+import { OutputBudget } from "../../shared/OutputBudget";
 import {
   Renderer,
   type StatefulToolCallTitleContext,
@@ -365,7 +366,9 @@ export default function (pi: ExtensionAPI): void {
           (await import("@earendil-works/pi-coding-agent")) as {
             stripFrontmatter: typeof StripFrontmatter;
           };
-        const body = stripFrontmatter(rawContent).trim();
+        const cap = OutputBudget.truncateUtf8(
+          stripFrontmatter(rawContent).trim()
+        );
         loaded.add(skill.filePath);
         return {
           content: [
@@ -375,7 +378,13 @@ export default function (pi: ExtensionAPI): void {
                 `Skill "${skill.name}" invoked. Follow these instructions for the current task; do not summarize them.`,
                 `References are relative to ${dirname(skill.filePath)}.`,
                 "",
-                body,
+                cap.body,
+                ...(cap.truncated
+                  ? [
+                      "",
+                      `[skill tool: SKILL.md is ${cap.totalBytes} bytes; showing the first ${cap.returnedBytes}. Use the read tool on ${skill.filePath} for the remainder.]`,
+                    ]
+                  : []),
               ].join("\n"),
             },
           ],

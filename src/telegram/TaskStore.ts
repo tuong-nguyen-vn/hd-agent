@@ -1,4 +1,4 @@
-import { readdir, unlink } from "node:fs/promises";
+import { readdir, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import { Fs } from "../shared/Fs";
@@ -31,6 +31,14 @@ export class TaskStore {
       (data): data is ScheduledTask =>
         !!data && typeof data === "object" && "id" in data
     );
+  }
+
+  public static async dirMtimeMs(configDir: string): Promise<number> {
+    try {
+      return (await stat(TaskStore.dir(configDir))).mtimeMs;
+    } catch {
+      return -1;
+    }
   }
 
   public static async save(

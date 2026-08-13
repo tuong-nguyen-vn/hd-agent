@@ -8,7 +8,7 @@ Shallow clone of [pi](https://github.com/earendil-works/pi) at `vendor/pi/` (git
 
 - Bootstrap: `git clone --depth 1 https://github.com/earendil-works/pi.git vendor/pi`
 - Refresh: `git -C vendor/pi pull`
-- Clone tracks `main`; if behavior diverges from the installed version, check `node_modules/@earendil-works/pi-coding-agent/package.json` and `git -C vendor/pi checkout <tag>`. Current pinned version: **0.82.0**.
+- Clone tracks `main`; if behavior diverges from the installed version, check `node_modules/@earendil-works/pi-coding-agent/package.json` and `git -C vendor/pi checkout <tag>`. Current pinned version: **0.84.0**.
 
 Primary ref: `vendor/pi/packages/coding-agent/docs/extensions.md` (~2600 lines).
 

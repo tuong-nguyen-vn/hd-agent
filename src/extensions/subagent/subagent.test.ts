@@ -8,6 +8,7 @@ import type { AgentConfig } from "./agents";
 import {
   applyOutputCap,
   childToolNames,
+  prewarmSubagentLoader,
   resolveSubagentModel,
   resolveSubagentModelCandidates,
   runSubagent,
@@ -360,6 +361,20 @@ describe("SubagentEventCapture", () => {
     expect(snapshot.activeToolCalls).toEqual([
       { name: "read", title: "src/index.ts @1-100" },
     ]);
+  });
+});
+
+describe("prewarmSubagentLoader", () => {
+  test("is best-effort and warms only once per process", async () => {
+    let calls = 0;
+    await prewarmSubagentLoader("/tmp", async () => {
+      calls += 1;
+      throw new Error("warm failed");
+    });
+    await prewarmSubagentLoader("/tmp", async () => {
+      calls += 1;
+    });
+    expect(calls).toBe(1);
   });
 });
 
