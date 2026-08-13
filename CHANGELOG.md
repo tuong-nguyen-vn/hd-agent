@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.14.0
+
+### Features
+
+- Cache rendered lines in all custom TUI components (tool titles, prefixed output blocks, subagent views, the user-message patch), fixing typing lag at large context: ~70ms per keystroke at 200k tokens and ~300ms at 500k drop to sub-ms steady state.
+- Serve the powerline footer's cost/context stats from an event-invalidated cache instead of scanning the whole session on every keystroke.
+- Stream oversized bash output incrementally to the spill file; memory now holds only an 8KB head plus a rolling 8KB tail regardless of command output size, with the full stream preserved on disk.
+- Cap MCP tool results at the 32KB output budget; the full text is spilled to the cache with a read-tool pointer so external servers cannot flood the model context.
+- Skip files over 10MB in grep directory scans (reported in the tool output); a directly-named oversized file errors with guidance to use bash grep/rg.
+- Retain only ranges±context lines per grep-matched file (sparse array) instead of every matched file's full contents, and drop the duplicate normalize pass per file.
+- Stop `read` rendering at the 32KB budget instead of formatting the entire range first (500k-line default-range read: 105ms → 0.3ms).
+- Enforce a 1GB total budget on the spill cache alongside the 7-day TTL, evicting oldest spills first.
+- Memoize per-entry markdown in the Telegram status renderer (was O(N²) markdown parsing per streaming turn) and coalesce per-turn cost writes to `state.json`; user-facing settings changes still flush immediately.
+- Share one 1s debounce across both footer git-status triggers and never spawn two concurrent `git status` processes.
+- Resolve reachable pi module copies once per process in `markdown-code`, `silent-retry`, and `user-message` instead of re-walking the filesystem on every `session_start`.
+- Add `docs/rendering.md` documenting the per-frame render model and the line-cache contract for custom components.
+
+### Bug Fixes
+
+- Dispose the file-picker worker suggestion engine on cwd change/shutdown instead of leaking an OS worker thread per session switch; the engine is reused (catalog stays warm) when the root is unchanged.
+- Self-stop orphaned tool-title spinner intervals when their component is discarded mid-run (session switch, `/clear`), restarting if the component is rendered again.
+- Copy the subagent status view's cached lines before appending body output instead of mutating the cached array.
+
 ## v0.13.1
 
 ### Bug Fixes

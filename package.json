@@ -1,6 +1,6 @@
 {
   "name": "hd-agent",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "HD Agent is a Bun-native extension pack for Pi: web access, subagents, revamped core tools, ANSI-compatible themes, fzf-style completions, Telegram mode, and more.",
   "license": "MIT",
   "type": "module",
