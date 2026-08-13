@@ -13,6 +13,8 @@ let activeGitRefresh: (() => void) | null = null;
 let activeStatsInvalidate: (() => void) | null = null;
 let activeChromeCleanup: (() => void) | null = null;
 
+const GIT_REFRESH_DEBOUNCE_MS = 1_000;
+
 export function getTotalCost(ctx: ExtensionContext): number {
   let cost = 0;
   for (const e of ctx.sessionManager.getEntries()) {
@@ -52,24 +54,41 @@ async function installAmpChrome(
 
   let gitState = EMPTY_GIT;
   let activeTui: TUI | undefined;
+  // `git status` spawns a subprocess (100ms+ on large repos), and both the
+  // .git watcher and tool_execution_end can fire per tool call. Share one
+  // debounce across both triggers, never run two fetches concurrently, and
+  // coalesce triggers that arrive mid-fetch into a single trailing refresh.
+  let fetchInFlight = false;
+  let refreshQueued = false;
   const refresh = async (): Promise<void> => {
-    const next = await fetchGitStatus(ctx.cwd);
-    gitState = next;
-    activeTui?.requestRender();
+    if (fetchInFlight) {
+      refreshQueued = true;
+      return;
+    }
+    fetchInFlight = true;
+    try {
+      gitState = await fetchGitStatus(ctx.cwd);
+      activeTui?.requestRender();
+    } finally {
+      fetchInFlight = false;
+      if (refreshQueued) {
+        refreshQueued = false;
+        void refresh();
+      }
+    }
   };
-  const disposeGitWatch = watchGitDir(ctx.cwd, () => {
-    void refresh();
-  });
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  activeGitRefresh = () => {
+  const scheduleRefresh = (): void => {
     if (debounceTimer !== null) {
       clearTimeout(debounceTimer);
     }
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
       void refresh();
-    }, 200);
+    }, GIT_REFRESH_DEBOUNCE_MS);
   };
+  const disposeGitWatch = watchGitDir(ctx.cwd, scheduleRefresh);
+  activeGitRefresh = scheduleRefresh;
   void refresh();
 
   ctx.ui.setFooter(() => ({

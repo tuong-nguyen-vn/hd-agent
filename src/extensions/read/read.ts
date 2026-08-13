@@ -103,8 +103,11 @@ function renderText(
   }
 
   const lastLine = Math.min(range.end ?? totalLines, totalLines);
-  const rendered = renderLines(lines, range.start, lastLine);
-  const { visible, firstLineTooBig } = applyByteCap(rendered);
+  const { visible, firstLineTooBig } = renderVisibleLines(
+    lines,
+    range.start,
+    lastLine
+  );
 
   if (firstLineTooBig !== undefined) {
     throw new Error(
@@ -129,25 +132,14 @@ function renderText(
   };
 }
 
-function renderLines(
+// Renders and byte-caps in one pass so a large range (e.g. no `end` on a
+// million-line file) stops truncating/formatting as soon as the 32KB budget
+// is reached instead of materializing the whole range first.
+function renderVisibleLines(
   lines: readonly string[],
   start: number,
   end: number
-): readonly RenderedLine[] {
-  const rendered: RenderedLine[] = [];
-
-  for (let lineNumber = start; lineNumber <= end; lineNumber += 1) {
-    const line = OutputBudget.truncateLine(lines[lineNumber - 1] ?? "");
-    rendered.push({
-      lineNumber,
-      text: `${lineNumber}:${line}`,
-    });
-  }
-
-  return rendered;
-}
-
-function applyByteCap(lines: readonly RenderedLine[]): {
+): {
   readonly visible: readonly RenderedLine[];
   readonly firstLineTooBig:
     | { readonly line: number; readonly bytes: number }
@@ -156,14 +148,16 @@ function applyByteCap(lines: readonly RenderedLine[]): {
   const visible: RenderedLine[] = [];
   let bytes = 0;
 
-  for (const line of lines) {
+  for (let lineNumber = start; lineNumber <= end; lineNumber += 1) {
+    const line = OutputBudget.truncateLine(lines[lineNumber - 1] ?? "");
+    const text = `${lineNumber}:${line}`;
     const separatorBytes = visible.length === 0 ? 0 : 1;
-    const lineBytes = Buffer.byteLength(line.text, "utf8");
+    const lineBytes = Buffer.byteLength(text, "utf8");
 
     if (visible.length === 0 && lineBytes > OutputBudget.maxBytes) {
       return {
         visible,
-        firstLineTooBig: { line: line.lineNumber, bytes: lineBytes },
+        firstLineTooBig: { line: lineNumber, bytes: lineBytes },
       };
     }
 
@@ -174,7 +168,7 @@ function applyByteCap(lines: readonly RenderedLine[]): {
       break;
     }
 
-    visible.push(line);
+    visible.push({ lineNumber, text });
     bytes += separatorBytes + lineBytes;
   }
 

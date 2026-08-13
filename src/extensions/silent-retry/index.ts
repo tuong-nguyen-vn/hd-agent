@@ -125,10 +125,16 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   });
 }
 
+// The reachable pi-coding-agent copies are fixed for the process lifetime
+// (a /reload re-imports this module, resetting the cache); resolve once
+// instead of re-walking the filesystem on every session_start.
+let constructorsPromise: Promise<AssistantMessageConstructor[]> | undefined;
+
 async function applySilentRetryPatches(): Promise<number> {
   const isRetryableAssistantError = await getIsRetryableAssistantError();
+  constructorsPromise ??= resolveAssistantMessageConstructors();
   let patched = 0;
-  for (const ctor of await resolveAssistantMessageConstructors()) {
+  for (const ctor of await constructorsPromise) {
     const prototype = ctor.prototype;
     if (prototype[PATCH_STATE]) {
       continue;

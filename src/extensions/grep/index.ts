@@ -107,11 +107,17 @@ export default function (pi: ExtensionAPI): void {
         matchAcrossLines: matchAcrossLines ?? false,
       });
       const absolutePath = Paths.resolve(path ?? ".", effectiveCwd);
-      const matches = await findMatches(absolutePath, glob, matcher, {
-        exclude,
-        includeDotfiles: includeDotfiles ?? false,
-        includeIgnored: includeIgnored ?? false,
-      });
+      const matches = await findMatches(
+        absolutePath,
+        glob,
+        matcher,
+        {
+          exclude,
+          includeDotfiles: includeDotfiles ?? false,
+          includeIgnored: includeIgnored ?? false,
+        },
+        resolvedContext
+      );
       const outcome = renderMatches(matches, resolvedOutputMode, limit, {
         cwd: effectiveCwd,
         pathFormat: resolvedPathFormat,

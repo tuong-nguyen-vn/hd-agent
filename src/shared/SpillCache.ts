@@ -1,3 +1,4 @@
+import { mkdirSync, openSync } from "node:fs";
 import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Paths } from "./Paths";
@@ -26,6 +27,25 @@ export class SpillCache {
       await mkdir(dir, { recursive: true, mode: 0o700 });
       await writeFile(path, data, { flag: "wx", mode: 0o600 });
       return path;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Open a spill file for incremental writes (same naming/permissions as
+   * write(), so the sweeper manages it). Caller owns closing the fd.
+   */
+  public static openSync(
+    prefix: string,
+    ext: string
+  ): { readonly fd: number; readonly path: string } | null {
+    const dir = SpillCache.dir();
+    const path = join(dir, `${prefix}-${Bun.randomUUIDv7()}.${ext}`);
+    try {
+      mkdirSync(dir, { recursive: true, mode: 0o700 });
+      const fd = openSync(path, "wx", 0o600);
+      return { fd, path };
     } catch {
       return null;
     }

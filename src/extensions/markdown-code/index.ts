@@ -222,9 +222,16 @@ export async function resolveMarkdownConstructors(): Promise<
   return [...constructors.values()];
 }
 
+// Resolution walks existsSync up to the filesystem root and imports every
+// candidate module — dozens of blocking syscalls. The set of reachable pi-tui
+// copies is fixed for the process lifetime (a /reload re-imports this module,
+// resetting the cache), so resolve once and re-patch from the cached list.
+let constructorsPromise: Promise<MarkdownConstructor[]> | undefined;
+
 export async function applyMarkdownCodePatches(): Promise<number> {
+  constructorsPromise ??= resolveMarkdownConstructors();
   let patched = 0;
-  for (const Markdown of await resolveMarkdownConstructors()) {
+  for (const Markdown of await constructorsPromise) {
     if (patchMarkdown(Markdown)) {
       patched++;
     }

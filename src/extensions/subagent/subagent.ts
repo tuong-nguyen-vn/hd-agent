@@ -670,12 +670,14 @@ export function applyOutputCap(
   text: string,
   capBytes = PER_TASK_OUTPUT_CAP
 ): OutputCapResult {
-  const encoder = new TextEncoder();
-  const totalBytes = encoder.encode(text).byteLength;
+  // Called on every subagent event; Buffer.byteLength measures without
+  // materializing an encoded copy of the whole output each time.
+  const totalBytes = Buffer.byteLength(text, "utf8");
   if (totalBytes <= capBytes) {
     return { text, truncated: false, omittedBytes: 0 };
   }
 
+  const encoder = new TextEncoder();
   const buffer = new Uint8Array(capBytes);
   const { read, written } = encoder.encodeInto(text, buffer);
   const out = text.slice(0, read);

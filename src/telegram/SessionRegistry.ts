@@ -14,6 +14,9 @@ import { Session, type SessionId, type SessionSettings } from "./Session";
 import type { TaskScheduler } from "./TaskScheduler";
 
 const LRU_CAP = 16;
+// Settings are patched on every turn (cumulative cost) and on each
+// cwd/model/level change; coalesce those into one state.json rewrite.
+const SETTINGS_FLUSH_DEBOUNCE_MS = 1_000;
 
 export class SessionRegistry {
   private readonly config: TelegramConfig;
@@ -28,6 +31,9 @@ export class SessionRegistry {
   private initialized = false;
   private initPromise: Promise<void> | undefined;
   private botUsername: string | undefined;
+  private flushTimer: ReturnType<typeof setTimeout> | undefined;
+  private flushDirty = false;
+  private flushChain: Promise<void> = Promise.resolve();
 
   public constructor(
     config: TelegramConfig,
@@ -74,7 +80,7 @@ export class SessionRegistry {
       modelRegistry: this.modelRegistry,
       scheduler: this.scheduler,
       settingsManagerFor: (cwd) => this.settingsManagerFor(cwd),
-      persistSettings: (patch) => this.persistSettings(key, patch),
+      persistSettings: (patch, opts) => this.persistSettings(key, patch, opts),
       getBotUsername: () => this.botUsername,
     });
     this.cache.set(key, session);
@@ -86,7 +92,12 @@ export class SessionRegistry {
       session.dispose();
     }
     this.cache.clear();
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = undefined;
+    }
     if (this.initialized) {
+      this.flushDirty = true;
       await this.flushSettings();
     }
   }
@@ -120,22 +131,48 @@ export class SessionRegistry {
 
   private async persistSettings(
     key: string,
-    patch: Partial<SessionSettings>
+    patch: Partial<SessionSettings>,
+    opts?: { readonly coalesce?: boolean }
   ): Promise<void> {
     const prev = this.settings.get(key) ?? {};
     this.settings.set(key, { ...prev, ...patch });
-    await this.flushSettings();
+    this.flushDirty = true;
+    if (!opts?.coalesce) {
+      if (this.flushTimer) {
+        clearTimeout(this.flushTimer);
+        this.flushTimer = undefined;
+      }
+      await this.flushSettings();
+      return;
+    }
+    if (this.flushTimer) {
+      return;
+    }
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = undefined;
+      void this.flushSettings();
+    }, SETTINGS_FLUSH_DEBOUNCE_MS);
+    this.flushTimer.unref?.();
   }
 
-  private async flushSettings(): Promise<void> {
-    try {
-      await Fs.writeAtomic(
-        join(this.config.configDir, "state.json"),
-        JSON.stringify(Object.fromEntries(this.settings), null, 2)
-      );
-    } catch (err) {
-      console.warn(`[registry] state save failed:`, err);
-    }
+  // Serialized through flushChain so overlapping flushes cannot interleave
+  // their atomic renames out of order.
+  private flushSettings(): Promise<void> {
+    this.flushChain = this.flushChain.then(async () => {
+      if (!this.flushDirty) {
+        return;
+      }
+      this.flushDirty = false;
+      try {
+        await Fs.writeAtomic(
+          join(this.config.configDir, "state.json"),
+          JSON.stringify(Object.fromEntries(this.settings), null, 2)
+        );
+      } catch (err) {
+        console.warn(`[registry] state save failed:`, err);
+      }
+    });
+    return this.flushChain;
   }
 
   private settingsManagerFor(cwd: string): SettingsManager {

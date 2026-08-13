@@ -64,7 +64,10 @@ export type SessionDeps = {
   readonly modelRegistry: ModelRegistry;
   readonly scheduler: TaskScheduler;
   readonly settingsManagerFor: (cwd: string) => SettingsManager;
-  readonly persistSettings: (patch: Partial<SessionSettings>) => Promise<void>;
+  readonly persistSettings: (
+    patch: Partial<SessionSettings>,
+    opts?: { readonly coalesce?: boolean }
+  ) => Promise<void>;
   readonly getBotUsername: () => string | undefined;
 };
 
@@ -358,9 +361,14 @@ export class Session {
         return;
       }
       last = total;
-      void this.patchSettings({
-        cumulativeCost: (this.currentSettings.cumulativeCost ?? 0) + delta,
-      });
+      // Fires every turn; coalesce so cost bookkeeping doesn't rewrite the
+      // state file per turn. User-facing settings changes stay immediate.
+      void this.patchSettings(
+        {
+          cumulativeCost: (this.currentSettings.cumulativeCost ?? 0) + delta,
+        },
+        { coalesce: true }
+      );
     });
   }
 
@@ -456,9 +464,12 @@ export class Session {
     }
   }
 
-  private async patchSettings(patch: Partial<SessionSettings>): Promise<void> {
+  private async patchSettings(
+    patch: Partial<SessionSettings>,
+    opts?: { readonly coalesce?: boolean }
+  ): Promise<void> {
     this.currentSettings = { ...this.currentSettings, ...patch };
-    await this.deps.persistSettings(patch);
+    await this.deps.persistSettings(patch, opts);
   }
 
   private defaultSessionPath(): string {

@@ -42,6 +42,11 @@ const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", 
 // line nearly continuously and flicker on terminals without synchronized
 // output. ~150ms stays visibly animated but roughly halves the repaint rate.
 const SPINNER_INTERVAL_MS = 150;
+// A spinning title normally gets re-rendered every tick (its invalidate
+// forces a frame). If render() stops being called, the component was
+// discarded mid-run (session switch, /clear) — stop the timer instead of
+// ticking forever; render() restarts it if the component comes back.
+const SPINNER_ORPHAN_TIMEOUT_MS = 2_000;
 
 class ToolTitle implements Component {
   private text = "";
@@ -54,6 +59,8 @@ class ToolTitle implements Component {
   private invalidateFn: (() => void) | undefined;
   private spinnerIndex = 0;
   private spinnerTimer: ReturnType<typeof setInterval> | undefined;
+  private spinnerActive = false;
+  private lastRenderAt = 0;
   // The TUI re-renders every component on each frame (each keystroke); wrapping
   // runs grapheme segmentation, so cache like pi-tui's Text does.
   private cachedText: string | undefined;
@@ -89,6 +96,10 @@ class ToolTitle implements Component {
   }
 
   public render(width: number): string[] {
+    this.lastRenderAt = Date.now();
+    if (this.spinnerActive && this.spinnerTimer === undefined) {
+      this.startSpinner();
+    }
     const theme = this.theme;
     if (this.useSpinner && this.spinnerTimer && theme) {
       this.text =
@@ -169,13 +180,24 @@ class ToolTitle implements Component {
 
   private updateSpinner(isPartial: boolean): void {
     if (!isPartial || !this.invalidateFn) {
+      this.spinnerActive = false;
       this.stopSpinner();
       return;
     }
+    this.spinnerActive = true;
+    this.lastRenderAt = Date.now();
+    this.startSpinner();
+  }
+
+  private startSpinner(): void {
     if (this.spinnerTimer) {
       return;
     }
     this.spinnerTimer = setInterval(() => {
+      if (Date.now() - this.lastRenderAt > SPINNER_ORPHAN_TIMEOUT_MS) {
+        this.stopSpinner();
+        return;
+      }
       this.spinnerIndex = (this.spinnerIndex + 1) % SPINNER_FRAMES.length;
       this.invalidateFn?.();
     }, SPINNER_INTERVAL_MS);

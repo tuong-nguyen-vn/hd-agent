@@ -197,10 +197,27 @@ export function createFilePickerProviderFactory(
 }
 
 export default function (pi: ExtensionAPI): void {
+  // The engine owns an OS worker thread holding a file catalog. Reuse it
+  // across sessions with the same root (keeps the catalog warm) and dispose
+  // it on root changes/shutdown so session switches don't leak workers.
+  let activeEngine: WorkerFilePickerSuggestionEngine | undefined;
+  let activeRoot: string | undefined;
+
+  const disposeEngine = (): void => {
+    activeEngine?.dispose();
+    activeEngine = undefined;
+    activeRoot = undefined;
+  };
+
   pi.on("session_start", (_event, ctx) => {
+    if (!activeEngine || activeRoot !== ctx.cwd) {
+      disposeEngine();
+      activeEngine = new WorkerFilePickerSuggestionEngine(ctx.cwd);
+      activeRoot = ctx.cwd;
+    }
     ctx.ui.addAutocompleteProvider(
       createFilePickerProviderFactory({
-        engine: new WorkerFilePickerSuggestionEngine(ctx.cwd),
+        engine: activeEngine,
         sessionEngine: new SessionSuggestionEngine(
           ctx.cwd,
           ctx.sessionManager.getSessionDir(),
@@ -208,5 +225,9 @@ export default function (pi: ExtensionAPI): void {
         ),
       })
     );
+  });
+
+  pi.on("session_shutdown", () => {
+    disposeEngine();
   });
 }

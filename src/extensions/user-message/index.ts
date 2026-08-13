@@ -143,9 +143,15 @@ export function renderAmpUserMessage(
   return rendered;
 }
 
+// The reachable pi-coding-agent copies are fixed for the process lifetime
+// (a /reload re-imports this module, resetting the cache); resolve once
+// instead of re-walking the filesystem on every session_start.
+let constructorsPromise: Promise<UserMessageConstructor[]> | undefined;
+
 export default function (pi: ExtensionAPI): void {
   pi.on("session_start", async (_event, ctx) => {
-    for (const ctor of await resolveUserMessageConstructors()) {
+    constructorsPromise ??= resolveUserMessageConstructors();
+    for (const ctor of await constructorsPromise) {
       const prototype = ctor.prototype;
       const existing = prototype[PATCH_STATE];
       if (existing) {

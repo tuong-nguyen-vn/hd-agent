@@ -1,4 +1,3 @@
-import { SpillCache } from "../../shared/SpillCache";
 import { StreamCapture } from "./capture";
 import {
   type BashCommandResult,
@@ -42,16 +41,6 @@ async function drain(reader: Reader | null, cap: StreamCapture): Promise<void> {
   }
 }
 
-async function spillIfTruncated(
-  cap: StreamCapture,
-  ext: "out" | "err"
-): Promise<string | null> {
-  if (!cap.truncated) {
-    return null;
-  }
-  return SpillCache.write("bash", ext, cap.full());
-}
-
 function killGroup(pid: number | undefined, sig: NodeJS.Signals): void {
   if (pid === undefined) {
     return;
@@ -79,8 +68,8 @@ export async function runBashCommand(
   env?: NodeJS.ProcessEnv
 ): Promise<BashCommandResult> {
   const startedAt = Date.now();
-  const stdoutCap = new StreamCapture();
-  const stderrCap = new StreamCapture();
+  const stdoutCap = new StreamCapture({ prefix: "bash", ext: "out" });
+  const stderrCap = new StreamCapture({ prefix: "bash", ext: "err" });
 
   // Bun's detached mode creates a fresh session/process group on POSIX,
   // equivalent to setsid(2), without depending on the Linux-only `setsid`
@@ -192,10 +181,8 @@ export async function runBashCommand(
     }
   }
 
-  const [stdoutPath, stderrPath] = await Promise.all([
-    spillIfTruncated(stdoutCap, "out"),
-    spillIfTruncated(stderrCap, "err"),
-  ]);
+  const stdoutPath = stdoutCap.finishSpill();
+  const stderrPath = stderrCap.finishSpill();
 
   return {
     exitCode,

@@ -9,8 +9,14 @@ export class Lines {
   }
 
   public static split(content: string): readonly string[] {
-    const normalized = Lines.normalize(content);
+    return Lines.splitNormalized(Lines.normalize(content));
+  }
 
+  /**
+   * Split content that is already normalized (see normalize). Skips the
+   * BOM/CRLF passes, so callers holding normalized text avoid re-scanning it.
+   */
+  public static splitNormalized(normalized: string): readonly string[] {
     if (normalized.length === 0) {
       return [];
     }

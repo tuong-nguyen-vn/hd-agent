@@ -83,7 +83,8 @@ export async function findMatches(
   path: string,
   glob: string | undefined,
   matcher: GrepMatcher,
-  options: GrepScanOptions
+  options: GrepScanOptions,
+  contextLines = 0
 ): Promise<readonly GrepMatch[]> {
   const metadata = await FsErrors.statOrThrow(path);
   const files = metadata.isFile()
@@ -96,7 +97,7 @@ export async function findMatches(
   for (let index = 0; index < files.length; index += MATCH_CONCURRENCY) {
     const chunk = files.slice(index, index + MATCH_CONCURRENCY);
     const chunkResults = await Promise.all(
-      chunk.map((filePath) => matchFile(filePath, matcher))
+      chunk.map((filePath) => matchFile(filePath, matcher, contextLines))
     );
 
     for (const match of chunkResults) {
@@ -111,7 +112,8 @@ export async function findMatches(
 
 async function matchFile(
   filePath: string,
-  matcher: GrepMatcher
+  matcher: GrepMatcher,
+  contextLines: number
 ): Promise<GrepMatch | undefined> {
   const file = Bun.file(filePath);
 
@@ -135,7 +137,7 @@ async function matchFile(
   }
 
   const content = Lines.normalize(text);
-  const fileLines = Lines.split(content);
+  const fileLines = Lines.splitNormalized(content);
   const ranges = matcher.matchAcrossLines
     ? regexRanges(content, matcher.regex)
     : matchLineByLine(fileLines, matcher.regex);
@@ -149,8 +151,39 @@ async function matchFile(
     mtime: file.lastModified,
     lines: linesForRanges(fileLines, ranges),
     ranges,
-    fileLines,
+    fileLines: retainContextLines(fileLines, ranges, contextLines),
   };
+}
+
+/**
+ * Findmatches accumulates every matched file's result before rendering, so
+ * retaining each file's full line array makes a wide grep hold the whole
+ * matched corpus in memory. Keep a sparse array instead: same length (render
+ * uses it for the line count) and same 0-based indexing, but only the lines a
+ * renderer can actually access (ranges ± context) are populated.
+ */
+function retainContextLines(
+  fileLines: readonly string[],
+  ranges: readonly GrepLineRange[],
+  contextLines: number
+): readonly string[] {
+  // Deliberately sparse (holes, not undefined elements) so unretained lines
+  // cost no memory; only `length` and the populated indices are kept.
+  const sparse: string[] = [];
+  sparse.length = fileLines.length;
+
+  for (const range of ranges) {
+    const start = Math.max(1, range.startLineNumber - contextLines);
+    const end = Math.min(fileLines.length, range.endLineNumber + contextLines);
+    for (let lineNumber = start; lineNumber <= end; lineNumber += 1) {
+      const text = fileLines[lineNumber - 1];
+      if (text !== undefined) {
+        sparse[lineNumber - 1] = text;
+      }
+    }
+  }
+
+  return sparse;
 }
 
 function matchLineByLine(

@@ -123,4 +123,41 @@ describe("StreamCapture", () => {
     expect(snap.truncated).toBe(false);
     expect(snap.totalBytes).toBe(STREAM_HEAD_BYTES + STREAM_TAIL_BYTES);
   });
+
+  test("spills the full stream to disk and bounds retained memory", async () => {
+    const c = new StreamCapture({ prefix: "bash-test", ext: "out" });
+    const head = "A".repeat(STREAM_HEAD_BYTES);
+    const middle = "M".repeat(STREAM_TAIL_BYTES);
+    const tail = "B".repeat(STREAM_TAIL_BYTES);
+    c.push(u8(head));
+    for (let i = 0; i < 50; i++) {
+      c.push(u8(middle));
+    }
+    c.push(u8(tail));
+
+    const path = c.finishSpill();
+    expect(path).not.toBeNull();
+    try {
+      const spilled = await Bun.file(path!).text();
+      expect(spilled.length).toBe(
+        head.length + middle.length * 50 + tail.length
+      );
+      expect(spilled.startsWith(head)).toBe(true);
+      expect(spilled.endsWith(tail)).toBe(true);
+
+      const snap = c.snapshot();
+      expect(snap.truncated).toBe(true);
+      expect(snap.text.startsWith(head)).toBe(true);
+      expect(snap.text.endsWith(tail)).toBe(true);
+    } finally {
+      await Bun.file(path!).unlink();
+    }
+  });
+
+  test("finishSpill returns null when never over the cap", () => {
+    const c = new StreamCapture({ prefix: "bash-test", ext: "out" });
+    c.push(u8("small output"));
+    expect(c.finishSpill()).toBeNull();
+    expect(c.snapshot().text).toBe("small output");
+  });
 });

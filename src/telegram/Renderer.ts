@@ -23,6 +23,10 @@ type TrackerEntry = {
   state: "running" | "ok" | "error";
   // Plaintext "+4/-3" appended after the label once the tool finishes.
   stats?: string;
+  // Memoized Markdown.toHtml(label) for thinking/narration entries, whose
+  // labels never change after push. renderStatus runs on a 1 Hz flush over
+  // the whole turn, so re-parsing every entry each flush is O(N²) per turn.
+  html?: string;
 };
 
 type ApplyOp = {
@@ -438,9 +442,11 @@ export class Renderer {
     for (let i = 0; i < visible.length; i++) {
       const entry = visible[i]!;
       if (entry.kind === "thinking") {
-        pieces.push(Markdown.toHtml(entry.label, { italics: true }));
+        entry.html ??= Markdown.toHtml(entry.label, { italics: true });
+        pieces.push(entry.html);
       } else if (entry.kind === "narration") {
-        pieces.push(Markdown.toHtml(entry.label));
+        entry.html ??= Markdown.toHtml(entry.label);
+        pieces.push(entry.html);
       } else {
         const isLastEntry = i === visible.length - 1;
         let suffix = "";
