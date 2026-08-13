@@ -107,6 +107,7 @@ export default function (pi: ExtensionAPI): void {
         matchAcrossLines: matchAcrossLines ?? false,
       });
       const absolutePath = Paths.resolve(path ?? ".", effectiveCwd);
+      const skippedLargeFiles: string[] = [];
       const matches = await findMatches(
         absolutePath,
         glob,
@@ -116,7 +117,8 @@ export default function (pi: ExtensionAPI): void {
           includeDotfiles: includeDotfiles ?? false,
           includeIgnored: includeIgnored ?? false,
         },
-        resolvedContext
+        resolvedContext,
+        (filePath) => skippedLargeFiles.push(filePath)
       );
       const outcome = renderMatches(matches, resolvedOutputMode, limit, {
         cwd: effectiveCwd,
@@ -131,6 +133,18 @@ export default function (pi: ExtensionAPI): void {
         content.push({
           type: "text",
           text: `[grep tool: showing ${outcome.visibleItems} of ${outcome.totalItems} ${outcome.itemNoun}; narrow the pattern, scope to a specific path, or use a glob filter to reduce results.]`,
+        });
+      }
+
+      if (skippedLargeFiles.length > 0) {
+        const shown = skippedLargeFiles.slice(0, 5).join(", ");
+        const more =
+          skippedLargeFiles.length > 5
+            ? ` and ${skippedLargeFiles.length - 5} more`
+            : "";
+        content.push({
+          type: "text",
+          text: `[grep tool: skipped ${skippedLargeFiles.length} file(s) over 10MB: ${shown}${more}. Use bash (grep/rg) to search them.]`,
         });
       }
 

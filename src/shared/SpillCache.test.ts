@@ -91,4 +91,43 @@ describe("SpillCache.cleanup", () => {
       SpillCache.cleanup(join(tmpdir(), "pim-spill-missing-dir"), Date.now())
     ).resolves.toBeUndefined();
   });
+
+  test("evicts oldest spills beyond the total-size budget", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pim-spill-budget-"));
+    const now = Date.now();
+    const oldest = join(root, "bash-0192ce11-26d5-7dc3-9305-1426de888c5a.out");
+    const middle = join(root, "bash-0192ce11-26d5-7dc3-9305-1426de888c5b.out");
+    const newest = join(root, "bash-0192ce11-26d5-7dc3-9305-1426de888c5c.out");
+    try {
+      // 3 files of 100 bytes each, all within TTL; budget of 250 bytes must
+      // evict exactly the oldest one.
+      await writeFile(oldest, "a".repeat(100));
+      await writeFile(middle, "b".repeat(100));
+      await writeFile(newest, "c".repeat(100));
+      await utimes(oldest, new Date(now - 3000), new Date(now - 3000));
+      await utimes(middle, new Date(now - 2000), new Date(now - 2000));
+      await utimes(newest, new Date(now - 1000), new Date(now - 1000));
+
+      await SpillCache.cleanup(root, now, 250);
+
+      expect(await Bun.file(oldest).exists()).toBe(false);
+      expect(await Bun.file(middle).exists()).toBe(true);
+      expect(await Bun.file(newest).exists()).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("leaves everything when under the total-size budget", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pim-spill-under-"));
+    const now = Date.now();
+    const file = join(root, "bash-0192ce11-26d5-7dc3-9305-1426de888c5a.out");
+    try {
+      await writeFile(file, "a".repeat(100));
+      await SpillCache.cleanup(root, now, 250);
+      expect(await Bun.file(file).exists()).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });

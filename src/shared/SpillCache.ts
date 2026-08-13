@@ -9,6 +9,7 @@ const SPILL_FILE_RE =
 export class SpillCache {
   public static readonly TTL_MS = 7 * 24 * 60 * 60 * 1000;
   public static readonly SWEEP_INTERVAL_MS = 60 * 60 * 1000;
+  public static readonly MAX_TOTAL_BYTES = 1024 * 1024 * 1024;
 
   private static installed = false;
 
@@ -53,7 +54,8 @@ export class SpillCache {
 
   public static async cleanup(
     dir = SpillCache.dir(),
-    now = Date.now()
+    now = Date.now(),
+    maxTotalBytes = SpillCache.MAX_TOTAL_BYTES
   ): Promise<void> {
     let entries: string[];
     try {
@@ -63,6 +65,7 @@ export class SpillCache {
     }
 
     const cutoff = now - SpillCache.TTL_MS;
+    const survivors: { path: string; mtimeMs: number; size: number }[] = [];
     await Promise.all(
       entries.map(async (name) => {
         if (!SPILL_FILE_RE.test(name)) {
@@ -71,12 +74,39 @@ export class SpillCache {
         const path = join(dir, name);
         try {
           const metadata = await stat(path);
-          if (metadata.isFile() && metadata.mtimeMs < cutoff) {
-            await unlink(path);
+          if (!metadata.isFile()) {
+            return;
           }
+          if (metadata.mtimeMs < cutoff) {
+            await unlink(path);
+            return;
+          }
+          survivors.push({
+            path,
+            mtimeMs: metadata.mtimeMs,
+            size: metadata.size,
+          });
         } catch {}
       })
     );
+
+    // Spills can be large (bash streams full command output to disk), so TTL
+    // alone can let the cache grow to many GB within a week. Enforce a total
+    // budget, evicting oldest-first.
+    let total = survivors.reduce((sum, entry) => sum + entry.size, 0);
+    if (total <= maxTotalBytes) {
+      return;
+    }
+    survivors.sort((a, b) => a.mtimeMs - b.mtimeMs);
+    for (const entry of survivors) {
+      if (total <= maxTotalBytes) {
+        break;
+      }
+      try {
+        await unlink(entry.path);
+        total -= entry.size;
+      } catch {}
+    }
   }
 
   /**

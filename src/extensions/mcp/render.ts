@@ -4,10 +4,12 @@ import type {
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { Container } from "@earendil-works/pi-tui";
+import { OutputBudget } from "../../shared/OutputBudget";
 import {
   Renderer,
   type StatefulToolCallTitleContext,
 } from "../../shared/Renderer";
+import { SpillCache } from "../../shared/SpillCache";
 
 type McpProxyInput = {
   readonly tool?: string;
@@ -73,6 +75,49 @@ function isMcpTool(tool: ToolDefinition): boolean {
   return tool.name === "mcp" || tool.label.startsWith("MCP:");
 }
 
+type ToolResult = Awaited<ReturnType<ToolDefinition["execute"]>>;
+
+/**
+ * MCP servers are external and can return arbitrarily large results; without
+ * a cap they flow straight into the model context. Cap the combined text
+ * blocks at the standard output budget and spill the full text to the cache
+ * so the model can read the remainder on demand.
+ */
+export async function capMcpResult(result: ToolResult): Promise<ToolResult> {
+  const content = result?.content;
+  if (!Array.isArray(content)) {
+    return result;
+  }
+
+  let remaining = OutputBudget.maxBytes;
+  let truncatedAny = false;
+  const capped: typeof content = [];
+
+  for (const block of content) {
+    if (block?.type !== "text" || typeof block.text !== "string") {
+      capped.push(block);
+      continue;
+    }
+    // Never cap a block below 1KB so later blocks still identify themselves.
+    const budget = Math.max(1024, remaining);
+    const { body, returnedBytes, totalBytes, truncated } =
+      OutputBudget.truncateUtf8(block.text, budget);
+    remaining = Math.max(0, remaining - returnedBytes);
+    if (!truncated) {
+      capped.push(block);
+      continue;
+    }
+    truncatedAny = true;
+    const path = await SpillCache.write("mcp", "txt", block.text);
+    const note = path
+      ? `\n[mcp: output truncated, showing ${returnedBytes} of ${totalBytes} bytes; full output saved to ${path} — use the read tool to view more.]`
+      : `\n[mcp: output truncated, showing ${returnedBytes} of ${totalBytes} bytes.]`;
+    capped.push({ ...block, text: body + note });
+  }
+
+  return truncatedAny ? { ...result, content: capped } : result;
+}
+
 export function decorateMcpTool(tool: ToolDefinition): ToolDefinition {
   if (!isMcpTool(tool)) {
     return tool;
@@ -107,6 +152,16 @@ export function decorateMcpTool(tool: ToolDefinition): ToolDefinition {
   return {
     ...tool,
     renderShell: "self",
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      const result = await tool.execute(
+        toolCallId,
+        params,
+        signal,
+        onUpdate,
+        ctx
+      );
+      return capMcpResult(result);
+    },
     renderCall(args, theme, context) {
       return renderTitle(args, theme, context);
     },
@@ -118,6 +173,7 @@ export function decorateMcpTool(tool: ToolDefinition): ToolDefinition {
 }
 
 export function withMcpRenderer(pi: ExtensionAPI): ExtensionAPI {
+  SpillCache.installSweeper();
   const registerTool = pi.registerTool.bind(pi);
   const wrapped = Object.create(pi) as ExtensionAPI;
   wrapped.registerTool = ((tool: ToolDefinition) => {

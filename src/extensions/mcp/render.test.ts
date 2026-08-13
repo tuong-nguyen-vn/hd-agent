@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Theme, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { decorateMcpTool } from "./render";
+import { OutputBudget } from "../../shared/OutputBudget";
+import { capMcpResult, decorateMcpTool } from "./render";
 
 type ToolContext = Parameters<NonNullable<ToolDefinition["renderCall"]>>[2];
 
@@ -79,5 +80,51 @@ describe("MCP renderer", () => {
   test("leaves unrelated tools unchanged", () => {
     const original = tool("read", "read");
     expect(decorateMcpTool(original)).toBe(original);
+  });
+});
+
+describe("capMcpResult", () => {
+  test("returns small results untouched", async () => {
+    const result = {
+      content: [{ type: "text" as const, text: "ok" }],
+      details: {},
+    };
+    expect(await capMcpResult(result)).toBe(result);
+  });
+
+  test("caps oversized text and spills the full output", async () => {
+    const big = "x".repeat(OutputBudget.maxBytes * 3);
+    const result = {
+      content: [{ type: "text" as const, text: big }],
+      details: {},
+    };
+
+    const capped = await capMcpResult(result);
+    const block = capped.content[0] as { readonly text: string };
+    expect(block.text.length).toBeLessThan(big.length);
+    expect(block.text).toContain("[mcp: output truncated");
+
+    const pathMatch = /full output saved to (\S+) —/.exec(block.text);
+    expect(pathMatch).not.toBeNull();
+    const spillPath = pathMatch![1]!;
+    try {
+      expect(await Bun.file(spillPath).text()).toBe(big);
+    } finally {
+      await Bun.file(spillPath).unlink();
+    }
+  });
+
+  test("preserves non-text blocks", async () => {
+    const image = {
+      type: "image" as const,
+      data: "abc",
+      mimeType: "image/png",
+    };
+    const result = {
+      content: [image, { type: "text" as const, text: "small" }],
+      details: {},
+    };
+    const capped = await capMcpResult(result);
+    expect(capped.content[0]).toBe(image);
   });
 });

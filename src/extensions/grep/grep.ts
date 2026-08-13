@@ -4,6 +4,12 @@ import { Lines } from "../../shared/Lines";
 
 const MATCH_CONCURRENCY = 16;
 
+// Matching loads the whole file into memory (decode + line split); a giant
+// log/dump in the tree would otherwise be read in full. Directory scans skip
+// such files (reported via onSkipLargeFile); a directly-named file errors
+// with guidance instead of being silently skipped.
+export const MAX_GREP_FILE_BYTES = 10 * 1024 * 1024;
+
 export type GrepLine = {
   readonly lineNumber: number;
   readonly text: string;
@@ -84,9 +90,15 @@ export async function findMatches(
   glob: string | undefined,
   matcher: GrepMatcher,
   options: GrepScanOptions,
-  contextLines = 0
+  contextLines = 0,
+  onSkipLargeFile?: (filePath: string, bytes: number) => void
 ): Promise<readonly GrepMatch[]> {
   const metadata = await FsErrors.statOrThrow(path);
+  if (metadata.isFile() && metadata.size > MAX_GREP_FILE_BYTES) {
+    throw new Error(
+      `File is ${Math.round(metadata.size / (1024 * 1024))}MB, larger than grep's ${MAX_GREP_FILE_BYTES / (1024 * 1024)}MB limit. Use bash (grep/rg) to search it.`
+    );
+  }
   const files = metadata.isFile()
     ? [path]
     : (await FileScanner.scan(path, glob ?? "**/*", options)).toSorted(
@@ -97,7 +109,9 @@ export async function findMatches(
   for (let index = 0; index < files.length; index += MATCH_CONCURRENCY) {
     const chunk = files.slice(index, index + MATCH_CONCURRENCY);
     const chunkResults = await Promise.all(
-      chunk.map((filePath) => matchFile(filePath, matcher, contextLines))
+      chunk.map((filePath) =>
+        matchFile(filePath, matcher, contextLines, onSkipLargeFile)
+      )
     );
 
     for (const match of chunkResults) {
@@ -113,9 +127,16 @@ export async function findMatches(
 async function matchFile(
   filePath: string,
   matcher: GrepMatcher,
-  contextLines: number
+  contextLines: number,
+  onSkipLargeFile?: (filePath: string, bytes: number) => void
 ): Promise<GrepMatch | undefined> {
   const file = Bun.file(filePath);
+
+  const size = file.size;
+  if (size > MAX_GREP_FILE_BYTES) {
+    onSkipLargeFile?.(filePath, size);
+    return undefined;
+  }
 
   // Binary skip reads only the first 8KB, so a binary file is never fully read.
   if (await Lines.isBinary(file)) {

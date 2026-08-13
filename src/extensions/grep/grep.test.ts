@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, test } from "bun:test";
-import { buildMatcher, findMatches } from "./grep";
+import { buildMatcher, findMatches, MAX_GREP_FILE_BYTES } from "./grep";
 
 const tempRoots: string[] = [];
 
@@ -62,6 +62,41 @@ describe("buildMatcher", () => {
 });
 
 describe("findMatches", () => {
+  test("skips oversized files in directory scans and reports them", async () => {
+    const root = await tempRoot();
+    const small = join(root, "small.txt");
+    const huge = join(root, "huge.log");
+    await writeFile(small, "alpha\n", "utf8");
+    await writeFile(
+      huge,
+      "alpha\n".padEnd(MAX_GREP_FILE_BYTES + 1, "x"),
+      "utf8"
+    );
+
+    const skipped: string[] = [];
+    const matches = await findMatches(
+      root,
+      undefined,
+      makeMatcher("alpha"),
+      defaultScanOptions,
+      0,
+      (filePath) => skipped.push(filePath)
+    );
+
+    expect(matches.map((m) => m.filePath)).toEqual([small]);
+    expect(skipped).toEqual([huge]);
+  });
+
+  test("errors when a directly-named file is oversized", async () => {
+    const root = await tempRoot();
+    const huge = join(root, "huge.log");
+    await writeFile(huge, "x".repeat(MAX_GREP_FILE_BYTES + 1), "utf8");
+
+    await expect(
+      findMatches(huge, undefined, makeMatcher("alpha"), defaultScanOptions)
+    ).rejects.toThrow(/larger than grep's 10MB limit/);
+  });
+
   test("returns content matches with line numbers", async () => {
     const root = await tempRoot();
     const nested = join(root, "nested");
