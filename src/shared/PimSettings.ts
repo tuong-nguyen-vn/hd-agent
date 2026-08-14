@@ -146,7 +146,7 @@ export class PimSettings {
   public static async getViewMediaModel(): Promise<string> {
     return (
       PimSettings.normalize((await PimSettings.get("viewMedia")).model) ??
-      "gemini-3.6-flash"
+      "gemini-3.7-flash"
     );
   }
 
@@ -160,14 +160,14 @@ export class PimSettings {
   public static async getReadSessionModel(): Promise<string> {
     return (
       PimSettings.normalize((await PimSettings.get("readSession")).model) ??
-      "gemini-3.6-flash"
+      "gemini-3.7-flash"
     );
   }
 
   public static async getSessionTitleModel(): Promise<string> {
     return (
       PimSettings.normalize((await PimSettings.get("sessionTitle")).model) ??
-      "gemini-3.6-flash,deepseek-v4-flash,claude-haiku-4-5-20251001"
+      "gemini-3.7-flash,deepseek-v4-flash,claude-haiku-4-5-20251001"
     );
   }
 

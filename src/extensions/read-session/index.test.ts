@@ -46,7 +46,7 @@ test("executeReadSession resolves an exact workspace session and returns only su
         expect(transcript).toContain("Do the task");
         return {
           text: "## Goal\nDo the task",
-          model: "google/gemini-3.6-flash",
+          model: "google/gemini-3.7-flash",
           usedFallback: false,
         };
       },

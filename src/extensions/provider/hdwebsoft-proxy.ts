@@ -98,6 +98,18 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         compat: { forceAdaptiveThinking: true },
       },
       {
+        id: "gemini-3.7-flash",
+        name: "Gemini 3.7 Flash",
+        api: "google-generative-ai",
+        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
+        contextWindow: 1048576,
+        maxTokens: 65536,
+        thinkingLevelMap: { off: null },
+      },
+      {
         id: "gemini-3.6-flash",
         name: "Gemini 3.6 Flash",
         api: "google-generative-ai",

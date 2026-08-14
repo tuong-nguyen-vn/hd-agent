@@ -24,7 +24,7 @@ function context(options: {
 }
 
 test("generateSessionTitle uses the configured model when available", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   const calls: string[] = [];
   const title = await generateSessionTitle(
     "transcript",
@@ -37,11 +37,11 @@ test("generateSessionTitle uses the configured model when available", async () =
   );
 
   expect(title).toBe("Fix auth token refresh bug");
-  expect(calls).toEqual(["google/gemini-3.6-flash"]);
+  expect(calls).toEqual(["google/gemini-3.7-flash"]);
 });
 
 test("generateSessionTitle falls back to the main model after primary failure", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   const fallback = model("openai", "main");
   const calls: string[] = [];
   const title = await generateSessionTitle(
@@ -59,11 +59,11 @@ test("generateSessionTitle falls back to the main model after primary failure", 
   );
 
   expect(title).toBe("Add dark mode to settings");
-  expect(calls).toEqual(["google/gemini-3.6-flash", "openai/main"]);
+  expect(calls).toEqual(["google/gemini-3.7-flash", "openai/main"]);
 });
 
 test("generateSessionTitle throws with per-candidate diagnostics when everything fails", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   const fallback = model("openai", "main");
   await expect(
     generateSessionTitle(
@@ -82,7 +82,7 @@ test("generateSessionTitle throws with per-candidate diagnostics when everything
 });
 
 test("generateSessionTitle throws when no fallback is available and all candidates fail", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   await expect(
     generateSessionTitle(
       "transcript",
@@ -96,7 +96,7 @@ test("generateSessionTitle throws when no fallback is available and all candidat
 });
 
 test("generateSessionTitle avoids retrying the same model as the fallback", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   let calls = 0;
   await expect(
     generateSessionTitle(
@@ -117,7 +117,7 @@ test("generateSessionTitle avoids retrying the same model as the fallback", asyn
 });
 
 test("generateSessionTitle stops immediately once aborted", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   const controller = new AbortController();
   let calls = 0;
   const title = await generateSessionTitle(

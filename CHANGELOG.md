@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Add `gemini-3.7-flash` model to hdwebsoft-proxy and tuongnguyen-proxy (tuongnguyen-proxy now exposes only `gemini-3.7-flash` among Gemini Flash models). Default model references across settings, bundled agents, docs, and tests updated from `gemini-3.6-flash` to `gemini-3.7-flash`.
+
 ## v0.15.1
 
 ### Bug Fixes

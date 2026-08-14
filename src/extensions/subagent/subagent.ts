@@ -223,7 +223,7 @@ function resolveModelReference(
 
 // Resolves the ordered list of model candidates to try for a subagent.
 // The agent's "model" config may list multiple comma-separated references
-// (e.g. "gemini-3.6-flash, deepseek-v4-flash"); each is tried in the declared order,
+// (e.g. "gemini-3.7-flash, deepseek-v4-flash"); each is tried in the declared order,
 // and each reference itself may expand to several provider candidates when
 // it names a bare model id shared by multiple authenticated providers.
 export function resolveSubagentModelCandidates(

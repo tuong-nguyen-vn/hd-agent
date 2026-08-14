@@ -123,11 +123,11 @@ the example below shows every currently supported setting:
     "model": "gpt-image-2"
   },
   "viewMedia": {
-    "model": "gemini-3.6-flash"
+    "model": "gemini-3.7-flash"
   },
   "agents": {
     "Oracle": "gpt-5.6-sol",
-    "Search": "gemini-3.6-flash"
+    "Search": "gemini-3.7-flash"
   }
 }
 ```

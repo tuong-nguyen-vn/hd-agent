@@ -23,8 +23,8 @@ function context(options: {
   } as unknown as ExtensionContext;
 }
 
-test("summarizeSession uses gemini-3.6-flash when available", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+test("summarizeSession uses gemini-3.7-flash when available", async () => {
+  const primary = model("google", "gemini-3.7-flash");
   const calls: string[] = [];
   const result = await summarizeSession(
     "transcript",
@@ -38,14 +38,14 @@ test("summarizeSession uses gemini-3.6-flash when available", async () => {
 
   expect(result).toEqual({
     text: "summary",
-    model: "google/gemini-3.6-flash",
+    model: "google/gemini-3.7-flash",
     usedFallback: false,
   });
-  expect(calls).toEqual(["google/gemini-3.6-flash"]);
+  expect(calls).toEqual(["google/gemini-3.7-flash"]);
 });
 
 test("summarizeSession falls back to the main model after primary failure", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   const fallback = model("openai", "main");
   const calls: string[] = [];
   const result = await summarizeSession(
@@ -64,11 +64,11 @@ test("summarizeSession falls back to the main model after primary failure", asyn
 
   expect(result.usedFallback).toBe(true);
   expect(result.model).toBe("openai/main");
-  expect(calls).toEqual(["google/gemini-3.6-flash", "openai/main"]);
+  expect(calls).toEqual(["google/gemini-3.7-flash", "openai/main"]);
 });
 
 test("summarizeSession does not fall back after abort", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   const fallback = model("openai", "main");
   const controller = new AbortController();
   let calls = 0;
@@ -88,7 +88,7 @@ test("summarizeSession does not fall back after abort", async () => {
 });
 
 test("summarizeSession reports missing fallback and avoids retrying the same model", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   await expect(
     summarizeSession(
       "x",
@@ -120,7 +120,7 @@ test("summarizeSession reports missing fallback and avoids retrying the same mod
 });
 
 test("summarizeSession reports both primary and fallback failures", async () => {
-  const primary = model("google", "gemini-3.6-flash");
+  const primary = model("google", "gemini-3.7-flash");
   const fallback = model("openai", "main");
   await expect(
     summarizeSession(
