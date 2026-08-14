@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.15.1
+
+### Bug Fixes
+
+- Stop the tool-schema sanitizer from deleting properties whose name collides with a stripped JSON Schema keyword. `grep` and `glob` lost their required `pattern` argument (the model never saw it, so every call failed local validation with "missing required property: pattern") and `web_fetch` lost its optional `format`. Keys under `properties`/`$defs`/`patternProperties` are now treated as names, and `const`/`default`/`enum`/`examples` payloads are copied verbatim.
+
 ## v0.15.0
 
 ### Features
