@@ -59,6 +59,28 @@ const UNSUPPORTED_SCHEMA_KEYWORDS: ReadonlySet<string> = new Set([
   "uniqueItems",
 ]);
 
+// Keywords whose keys are author-chosen names rather than JSON Schema
+// keywords. Their values are schemas, but the keys must never be matched
+// against UNSUPPORTED_SCHEMA_KEYWORDS — a tool with a property literally
+// named `pattern` (grep, glob) would otherwise lose that property.
+const SCHEMA_MAP_KEYWORDS: ReadonlySet<string> = new Set([
+  "properties",
+  "patternProperties",
+  "dependentSchemas",
+  "definitions",
+  "$defs",
+]);
+
+// Keywords whose values are plain data, not schemas. Recursing into them
+// would strip keys out of a const/default/example object.
+const DATA_KEYWORDS: ReadonlySet<string> = new Set([
+  "enum",
+  "const",
+  "default",
+  "examples",
+  "required",
+]);
+
 function stripUnsupportedSchemaKeywords(schema: unknown): unknown {
   if (Array.isArray(schema)) {
     return schema.map(stripUnsupportedSchemaKeywords);
@@ -71,9 +93,20 @@ function stripUnsupportedSchemaKeywords(schema: unknown): unknown {
     if (UNSUPPORTED_SCHEMA_KEYWORDS.has(key)) {
       continue;
     }
-    result[key] = stripUnsupportedSchemaKeywords(
-      (schema as Record<string, unknown>)[key]
-    );
+    const value = (schema as Record<string, unknown>)[key];
+    if (DATA_KEYWORDS.has(key)) {
+      result[key] = value;
+      continue;
+    }
+    if (SCHEMA_MAP_KEYWORDS.has(key) && value !== null && isRecord(value)) {
+      const mapped: Record<string, unknown> = {};
+      for (const name of Object.keys(value)) {
+        mapped[name] = stripUnsupportedSchemaKeywords(value[name]);
+      }
+      result[key] = mapped;
+      continue;
+    }
+    result[key] = stripUnsupportedSchemaKeywords(value);
   }
   return result;
 }

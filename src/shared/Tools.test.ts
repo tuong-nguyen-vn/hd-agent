@@ -416,6 +416,54 @@ describe("Tools.wrap schema sanitization", () => {
     expect(props.limit).toHaveProperty("type");
   });
 
+  test("keeps properties whose name collides with a stripped keyword", () => {
+    const params = Type.Object({
+      pattern: Type.String({ minLength: 1, description: "the regex" }),
+      format: Type.Optional(Type.String()),
+      nested: Type.Object({ pattern: Type.String() }),
+    });
+    const wrapped = Tools.wrap({
+      name: "grep",
+      label: "grep",
+      description: "test",
+      parameters: params,
+      async execute() {
+        return { content: [{ type: "text", text: "" }], details: {} };
+      },
+    });
+    const wire = wrapped.parameters as unknown as Record<string, unknown>;
+    const props = wire.properties as Record<string, Record<string, unknown>>;
+    expect(Object.keys(props)).toContain("pattern");
+    expect(Object.keys(props)).toContain("format");
+    expect(props.pattern).toHaveProperty("description", "the regex");
+    expect(props.pattern).not.toHaveProperty("minLength");
+    const nested = props.nested!.properties as Record<string, unknown>;
+    expect(Object.keys(nested)).toContain("pattern");
+    expect(wire.required).toEqual(["pattern", "nested"]);
+  });
+
+  test("leaves const and default payloads untouched", () => {
+    const params = Type.Object({
+      mode: Type.String({ default: "content" }),
+      shape: Type.Optional(
+        Type.Object({ kind: Type.Literal("x") }, { default: { pattern: "p" } })
+      ),
+    });
+    const wrapped = Tools.wrap({
+      name: "t",
+      label: "t",
+      description: "test",
+      parameters: params,
+      async execute() {
+        return { content: [{ type: "text", text: "" }], details: {} };
+      },
+    });
+    const wire = wrapped.parameters as unknown as Record<string, unknown>;
+    const props = wire.properties as Record<string, Record<string, unknown>>;
+    expect(props.mode).toHaveProperty("default", "content");
+    expect(props.shape!.default).toEqual({ pattern: "p" });
+  });
+
   test("validation still rejects out-of-range values", () => {
     const params = Type.Object({
       limit: Type.Integer({ minimum: 1, maximum: 100 }),
