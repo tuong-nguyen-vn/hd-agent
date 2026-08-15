@@ -8,8 +8,8 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
     authHeader: true,
     models: [
       {
-        id: "glm-5.2",
-        name: "GLM 5.2",
+        id: "glm-5.3",
+        name: "GLM 5.3",
         api: "anthropic-messages",
         baseUrl: TUONGNGUYEN_PROXY_ROOT,
         reasoning: true,
