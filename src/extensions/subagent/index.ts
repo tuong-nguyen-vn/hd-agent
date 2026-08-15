@@ -25,12 +25,30 @@ function getAgentDir(): string {
 }
 
 export default function (pi: ExtensionAPI): void {
+  let prewarmTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const cancelPrewarm = (): void => {
+    if (prewarmTimer !== undefined) {
+      clearTimeout(prewarmTimer);
+      prewarmTimer = undefined;
+    }
+  };
+
   pi.on("session_start", (_event, ctx) => {
-    const timer = setTimeout(() => {
-      void prewarmSubagentLoader(ctx.cwd);
+    // Read cwd now, not in the timer: pi invalidates the ctx when the session
+    // is replaced (/clear, resume, fork, /reload) or torn down, after which
+    // every ctx getter throws — and a throw from a timer callback is an
+    // uncaught exception that kills the process.
+    const cwd = ctx.cwd;
+    cancelPrewarm();
+    prewarmTimer = setTimeout(() => {
+      prewarmTimer = undefined;
+      void prewarmSubagentLoader(cwd);
     }, PREWARM_DELAY_MS);
-    timer.unref?.();
+    prewarmTimer.unref?.();
   });
+
+  pi.on("session_shutdown", cancelPrewarm);
 
   Tools.register<typeof subagentSchema, SubagentDetails>(pi, {
     name: "subagent",

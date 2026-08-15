@@ -128,8 +128,25 @@ export type SubagentSession = {
   readonly dispose: () => void;
 };
 
+// Every ExtensionContext getter throws once pi replaces or reloads the
+// session, and a subagent run outlives that. Snapshot the few values a run
+// needs while the parent ctx is still live, then read only from the snapshot.
+export type ParentContext = {
+  readonly cwd: string;
+  readonly model: Model<any> | undefined;
+  readonly modelRegistry: ExtensionContext["modelRegistry"];
+};
+
+function snapshotParent(parentCtx: ExtensionContext): ParentContext {
+  return {
+    cwd: parentCtx.cwd,
+    model: parentCtx.model,
+    modelRegistry: parentCtx.modelRegistry,
+  };
+}
+
 export type CreateSubagentSession = (
-  parentCtx: ExtensionContext,
+  parent: ParentContext,
   activeToolNames: readonly string[] | undefined,
   agent: AgentConfig | undefined,
   model: Model<any> | undefined
@@ -146,7 +163,7 @@ export function childToolNames(
 }
 
 export async function createSdkSubagentSession(
-  parentCtx: ExtensionContext,
+  parent: ParentContext,
   activeToolNames: readonly string[] | undefined,
   agent: AgentConfig | undefined,
   model: Model<any> | undefined
@@ -164,7 +181,7 @@ export async function createSdkSubagentSession(
     SessionManager: typeof SessionManagerType;
   };
   const loader = new DefaultResourceLoader({
-    cwd: parentCtx.cwd,
+    cwd: parent.cwd,
     agentDir: getAgentDir(),
     appendSystemPrompt: systemPrompt ? [systemPrompt] : undefined,
   });
@@ -173,10 +190,10 @@ export async function createSdkSubagentSession(
   const baseTools = agent?.tools ?? activeToolNames;
 
   const { session } = await createAgentSession({
-    cwd: parentCtx.cwd,
+    cwd: parent.cwd,
     agentDir: getAgentDir(),
     model,
-    sessionManager: SessionManager.inMemory(parentCtx.cwd),
+    sessionManager: SessionManager.inMemory(parent.cwd),
     resourceLoader: loader,
     tools: baseTools ? [...childToolNames(baseTools)] : undefined,
   });
@@ -192,11 +209,11 @@ export async function createSdkSubagentSession(
 // Returns an empty array when the reference is not found, so callers can
 // skip it and try the next comma-separated fallback.
 function resolveModelReference(
-  parentCtx: ExtensionContext,
+  parent: ParentContext,
   reference: string
 ): readonly Model<any>[] {
   const normalized = reference.toLowerCase();
-  const models = parentCtx.modelRegistry.getAll();
+  const models = parent.modelRegistry.getAll();
   const canonical = models.filter(
     (model) => `${model.provider}/${model.id}`.toLowerCase() === normalized
   );
@@ -210,10 +227,10 @@ function resolveModelReference(
   }
 
   const authenticated = byId.filter((model) =>
-    parentCtx.modelRegistry.hasConfiguredAuth(model)
+    parent.modelRegistry.hasConfiguredAuth(model)
   );
   const candidates = authenticated.length > 0 ? authenticated : byId;
-  const currentProvider = parentCtx.model?.provider;
+  const currentProvider = parent.model?.provider;
   return [...candidates].sort((a, b) => {
     const aCurrent = a.provider === currentProvider ? 0 : 1;
     const bCurrent = b.provider === currentProvider ? 0 : 1;
@@ -227,12 +244,12 @@ function resolveModelReference(
 // and each reference itself may expand to several provider candidates when
 // it names a bare model id shared by multiple authenticated providers.
 export function resolveSubagentModelCandidates(
-  parentCtx: ExtensionContext,
+  parent: ParentContext,
   agent: AgentConfig | undefined
 ): readonly Model<any>[] {
   const raw = agent?.model?.trim();
   if (!raw) {
-    return parentCtx.model ? [parentCtx.model] : [];
+    return parent.model ? [parent.model] : [];
   }
 
   const agentLabel = agent?.name ?? "configured";
@@ -245,7 +262,7 @@ export function resolveSubagentModelCandidates(
   const candidates: Model<any>[] = [];
   const missing: string[] = [];
   for (const reference of references) {
-    const resolved = resolveModelReference(parentCtx, reference);
+    const resolved = resolveModelReference(parent, reference);
     if (resolved.length === 0) {
       missing.push(reference);
       continue;
@@ -268,10 +285,10 @@ export function resolveSubagentModelCandidates(
 }
 
 export function resolveSubagentModel(
-  parentCtx: ExtensionContext,
+  parent: ParentContext,
   agent: AgentConfig | undefined
 ): Model<any> | undefined {
-  return resolveSubagentModelCandidates(parentCtx, agent)[0];
+  return resolveSubagentModelCandidates(parent, agent)[0];
 }
 
 function resolveAgent(
@@ -308,11 +325,13 @@ export async function runSubagent(
     throw new Error("subagents cannot call subagent tool");
   }
 
+  const parent = snapshotParent(parentCtx);
+
   return inSubagent.run(true, async () => {
     const agent = agentName
-      ? resolveAgent(agentName, await discoverAgents(parentCtx.cwd))
+      ? resolveAgent(agentName, await discoverAgents(parent.cwd))
       : undefined;
-    const candidates = resolveSubagentModelCandidates(parentCtx, agent);
+    const candidates = resolveSubagentModelCandidates(parent, agent);
     const models = candidates.length > 0 ? candidates : [undefined];
 
     let partialContext = "";
@@ -335,7 +354,7 @@ export async function runSubagent(
       for (let r = 0; r <= MAX_SAME_MODEL_RETRIES; r++) {
         attempt = await runSubagentAttempt(
           effectivePrompt,
-          parentCtx,
+          parent,
           agent,
           model,
           signal,
@@ -394,7 +413,7 @@ type SubagentAttemptResult = {
 
 async function runSubagentAttempt(
   prompt: string,
-  parentCtx: ExtensionContext,
+  parent: ParentContext,
   agent: AgentConfig | undefined,
   model: Model<any> | undefined,
   signal: AbortSignal | undefined,
@@ -472,7 +491,7 @@ async function runSubagentAttempt(
     }
     signal?.addEventListener("abort", onAbort, { once: true });
     resetStallTimer();
-    session = await createSession(parentCtx, activeToolNames, agent, model);
+    session = await createSession(parent, activeToolNames, agent, model);
     unsubscribe = session.subscribe((event) => {
       resetStallTimer();
       capture.handle(event);
