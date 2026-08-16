@@ -162,6 +162,15 @@ install_or_update_launcher() {
   bun install -g --force --no-cache "$HD_AGENT_BUN_SOURCE"
   refresh_path
   command -v hd-agent >/dev/null 2>&1 || fail "HD Agent was installed but the hd-agent command was not found."
+
+  # bun install -g for the Pi package creates a `pi` symlink pointing at
+  # cli.js (Node shebang). Bun may not overwrite an existing bin symlink
+  # from another package, so force-link `pi` to the HD Agent launcher.
+  bun_global_bin=$(bun pm -g bin 2>/dev/null || true)
+  if [ -n "$bun_global_bin" ]; then
+    ln -sf "$bun_global_bin/../install/global/node_modules/hd-agent/bin/pim.ts" \
+      "$bun_global_bin/pi"
+  fi
 }
 
 print_summary() {
