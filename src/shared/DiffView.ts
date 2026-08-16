@@ -103,6 +103,14 @@ export class DiffView {
 
     const body = DiffRenderer.render({ toolDiff: diff, theme });
 
+    // A diff rendered before the lazy highlighter import lands comes out
+    // unhighlighted; repaint it once the import resolves.
+    if (!DiffRenderer.isReady) {
+      void DiffRenderer.ready.then(() => {
+        DiffView.buildBlock({ ...args, lastComponent: container });
+      });
+    }
+
     if (!body) {
       return container;
     }

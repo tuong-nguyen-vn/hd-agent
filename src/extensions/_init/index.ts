@@ -2,6 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { DiffRenderer } from "../../shared/DiffRenderer";
 import { Tools } from "../../shared/Tools";
 
 const SPLASH_ID = "pim-splash";
@@ -79,6 +80,10 @@ export default async function (pi: ExtensionAPI): Promise<void> {
 
   pi.on("session_start", async (event, ctx) => {
     await Tools.ready;
+    // Warm the diff highlighter here rather than at module load: the import
+    // is heavy, and off the registration path it lands long before the first
+    // edit/write/apply_patch result needs to render.
+    void DiffRenderer.ready;
     ctx.ui.setHiddenThinkingLabel("✓ Thinking...");
 
     if (event.reason !== "startup" && event.reason !== "new") {

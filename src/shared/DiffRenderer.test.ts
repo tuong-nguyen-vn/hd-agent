@@ -227,3 +227,39 @@ describe("DiffRenderer.applyEmphasis", () => {
     expect(out).toBe(`${emphBg}ab${lineBg}cd${emphBg}ef${lineBg}`);
   });
 });
+
+// Regression: the first render in a process happens before the lazy
+// pi-coding-agent import resolves. It must degrade to unhighlighted output
+// instead of throwing (a throw left the whole diff block blank in the UI).
+describe("DiffRenderer.render before the lazy import resolves", () => {
+  test("renders without throwing in a fresh process", async () => {
+    const script = `
+import { DiffLines } from ${JSON.stringify(`${import.meta.dir}/DiffLines.ts`)};
+import { DiffRenderer } from ${JSON.stringify(`${import.meta.dir}/DiffRenderer.ts`)};
+
+const theme = { name: "pim-dark", fg: (_c, t) => t };
+const diff = DiffLines.buildToolDiff(
+  "foo.ts",
+  { lines: ["alpha", "beta"], hasTrailingNewline: true },
+  { lines: ["alpha", "BETA"], hasTrailingNewline: true },
+  1
+);
+const out = DiffRenderer.render({ toolDiff: diff, theme });
+console.log(out.length > 0 ? "ok" : "empty");
+`;
+    const proc = Bun.spawn(["bun", "run", "-"], {
+      stdin: new TextEncoder().encode(script),
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+
+    expect(stderr).toBe("");
+    expect(exitCode).toBe(0);
+    expect(stdout.trim()).toBe("ok");
+  });
+});

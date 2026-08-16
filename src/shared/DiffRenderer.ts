@@ -4,9 +4,11 @@ import type {
   Theme,
 } from "@earendil-works/pi-coding-agent";
 
-// Lazy-loaded on first render call (not fired at module load) to avoid
-// triggering a background import of pi-coding-agent that competes for CPU
-// during the critical startup path.
+// Lazy-loaded (not fired at module load) to avoid triggering a background
+// import of pi-coding-agent that competes for CPU during the critical
+// startup path; _init's session_start warms it once the UI is up, so the
+// first diff render normally finds it resolved. Renders that do land before
+// it resolves fall back to unhighlighted output and repaint once it does.
 let cachedGetLanguage: typeof GetLanguageFromPath | undefined;
 let cachedHighlight: typeof HighlightCode | undefined;
 let diffPromise: Promise<void> | undefined;
@@ -19,7 +21,6 @@ function ensureDiffImports(): void {
     });
   }
 }
-void diffPromise;
 import type {
   IntraLineRange,
   ToolDiff,
@@ -47,6 +48,11 @@ export class DiffRenderer {
     ensureDiffImports();
     return diffPromise ?? Promise.resolve();
   }
+
+  /** True once syntax highlighting is available to `render`. */
+  static get isReady(): boolean {
+    return cachedGetLanguage !== undefined;
+  }
   private static readonly TAB = "   ";
   // A single flat tone per line (no brighter intra-line emphasis band)
   // matches Amp's evenly-colored added/removed rows.
@@ -73,7 +79,7 @@ export class DiffRenderer {
     }
 
     ensureDiffImports();
-    const lang = cachedGetLanguage!(toolDiff.path);
+    const lang = cachedGetLanguage?.(toolDiff.path);
     const highlighter = DiffRenderer.makeHighlighter(lang);
     const numberWidth = DiffRenderer.computeNumberWidth(toolDiff.hunks);
     const backgrounds = DiffRenderer.backgroundsFor(theme);
@@ -155,11 +161,12 @@ export class DiffRenderer {
   }
 
   private static makeHighlighter(lang: string | undefined): DiffHighlighter {
-    if (lang === undefined) {
+    if (lang === undefined || cachedHighlight === undefined) {
       return (block) => DiffRenderer.detab(block).split("\n");
     }
 
-    return (block) => cachedHighlight!(DiffRenderer.detab(block), lang);
+    const highlight = cachedHighlight;
+    return (block) => highlight(DiffRenderer.detab(block), lang);
   }
 
   private static detab(text: string): string {
