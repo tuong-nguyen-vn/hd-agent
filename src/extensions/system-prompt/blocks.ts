@@ -67,7 +67,7 @@ export const TOOL_USE_BLOCK = [
 export const SUBAGENT_DELEGATION_BLOCK = [
   "<subagent_delegation>",
   'Use the **Search** subagent (agent="Search") for broad codebase discovery — finding files, symbols, and patterns across the codebase — instead of running many manual grep/glob calls yourself. Run one or more Search subagents in parallel to cover different areas of the codebase simultaneously.',
-  'Use the **Oracle** subagent (agent="Oracle") to verify complex plans, review completed work when asked, find difficult bugs across many files, or get an alternative perspective when struggling. Provide a compact delegation brief: Objective, Scope/files, Known findings with evidence, Constraints, and Questions.',
+  'Use the **Oracle** subagent (agent="Oracle") to verify complex plans, review completed work when asked, find difficult bugs across many files, or get an alternative perspective when struggling. Gather context first — yourself or via Search subagents — then send a self-contained brief: Objective, Scope/files, Known findings with quoted evidence (cited as path:line), Constraints, and Questions. Pass the supporting source files via the subagent tool\'s context_paths so Oracle can answer without re-reading the repo.',
   "Do NOT delegate to Oracle for file reads, simple searches, web browsing, or basic code changes — handle those directly.",
   "If no subagent or Search/Oracle agent is available, skip delegation and do the work directly.",
   "",

@@ -1,256 +1,3 @@
-# HD Agent - Getting Started Guide
-
-## Installation
-
-### One-command install
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/tuong-nguyen-vn/hd-agent/main/install.sh | sh
-```
-
-The installer automatically:
-- Installs Bun if missing (macOS, Linux, WSL, Windows Git Bash)
-- Installs Pi if missing
-- Installs or updates HD Agent as a Pi extension
-- Installs or updates the `hd-agent` global launcher
-
-### Manual install
-
-```sh
-curl -fsSL https://pi.dev/install.sh | sh
-pi install git:github.com/tuong-nguyen-vn/hd-agent
-bun install -g github:tuong-nguyen-vn/hd-agent
-```
-
-### Launch
-
-```sh
-hd-agent
-```
-
----
-
-## Provider and API Key Setup
-
-### Select a provider
-
-In the TUI, run:
-
-```
-/login
-```
-
-You will see two authentication methods:
-
-```
-Select authentication method:
-
- → Sign in with an account
-   Sign in with an API key
-
- ↑↓ navigate  enter select  escape/ctrl+c cancel
-```
-
-- **Sign in with an account** — OAuth login for providers like Devin, GitHub Copilot, OpenRouter, etc.
-- **Sign in with an API key** — manual API key entry for providers like HDWEBSOFT, OpenAI, Anthropic, etc.
-
-Use `↑`/`↓` to navigate, `Enter` to select, `Esc` or `Ctrl+C` to cancel.
-
-### Devin (Sign in with an account)
-
-1. Run `/login`.
-2. Select **Sign in with an account**.
-3. Select **Devin** from the provider list.
-4. You will be redirected to Devin's OAuth flow. If you don't have an API key yet, request one from your admin.
-5. Complete the sign-in. The credential is saved automatically.
-
-### HDWEBSOFT (Sign in with an API key)
-
-1. Run `/login`.
-2. Select **Sign in with an API key**.
-3. Select **hdwebsoft** from the provider list.
-4. Enter the API key provided by HDWEBSOFT when prompted.
-5. The key is saved automatically.
-
-### Verify login
-
-After login, check that the provider is active:
-
-```
-/model
-```
-
-This shows the current model and provider. You can switch models with `Ctrl+P` or `/scope`.
-
----
-
-## Basic Configuration
-
-### Theme
-
-```
-/settings
-```
-
-Select **Theme** → select **pim-dark** (or any theme you prefer).
-
-### HD Agent settings
-
-File: `~/.pim/settings.json`
-
-```json
-{
-  "exa": {
-    "apiKey": ""
-  },
-  "jina": {
-    "apiKey": ""
-  },
-  "painter": {
-    "model": "gpt-image-2"
-  },
-  "viewMedia": {
-    "model": "gemini-3.7-flash"
-  },
-  "agents": {
-    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,grok-4.5-medium",
-    "Search": "gemini-3.7-flash,deepseek-v4-flash"
-  }
-}
-```
-
-#### Web search API keys (optional)
-
-HD Agent's web tools use [Exa](https://exa.ai) for web search and [Jina](https://jina.ai/reader/) for fetching websites as Markdown. Both work without API keys but are rate-limited. For heavier usage, add your keys:
-
-```json
-{
-  "exa": {
-    "apiKey": "your-exa-api-key"
-  },
-  "jina": {
-    "apiKey": "your-jina-api-key"
-  }
-}
-```
-
-Environment variables override `settings.json` when present:
-
-```sh
-EXA_API_KEY='your-key' JINA_API_KEY='your-key' hd-agent
-```
-
-#### Painter (image generation)
-
-Set the model used for image generation. The model must exist in `~/.pi/agent/models.json` with a provider that uses `openai-completions` API.
-
-```json
-{
-  "painter": {
-    "model": "gpt-image-2"
-  }
-}
-```
-
-#### ViewMedia (image analysis)
-
-Set the model used for viewing and analyzing images. The model must exist in `~/.pi/agent/models.json`.
-
-```json
-{
-  "viewMedia": {
-    "model": "gemini-3.7-flash"
-  }
-}
-```
-
-#### Subagent models
-
-Override the model used by each subagent. Values are comma-separated model IDs (tried in order with fallback):
-
-```json
-{
-  "agents": {
-    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,grok-4.5-medium",
-    "Search": "gemini-3.7-flash,deepseek-v4-flash"
-  }
-}
-```
-
-If a subagent is not listed here, it falls back to its bundled default model.
-
----
-
-## Keyboard Shortcuts
-
-| Key | Action |
-| --- | --- |
-| `Ctrl+T` | Toggle Thinking on/ off |
-| `Shift+Tab` | Switch Thinking mode |
-| `Ctrl+P` | Quick-switch model |
-| `Ctrl+O` | Toggle tool call details |
-| `Esc` | Cancel autocomplete / abort streaming |
-| `Ctrl+C` | Clear editor (first) / exit (second) |
-
-### Slash commands
-
-| Command | Action |
-| --- | --- |
-| `/settings` | Open settings menu |
-| `/scope <model>` | Select frequently used models |
-| `/tps` | Toggle inference speed reporting |
-| `/hotkeys` | Show all keyboard shortcuts |
-
----
-
-## Subagents
-
-HD Agent ships with two built-in subagents.
-
-### Oracle
-
-- **Purpose**: AI advisor with advanced reasoning capabilities.
-- **When to use**: code reviews, architecture feedback, finding difficult bugs across many files, planning complex implementations or refactors, answering deep technical questions, or getting a second opinion when the main agent is stuck.
-- **Models**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`, `grok-4.5-medium`.
-- **Not for**: file reads, simple keyword searches, web browsing, basic code edits.
-
-### Search
-
-- **Purpose**: Fast, parallel code search.
-- **When to use**: finding files and code by functionality or concept, chaining multiple searches, locating all occurrences of a pattern across the codebase.
-- **Models**: `gemini-3.7-flash`, `deepseek-v4-flash`.
-- **Characteristics**: runs multiple tool calls in parallel per turn, completes within 3 turns, returns a list of files with line ranges.
-
-### Custom subagents
-
-Place markdown files in:
-
-```
-~/.pi/agent/agents/      # user-level
-.pi/agents/              # project-level (overrides user-level)
-```
-
-File format (see `src/extensions/subagent/bundled-agents/` for examples):
-
-```markdown
----
-name: MyAgent
-description: Short description of what this agent does.
-tools: grep, glob, read
-model: gpt-5.6-sol
----
-
-You are MyAgent — ...
-```
-
-Project-level agents override user-level agents, which in turn override bundled defaults (matching is case-insensitive).
-
----
-
-# Vietnamese version below / Phiên bản tiếng Việt bên dưới
-
----
-
 # HD Agent - Hướng dẫn cài đặt và sử dụng (Tiếng Việt)
 
 ## Cài đặt
@@ -466,6 +213,7 @@ HD Agent có sẵn hai subagent mặc định.
 - **Khi dùng**: review code, feedback kiến trúc, tìm bug khó trải nhiều file, lập kế hoạch implement/refactor phức tạp, trả lời câu hỏi kỹ thuật cần suy luận sâu, hoặc xin ý kiến thứ hai khi agent chính bí.
 - **Model**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`, `grok-4.5-medium`.
 - **Không dùng cho**: đọc file, tìm kiếm keyword đơn giản, duyệt web, sửa code cơ bản.
+- **Cách giao việc**: Oracle khởi động với context trắng, nên agent chính thu thập context trước (tự làm hoặc qua Search subagent) rồi gửi brief tự chứa kèm trích dẫn code. File nguồn liên quan truyền qua `context_paths` của tool subagent (`"path"` hoặc `"path:start-end"`); nội dung được inline vào prompt kèm số dòng để Oracle trả lời mà không phải đọc lại repo. Giới hạn cứng: 50KB mỗi entry, 150KB tổng — vượt là call bị từ chối kèm lỗi để agent chính gửi lại với line range hẹp hơn.
 
 ### Search
 
@@ -497,3 +245,257 @@ You are MyAgent — ...
 ```
 
 Project-level override user-level, user-level override bundled (matching case-insensitive).
+
+---
+
+# English version below / Phiên bản tiếng Anh bên dưới
+
+---
+
+# HD Agent - Getting Started Guide
+
+## Installation
+
+### One-command install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tuong-nguyen-vn/hd-agent/main/install.sh | sh
+```
+
+The installer automatically:
+- Installs Bun if missing (macOS, Linux, WSL, Windows Git Bash)
+- Installs Pi if missing
+- Installs or updates HD Agent as a Pi extension
+- Installs or updates the `hd-agent` global launcher
+
+### Manual install
+
+```sh
+curl -fsSL https://pi.dev/install.sh | sh
+pi install git:github.com/tuong-nguyen-vn/hd-agent
+bun install -g github:tuong-nguyen-vn/hd-agent
+```
+
+### Launch
+
+```sh
+hd-agent
+```
+
+---
+
+## Provider and API Key Setup
+
+### Select a provider
+
+In the TUI, run:
+
+```
+/login
+```
+
+You will see two authentication methods:
+
+```
+Select authentication method:
+
+ → Sign in with an account
+   Sign in with an API key
+
+ ↑↓ navigate  enter select  escape/ctrl+c cancel
+```
+
+- **Sign in with an account** — OAuth login for providers like Devin, GitHub Copilot, OpenRouter, etc.
+- **Sign in with an API key** — manual API key entry for providers like HDWEBSOFT, OpenAI, Anthropic, etc.
+
+Use `↑`/`↓` to navigate, `Enter` to select, `Esc` or `Ctrl+C` to cancel.
+
+### Devin (Sign in with an account)
+
+1. Run `/login`.
+2. Select **Sign in with an account**.
+3. Select **Devin** from the provider list.
+4. You will be redirected to Devin's OAuth flow. If you don't have an API key yet, request one from your admin.
+5. Complete the sign-in. The credential is saved automatically.
+
+### HDWEBSOFT (Sign in with an API key)
+
+1. Run `/login`.
+2. Select **Sign in with an API key**.
+3. Select **hdwebsoft** from the provider list.
+4. Enter the API key provided by HDWEBSOFT when prompted.
+5. The key is saved automatically.
+
+### Verify login
+
+After login, check that the provider is active:
+
+```
+/model
+```
+
+This shows the current model and provider. You can switch models with `Ctrl+P` or `/scope`.
+
+---
+
+## Basic Configuration
+
+### Theme
+
+```
+/settings
+```
+
+Select **Theme** → select **pim-dark** (or any theme you prefer).
+
+### HD Agent settings
+
+File: `~/.pim/settings.json`
+
+```json
+{
+  "exa": {
+    "apiKey": ""
+  },
+  "jina": {
+    "apiKey": ""
+  },
+  "painter": {
+    "model": "gpt-image-2"
+  },
+  "viewMedia": {
+    "model": "gemini-3.7-flash"
+  },
+  "agents": {
+    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,grok-4.5-medium",
+    "Search": "gemini-3.7-flash,deepseek-v4-flash"
+  }
+}
+```
+
+#### Web search API keys (optional)
+
+HD Agent's web tools use [Exa](https://exa.ai) for web search and [Jina](https://jina.ai/reader/) for fetching websites as Markdown. Both work without API keys but are rate-limited. For heavier usage, add your keys:
+
+```json
+{
+  "exa": {
+    "apiKey": "your-exa-api-key"
+  },
+  "jina": {
+    "apiKey": "your-jina-api-key"
+  }
+}
+```
+
+Environment variables override `settings.json` when present:
+
+```sh
+EXA_API_KEY='your-key' JINA_API_KEY='your-key' hd-agent
+```
+
+#### Painter (image generation)
+
+Set the model used for image generation. The model must exist in `~/.pi/agent/models.json` with a provider that uses `openai-completions` API.
+
+```json
+{
+  "painter": {
+    "model": "gpt-image-2"
+  }
+}
+```
+
+#### ViewMedia (image analysis)
+
+Set the model used for viewing and analyzing images. The model must exist in `~/.pi/agent/models.json`.
+
+```json
+{
+  "viewMedia": {
+    "model": "gemini-3.7-flash"
+  }
+}
+```
+
+#### Subagent models
+
+Override the model used by each subagent. Values are comma-separated model IDs (tried in order with fallback):
+
+```json
+{
+  "agents": {
+    "Oracle": "gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,grok-4.5-medium",
+    "Search": "gemini-3.7-flash,deepseek-v4-flash"
+  }
+}
+```
+
+If a subagent is not listed here, it falls back to its bundled default model.
+
+---
+
+## Keyboard Shortcuts
+
+| Key | Action |
+| --- | --- |
+| `Ctrl+T` | Toggle Thinking on/ off |
+| `Shift+Tab` | Switch Thinking mode |
+| `Ctrl+P` | Quick-switch model |
+| `Ctrl+O` | Toggle tool call details |
+| `Esc` | Cancel autocomplete / abort streaming |
+| `Ctrl+C` | Clear editor (first) / exit (second) |
+
+### Slash commands
+
+| Command | Action |
+| --- | --- |
+| `/settings` | Open settings menu |
+| `/scope <model>` | Select frequently used models |
+| `/tps` | Toggle inference speed reporting |
+| `/hotkeys` | Show all keyboard shortcuts |
+
+---
+
+## Subagents
+
+HD Agent ships with two built-in subagents.
+
+### Oracle
+
+- **Purpose**: AI advisor with advanced reasoning capabilities.
+- **When to use**: code reviews, architecture feedback, finding difficult bugs across many files, planning complex implementations or refactors, answering deep technical questions, or getting a second opinion when the main agent is stuck.
+- **Models**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`, `grok-4.5-medium`.
+- **Not for**: file reads, simple keyword searches, web browsing, basic code edits.
+- **How to brief it**: Oracle starts with a fresh context, so the main agent gathers context first (itself or via Search subagents) and sends a self-contained brief with quoted evidence. Supporting files go in the subagent tool's `context_paths` (`"path"` or `"path:start-end"`); their contents are inlined into the prompt with line numbers so Oracle can answer without re-reading the repo. Hard caps: 50KB per entry, 150KB total — oversized calls are rejected with an error so the main agent retries with narrower line ranges.
+
+### Search
+
+- **Purpose**: Fast, parallel code search.
+- **When to use**: finding files and code by functionality or concept, chaining multiple searches, locating all occurrences of a pattern across the codebase.
+- **Models**: `gemini-3.7-flash`, `deepseek-v4-flash`.
+- **Characteristics**: runs multiple tool calls in parallel per turn, completes within 3 turns, returns a list of files with line ranges.
+
+### Custom subagents
+
+Place markdown files in:
+
+```
+~/.pi/agent/agents/      # user-level
+.pi/agents/              # project-level (overrides user-level)
+```
+
+File format (see `src/extensions/subagent/bundled-agents/` for examples):
+
+```markdown
+---
+name: MyAgent
+description: Short description of what this agent does.
+tools: grep, glob, read
+model: gpt-5.6-sol
+---
+
+You are MyAgent — ...
+```
+
+Project-level agents override user-level agents, which in turn override bundled defaults (matching is case-insensitive).

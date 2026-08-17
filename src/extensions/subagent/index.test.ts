@@ -46,7 +46,11 @@ describe("subagent extension registration", () => {
     expect(tool?.parameters).toBeDefined();
     const wireProps = (tool!.parameters as Record<string, unknown>)
       .properties as Record<string, Record<string, unknown>>;
-    expect(Object.keys(wireProps).sort()).toEqual(["agent", "prompt"]);
+    expect(Object.keys(wireProps).sort()).toEqual([
+      "agent",
+      "context_paths",
+      "prompt",
+    ]);
     expect(wireProps.prompt).not.toHaveProperty("minLength");
   });
 
