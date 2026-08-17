@@ -12,7 +12,6 @@ export type WheelStep = {
 };
 
 export const LINES_PER_NOTCH = 3;
-export const TICK_MS = 16;
 const EASE = 0.4;
 
 export function nextStep(pending: number): {
@@ -26,47 +25,29 @@ export function nextStep(pending: number): {
 }
 
 /**
- * Turns discrete wheel notches into an eased glide: each notch adds
- * LINES_PER_NOTCH to the outstanding scroll distance and every tick drains a
- * fraction of it, so fast flicks start with large steps while every gesture
- * lands one line at a time. The interval only exists while distance remains,
- * so an abandoned animator stops itself within a few ticks.
+ * Accumulates wheel notches into an outstanding scroll distance and hands out
+ * one eased step per rendered frame (render-driven, like
+ * requestAnimationFrame): fast flicks start with large steps while every
+ * gesture lands one line at a time. Pacing steps by actual frames keeps the
+ * glide perfectly even and degrades gracefully — slow frames coalesce into
+ * bigger steps instead of queuing up, and no timer exists to orphan.
  */
 export class WheelAnimator {
   private pending = 0;
   private last: WheelEventInput | undefined;
-  private timer: ReturnType<typeof setInterval> | undefined;
-
-  constructor(private readonly step: (step: WheelStep) => void) {}
 
   onWheel(event: WheelEventInput): void {
     this.last = event;
     this.pending += event.direction * LINES_PER_NOTCH;
-    this.tick();
-    if (this.pending !== 0 && this.timer === undefined) {
-      this.timer = setInterval(() => this.tick(), TICK_MS);
-      this.timer.unref();
-    }
   }
 
-  private tick(): void {
+  takeStep(): WheelStep | undefined {
     const last = this.last;
     if (this.pending === 0 || last === undefined) {
-      this.stop();
-      return;
+      return undefined;
     }
     const { direction, magnitude, remaining } = nextStep(this.pending);
     this.pending = remaining;
-    this.step({ direction, magnitude, x: last.x, y: last.y });
-    if (this.pending === 0) {
-      this.stop();
-    }
-  }
-
-  private stop(): void {
-    if (this.timer !== undefined) {
-      clearInterval(this.timer);
-      this.timer = undefined;
-    }
+    return { direction, magnitude, x: last.x, y: last.y };
   }
 }

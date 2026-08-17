@@ -178,6 +178,24 @@ if (mode === "telegram") {
   process.exit(0);
 }
 
+// Bun always serves its builtin `undici` and ignores the npm package, so a
+// Bun predating EnvHttpProxyAgent crashes pi at startup with an inscrutable
+// "undefined is not a constructor". Fail with the actual fix instead.
+try {
+  const undici = (await import("undici")) as {
+    readonly EnvHttpProxyAgent?: unknown;
+  };
+  if (typeof undici.EnvHttpProxyAgent !== "function") {
+    throw new Error("missing EnvHttpProxyAgent");
+  }
+} catch {
+  console.error(
+    `HD Agent requires a newer Bun: Bun ${Bun.version} lacks undici.EnvHttpProxyAgent, which Pi's HTTP stack needs.\n` +
+      `Fix: run "bun upgrade" (or upgrade Bun via your package manager), then run hd-agent again.`
+  );
+  process.exit(1);
+}
+
 const piCli = await findPiCli();
 const startupRenderPreload = join(import.meta.dir, "startup-render.ts");
 const childEnv: NodeJS.ProcessEnv = { ...process.env, AMP_PI_CLI: piCli };

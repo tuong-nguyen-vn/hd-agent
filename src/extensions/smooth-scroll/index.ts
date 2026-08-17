@@ -11,6 +11,8 @@ const ANIMATOR = Symbol.for("pim.smooth-scroll-animator");
 type AltScreenInstance = {
   wheelScrollLines: number;
   routeWheel(event: WheelEventInput): void;
+  doRender(): void;
+  requestRender(): void;
   [ANIMATOR]?: WheelAnimator;
 };
 
@@ -27,7 +29,8 @@ function isAltScreenConstructor(value: unknown): value is AltScreenConstructor {
   return (
     typeof ctor === "function" &&
     !!ctor.prototype &&
-    typeof ctor.prototype.routeWheel === "function"
+    typeof ctor.prototype.routeWheel === "function" &&
+    typeof ctor.prototype.doRender === "function"
   );
 }
 
@@ -109,21 +112,32 @@ export default function (pi: ExtensionAPI): void {
       }
 
       const originalRouteWheel = prototype.routeWheel;
+      const originalDoRender = prototype.doRender;
       prototype[PATCH_STATE] = true;
       prototype.routeWheel = function (event: WheelEventInput): void {
         const self = this as AltScreenInstance;
-        // Drive the stock routing (nested scroll views, scrollbar hover,
-        // render scheduling) with the eased step size: wheelScrollLines is
-        // the multiplier routeWheel applies to a single notch.
-        self[ANIMATOR] ??= new WheelAnimator((step) => {
+        (self[ANIMATOR] ??= new WheelAnimator()).onWheel(event);
+        self.requestRender();
+      };
+      // Render-driven stepping: each painted frame consumes exactly one eased
+      // step, so the glide's pacing matches the real frame rate and slow
+      // frames coalesce distance instead of queuing behind a timer.
+      prototype.doRender = function (): void {
+        const self = this as AltScreenInstance;
+        const step = self[ANIMATOR]?.takeStep();
+        if (step) {
+          // Drive the stock routing (nested scroll views, scrollbar hover,
+          // and the requestRender that keeps the glide going) with the eased
+          // step size: wheelScrollLines is the multiplier routeWheel applies
+          // to a single notch.
           self.wheelScrollLines = step.magnitude;
           originalRouteWheel.call(self, {
             direction: step.direction,
             x: step.x,
             y: step.y,
           });
-        });
-        self[ANIMATOR].onWheel(event);
+        }
+        originalDoRender.call(self);
       };
     }
   });

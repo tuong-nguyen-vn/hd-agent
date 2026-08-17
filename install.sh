@@ -24,9 +24,22 @@ refresh_path() {
   hash -r 2>/dev/null || true
 }
 
+# Bun always serves its own builtin `undici`, ignoring any node_modules copy,
+# so Pi's HTTP stack needs a Bun new enough to expose EnvHttpProxyAgent.
+bun_supports_pi() {
+  bun -e 'if (typeof require("undici").EnvHttpProxyAgent !== "function") process.exit(1)' >/dev/null 2>&1
+}
+
 install_bun() {
   if command -v bun >/dev/null 2>&1; then
-    log "Bun is already installed ($(bun --version))"
+    if bun_supports_pi; then
+      log "Bun is already installed ($(bun --version))"
+      return
+    fi
+    log "Upgrading Bun ($(bun --version) is too old for Pi)"
+    bun upgrade || fail "Bun $(bun --version) is too old for Pi and 'bun upgrade' failed. Upgrade Bun with your package manager (e.g. 'brew upgrade bun') and run this script again."
+    refresh_path
+    bun_supports_pi || fail "Bun $(bun --version) still lacks undici.EnvHttpProxyAgent. Upgrade Bun manually and run this script again."
     return
   fi
 
