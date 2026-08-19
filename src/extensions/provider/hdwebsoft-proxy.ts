@@ -107,7 +107,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
         contextWindow: 1048576,
         maxTokens: 65536,
-        thinkingLevelMap: { off: null },
+        thinkingLevelMap: { off: null, minimal: null },
       },
       {
         id: "gemini-3.6-flash",
@@ -119,7 +119,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
         contextWindow: 1048576,
         maxTokens: 65536,
-        thinkingLevelMap: { off: null },
+        thinkingLevelMap: { off: null, minimal: null },
       },
       {
         id: "gemini-3.5-flash",
@@ -131,7 +131,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
         contextWindow: 1048576,
         maxTokens: 65536,
-        thinkingLevelMap: { off: null },
+        thinkingLevelMap: { off: null, minimal: null },
       },
       {
         id: "gemini-3.1-pro",
