@@ -16,6 +16,10 @@ import type {
   Usage,
 } from "@earendil-works/pi-ai";
 import { type AgentConfig, discoverAgents } from "./agents";
+import {
+  resolveSubagentOnlyModels,
+  withOracleGateHeaders,
+} from "./oracle-gate";
 import { formatTopLine } from "./render";
 
 export const PER_TASK_OUTPUT_CAP = 32 * 1024;
@@ -192,7 +196,7 @@ export async function createSdkSubagentSession(
   const { session } = await createAgentSession({
     cwd: parent.cwd,
     agentDir: getAgentDir(),
-    model,
+    model: withOracleGateHeaders(model),
     sessionManager: SessionManager.inMemory(parent.cwd),
     resourceLoader: loader,
     tools: baseTools ? [...childToolNames(baseTools)] : undefined,
@@ -202,6 +206,9 @@ export async function createSdkSubagentSession(
 }
 
 // Resolves the model candidates for a single "model" reference (no commas).
+// Subagent-only models (see oracle-gate.ts) rank first so a same-named entry
+// from another provider cannot shadow them, but registry matches stay in the
+// list as fallbacks in case the gated route errors out.
 // When the reference names an id without a provider and that id is exposed
 // by several providers, all authenticated candidates are returned (preferring
 // the parent's current provider first) instead of failing, so callers can
@@ -209,6 +216,17 @@ export async function createSdkSubagentSession(
 // Returns an empty array when the reference is not found, so callers can
 // skip it and try the next comma-separated fallback.
 function resolveModelReference(
+  parent: ParentContext,
+  reference: string
+): readonly Model<any>[] {
+  const subagentOnly = resolveSubagentOnlyModels(reference);
+  const fromRegistry = resolveRegistryModelReference(parent, reference);
+  return subagentOnly.length > 0
+    ? [...subagentOnly, ...fromRegistry]
+    : fromRegistry;
+}
+
+function resolveRegistryModelReference(
   parent: ParentContext,
   reference: string
 ): readonly Model<any>[] {
