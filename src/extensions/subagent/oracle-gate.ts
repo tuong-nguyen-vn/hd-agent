@@ -24,7 +24,7 @@ const GATED_SOL_MODEL: Model<"openai-completions"> = {
   reasoning: true,
   input: ["text", "image"],
   cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
-  contextWindow: 500000,
+  contextWindow: 372000,
   maxTokens: 128000,
   thinkingLevelMap: {
     off: "none",
