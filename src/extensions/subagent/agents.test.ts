@@ -138,7 +138,6 @@ describe("discoverAgents", () => {
     expect(oracleAgent?.tools).toEqual([
       "grep",
       "glob",
-      "find",
       "read",
       "web_search",
       "web_fetch",
