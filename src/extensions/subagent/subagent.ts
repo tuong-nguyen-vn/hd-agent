@@ -30,10 +30,19 @@ export const SUBAGENT_TOOL_NAME = "subagent";
 // (session creation, a streamed message, or a tool call). This guards
 // against nested-session setup hanging indefinitely — e.g. a provider
 // extension's session_start hook blocking on a slow network call — which
-// would otherwise require the user to manually abort. Set to 120s to
-// accommodate reasoning models that pause for extended thinking before
-// emitting their first token.
+// would otherwise require the user to manually abort. A non-reasoning model
+// silent for two minutes is broken rather than busy.
 export const STALL_TIMEOUT_MS = 120_000;
+
+// Reasoning models can think for minutes before emitting their first token,
+// so they get a longer leash. 300s matches the gateway's nginx
+// proxy_read_timeout: past that the connection is severed upstream anyway,
+// so waiting longer would delay the fallback without ever succeeding.
+export const REASONING_STALL_TIMEOUT_MS = 300_000;
+
+export function stallTimeoutForModel(model: Model<any> | undefined): number {
+  return model?.reasoning ? REASONING_STALL_TIMEOUT_MS : STALL_TIMEOUT_MS;
+}
 
 // How many times to retry the same model candidate before falling back to
 // the next one. Transient provider errors (empty_stream, connection resets)
@@ -336,7 +345,9 @@ export async function runSubagent(
   createSession: CreateSubagentSession = createSdkSubagentSession,
   activeToolNames?: readonly string[],
   agentName?: string,
-  stallTimeoutMs: number = STALL_TIMEOUT_MS
+  // Omit to derive the timeout from each candidate model; an explicit value
+  // applies to every candidate.
+  stallTimeoutMs?: number
 ): Promise<AgentToolResult<SubagentDetails>> {
   // Hard block against subagent recursion
   if (inSubagent.getStore()) {
@@ -379,7 +390,7 @@ export async function runSubagent(
           onUpdate,
           createSession,
           activeToolNames,
-          stallTimeoutMs
+          stallTimeoutMs ?? stallTimeoutForModel(model)
         );
 
         const failedBeforeAnyProgress =

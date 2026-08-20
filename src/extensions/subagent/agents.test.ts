@@ -131,7 +131,7 @@ describe("discoverAgents", () => {
 
     const searchAgent = agents.find((a) => a.name === "Search");
     expect(searchAgent?.source).toBe("bundled");
-    expect(searchAgent?.tools).toEqual(["grep", "find", "read"]);
+    expect(searchAgent?.tools).toEqual(["grep", "glob", "read"]);
 
     const oracleAgent = agents.find((a) => a.name === "Oracle");
     expect(oracleAgent?.source).toBe("bundled");

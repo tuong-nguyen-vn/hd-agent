@@ -9,9 +9,12 @@ import {
   applyOutputCap,
   childToolNames,
   prewarmSubagentLoader,
+  REASONING_STALL_TIMEOUT_MS,
   resolveSubagentModel,
   resolveSubagentModelCandidates,
   runSubagent,
+  STALL_TIMEOUT_MS,
+  stallTimeoutForModel,
   SubagentEventCapture,
   type SubagentSession,
 } from "./subagent";
@@ -127,6 +130,23 @@ describe("childToolNames", () => {
       "skill",
     ]);
     expect(childToolNames(["read", "skill"])).toEqual(["read", "skill"]);
+  });
+});
+
+describe("stallTimeoutForModel", () => {
+  test("reasoning models get the longer leash, others keep the default", () => {
+    expect(stallTimeoutForModel({ reasoning: true } as never)).toBe(
+      REASONING_STALL_TIMEOUT_MS
+    );
+    expect(stallTimeoutForModel({ reasoning: false } as never)).toBe(
+      STALL_TIMEOUT_MS
+    );
+    expect(stallTimeoutForModel(undefined)).toBe(STALL_TIMEOUT_MS);
+  });
+
+  test("the reasoning leash stays within the gateway's 300s read timeout", () => {
+    expect(REASONING_STALL_TIMEOUT_MS).toBeLessThanOrEqual(300_000);
+    expect(REASONING_STALL_TIMEOUT_MS).toBeGreaterThan(STALL_TIMEOUT_MS);
   });
 });
 
