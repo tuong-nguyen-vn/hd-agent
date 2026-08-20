@@ -24,7 +24,9 @@ const GATED_SOL_MODEL: Model<"openai-completions"> = {
   reasoning: true,
   input: ["text", "image"],
   cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
-  contextWindow: 372000,
+  // The upstream catalog advertises 372K, but the hdwebsoft route is held to
+  // 272K so a long Oracle session compacts well before the real ceiling.
+  contextWindow: 272000,
   maxTokens: 128000,
   thinkingLevelMap: {
     off: "none",
