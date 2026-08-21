@@ -65,7 +65,7 @@ export default function (pi: ExtensionAPI): void {
       `Set "agent" to the name of a predefined agent from ${join(getAgentDir(), "agents")} ` +
       "(or the project's .pi/agents) to use its configured name, model, system prompt, and tools. " +
       'Use agent="Search" for broad code discovery. ' +
-      'Use agent="Oracle" for code reviews, architecture feedback, difficult bugs across many files, planning complex implementations, deep technical reasoning, or an alternative perspective. ' +
+      'Use agent="Oracle" for code reviews, architecture feedback, difficult bugs across many files, planning complex implementations, deep technical reasoning, or an alternative perspective — but only after the user approves the consultation. ' +
       "Do NOT delegate to Oracle for file reads, simple searches, web browsing, or basic code changes — do those directly. " +
       "Omit agent only for a plain subagent that should inherit the current model.",
     parameters: subagentSchema,
