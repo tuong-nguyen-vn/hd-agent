@@ -17,6 +17,9 @@ export const subagentSchema = Type.Object({
     description:
       "The task for the subagent. For Oracle, write a self-contained delegation brief: Objective, Scope/files, Known findings with evidence (quoted excerpts cited as path:line), Constraints, and Questions/decisions. " +
       "Inline the evidence the subagent needs and pass supporting source files via context_paths instead of expecting it to rediscover them; it starts with a fresh context and no parent history. " +
+      "Every file cited as path:line is read and inlined automatically, so cite precisely rather than paraphrasing a location. " +
+      "Mark each finding VERIFIED (you read the code yourself) or HYPOTHESIS (a Search subagent reported it and you have not checked it) — an unchecked guess stated as fact sends Oracle chasing a false lead. " +
+      "Leave out anything you have already proven and can simply fix yourself, such as stale docs, a missing export, or an untested branch; Oracle is for what needs judgement. " +
       "Do not copy unrelated session history.",
   }),
   context_paths: Type.Optional(
@@ -24,8 +27,8 @@ export const subagentSchema = Type.Object({
       description:
         "Source files to inline into the subagent's prompt, each as a path optionally suffixed with a 1-based line range " +
         '("src/foo.ts" or "src/foo.ts:120-260"). Relative paths resolve against the project root. ' +
-        "Contents are read at call time and appended with line numbers. Hard caps: 50KB per entry, 150KB total — oversized calls fail without running, so pass line ranges for large files. " +
-        "Use this to hand the subagent — especially Oracle — the exact source it needs so it can answer without re-reading files.",
+        "Contents are read at call time and appended with line numbers. Hard caps: 64KB per entry, 256KB total — oversized calls fail without running, so pass line ranges for large files. " +
+        "Use this for source the prompt does not already cite as path:line: cited files are inlined automatically, and this list takes priority when the two together exceed the budget.",
     })
   ),
 });

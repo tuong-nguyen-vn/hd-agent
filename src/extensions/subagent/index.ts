@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Tools } from "../../shared/Tools";
-import { buildContextBlock } from "./context";
+import { buildSubagentPrompt } from "./context";
 import { renderCall, renderResult } from "./render";
 import { subagentSchema, type SubagentInput } from "./schema";
 import {
@@ -61,7 +61,8 @@ export default function (pi: ExtensionAPI): void {
       "Subagent output returned to the main agent is capped at 32KB. " +
       "When using Oracle, the prompt must carry the full delegation context because parent history is not forwarded. Gather context first — directly or via Search subagents — then delegate. " +
       "Structure the brief as Objective, Scope/files, Known findings, Constraints, and Questions, and inline the actual evidence: quoted code excerpts cited as path:line, Search results, and relevant tool outputs. " +
-      'Pass supporting source files via "context_paths" so their contents are inlined automatically; the subagent should be able to answer without re-reading the repo. ' +
+      'Pass supporting source files via "context_paths" so their contents are inlined automatically; files the prompt cites as path:line are inlined too, so the subagent should be able to answer without re-reading the repo. ' +
+      "Mark each finding VERIFIED or HYPOTHESIS, and keep already-proven fixes out of an Oracle brief. " +
       `Set "agent" to the name of a predefined agent from ${join(getAgentDir(), "agents")} ` +
       "(or the project's .pi/agents) to use its configured name, model, system prompt, and tools. " +
       'Use agent="Search" for broad code discovery. ' +
@@ -73,13 +74,11 @@ export default function (pi: ExtensionAPI): void {
     executionMode: "parallel",
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
       const input = params as SubagentInput;
-      const contextBlock = await buildContextBlock(
+      const prompt = await buildSubagentPrompt(
+        input.prompt,
         input.context_paths,
         ctx.cwd
       );
-      const prompt = contextBlock
-        ? `${input.prompt}\n\n${contextBlock}`
-        : input.prompt;
       return runSubagent(
         prompt,
         ctx,
