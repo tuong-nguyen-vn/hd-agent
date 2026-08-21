@@ -74,13 +74,17 @@ export async function runBashCommand(
   // Bun's detached mode creates a fresh session/process group on POSIX,
   // equivalent to setsid(2), without depending on the Linux-only `setsid`
   // executable. pgid == proc.pid, so timeout/abort can signal the whole tree.
+  // Windows has no process groups, so detached is disabled there to avoid
+  // spawning an extra hidden console window.
+  const isWindows = process.platform === "win32";
   const proc = Bun.spawn({
     cmd: ["bash", "-lc", command],
     cwd,
     stdout: "pipe",
     stderr: "pipe",
     env: env ?? { ...process.env },
-    detached: true,
+    detached: !isWindows,
+    windowsHide: isWindows,
   });
   if (proc.pid !== undefined) {
     activePids.add(proc.pid);
