@@ -97,7 +97,7 @@ describe("ModelResolver.resolveReference", () => {
 
 describe("ModelResolver.resolveCandidates", () => {
   const geminiFlash = makeModel("proxy", "gemini-3.7-flash");
-  const swe = makeModel("devin", "swe-1-7", { input: ["text"] });
+  const swe = makeModel("devin", "glm-5-3", { input: ["text"] });
 
   test("comma-separated references are tried in declared order, deduped", async () => {
     const registry = makeRegistry(
@@ -106,7 +106,7 @@ describe("ModelResolver.resolveCandidates", () => {
     );
     const candidates = await ModelResolver.resolveCandidates(
       registry,
-      "gemini-3.7-flash, swe-1-7"
+      "gemini-3.7-flash, glm-5-3"
     );
     expect(candidates).toEqual([geminiFlash, swe]);
   });

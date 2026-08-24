@@ -27,7 +27,7 @@ describe("resolveSubagentOnlyModels", () => {
     expect(
       resolveSubagentOnlyModels("hdwebsoft-proxy/gpt-5.6-sol")
     ).toHaveLength(1);
-    expect(resolveSubagentOnlyModels("claude-opus-5")).toHaveLength(0);
+    expect(resolveSubagentOnlyModels("glm-5-3")).toHaveLength(0);
   });
 });
 
@@ -43,7 +43,7 @@ describe("withOracleGateHeaders", () => {
     // The shared model spec must stay untouched.
     expect(gated.headers).toBeUndefined();
 
-    const other = { provider: "hdwebsoft-proxy", id: "claude-opus-5" } as never;
+    const other = { provider: "hdwebsoft-proxy", id: "glm-5-2" } as never;
     expect(withOracleGateHeaders(other, now)).toBe(other);
     expect(withOracleGateHeaders(undefined, now)).toBeUndefined();
   });
@@ -67,7 +67,7 @@ describe("subagent-only model resolution precedence", () => {
       name: "Oracle",
       description: "Oracle",
       tools: undefined,
-      model: "gpt-5.6-sol,claude-opus-5",
+      model: "gpt-5.6-sol,glm-5-2",
       systemPrompt: "",
       source: "bundled",
     });

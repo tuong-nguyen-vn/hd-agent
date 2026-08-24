@@ -11,8 +11,8 @@ function modelKey(model: { provider: string; id: string }): string {
  * in @earendil-works/pi-coding-agent) carries the *current* thinking level
  * forward and re-clamps it for the new model's capabilities — it has no
  * memory of what level was last used on a given model. So cycling
- * claude-sonnet-5 (high) -> swe-1-7 (clamped to off, since it exposes no
- * levels) -> claude-sonnet-5 comes back as "off" instead of "high".
+ * glm-5-2 (high) -> mimo-v2.5 (clamped to off, since it exposes no
+ * levels) -> glm-5-2 comes back as "off" instead of "high".
  *
  * This extension remembers the last thinking level explicitly selected per
  * model — persisted to `~/.pim/settings.json` via `PimSettings` so it
