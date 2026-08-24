@@ -11,7 +11,7 @@ import { getOpencodeFreeModels } from "./opencode-free";
  */
 export function registerHdwebsoftBackup(pi: ExtensionAPI): void {
   pi.registerProvider("hdwebsoft-backup", {
-    name: "HDWEBSOFT Backup",
+    name: "Model Backup Free",
     apiKey: " ",
     models: getOpencodeFreeModels(),
   });
