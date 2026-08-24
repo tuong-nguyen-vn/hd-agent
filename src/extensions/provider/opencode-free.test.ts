@@ -4,12 +4,13 @@ import { getOpencodeFreeModels } from "./opencode-free";
 describe("opencode-free", () => {
   it("returns a static free-model list without network", () => {
     const models = getOpencodeFreeModels();
-    expect(models.length).toBe(3);
+    expect(models.length).toBe(4);
 
     const ids = models.map((m) => m.id);
     expect(ids).toContain("big-pickle");
     expect(ids).toContain("deepseek-v4-flash-free");
     expect(ids).toContain("mimo-v2.5-free");
+    expect(ids).toContain("x-preview-f-free");
   });
 
   it("all models point at OpenCode Zen with cost 0", () => {
