@@ -56,8 +56,8 @@ const FREE_MODELS: readonly FreeModelSpec[] = [
   },
   {
     id: "x-preview-f-free",
-    name: "X Preview F",
-    contextWindow: 200_000,
+    name: "Ox Alpha",
+    contextWindow: 1_000_000,
     maxTokens: 128_000,
   },
 ];
