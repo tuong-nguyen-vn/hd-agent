@@ -209,18 +209,19 @@ HD Agent có sẵn hai subagent mặc định.
 
 ### Oracle
 
-- **Mục đích**: AI advisor với khả năng suy luận nâng cao.
+- **Mục đích**: AI advisor với khả năng suy luận nâng cao — không phải model mạnh hơn cho việc code hàng ngày, mà là "ý kiến thứ hai" cho những việc cần suy luận sâu.
 - **Khi dùng**: review code, feedback kiến trúc, tìm bug khó trải nhiều file, lập kế hoạch implement/refactor phức tạp, trả lời câu hỏi kỹ thuật cần suy luận sâu, hoặc xin ý kiến thứ hai khi agent chính bí.
-- **Model**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`, `grok-4.5-medium`.
+- **Model**: `gpt-5.6-sol`, `claude-opus-5`, `deepseek-v4-pro`, `gpt-5.6-luna`, `grok-4.5-medium` — thử lần lượt, model nào phản hồi được thì dùng.
 - **Không dùng cho**: đọc file, tìm kiếm keyword đơn giản, duyệt web, sửa code cơ bản.
-- **Cách giao việc**: Oracle khởi động với context trắng, nên agent chính thu thập context trước (tự làm hoặc qua Search subagent) rồi gửi brief tự chứa kèm trích dẫn code. File nguồn liên quan truyền qua `context_paths` của tool subagent (`"path"` hoặc `"path:start-end"`); nội dung được inline vào prompt kèm số dòng để Oracle trả lời mà không phải đọc lại repo. Giới hạn cứng: 50KB mỗi entry, 150KB tổng — vượt là call bị từ chối kèm lỗi để agent chính gửi lại với line range hẹp hơn.
+- **Luôn cần bạn duyệt trước**: agent chính **không tự ý** gọi Oracle. Một lượt tư vấn tốn 5-10 phút và tiền, nên agent sẽ hỏi lại trước ("bạn có muốn dùng Oracle không?") và chỉ dispatch sau khi bạn đồng ý — trừ khi chính bạn đã gõ thẳng "dùng Oracle" trong yêu cầu, lúc đó nó bỏ qua bước hỏi và làm luôn.
+- **Cách giao việc**: Oracle khởi động với context trắng, nên agent chính thu thập context trước (tự làm hoặc qua Search subagent) rồi gửi brief tự chứa kèm trích dẫn code, đánh dấu mỗi finding là **VERIFIED** (đã tự đọc) hay **HYPOTHESIS** (Search báo, chưa kiểm) để Oracle không mất công đi xác minh lại phát hiện sai. File nguồn liên quan truyền qua `context_paths` của tool subagent (`"path"` hoặc `"path:start-end"`); nội dung được inline vào prompt kèm số dòng. **Ngoài ra, bất kỳ file nào brief trích dẫn dạng `path:line` cũng tự động được đọc và đính kèm** — kể cả khi dùng đường dẫn rút gọn (ví dụ `pipeline.py:120` thay vì đường dẫn đầy đủ) — nên agent chính không cần liệt kê lại mọi thứ trong `context_paths`. Giới hạn cứng: 64KB mỗi entry, 256KB tổng — vượt là call bị từ chối kèm lỗi để agent chính gửi lại với line range hẹp hơn.
 
 ### Search
 
 - **Mục đích**: Tìm kiếm code song song, nhanh.
 - **Khi dùng**: tìm file/ code theo chức năng hoặc khái niệm, chain nhiều tìm kiếm, liệt kê tất cả occurrences của một pattern.
-- **Model**: `gemini-3.7-flash`, `deepseek-v4-flash`.
-- **Đặc điểm**: chạy nhiều tool call song song mỗi turn, hoàn thành trong 3 turn, trả về danh sách file kèm line range.
+- **Model**: `gemini-3.7-flash`, `deepseek-v4-flash-free`, `deepseek-v4-flash`.
+- **Đặc điểm**: chạy nhiều tool call song song mỗi turn, cố gắng hoàn thành trong 3 turn, trả về danh sách file kèm line range. Đây là agent định vị (file nào, dòng nào) — nếu cần Search phân tích sâu hơn, hãy tự kiểm tra lại phát hiện của nó trước khi coi là sự thật.
 
 ### Custom subagent
 
@@ -463,18 +464,19 @@ HD Agent ships with two built-in subagents.
 
 ### Oracle
 
-- **Purpose**: AI advisor with advanced reasoning capabilities.
+- **Purpose**: AI advisor with advanced reasoning capabilities — not a stronger model for everyday coding, but a second opinion for work that genuinely needs deep reasoning.
 - **When to use**: code reviews, architecture feedback, finding difficult bugs across many files, planning complex implementations or refactors, answering deep technical questions, or getting a second opinion when the main agent is stuck.
-- **Models**: `gpt-5.6-sol`, `claude-opus-5`, `gpt-5.6-luna`, `grok-4.5-medium`.
+- **Models**: `gpt-5.6-sol`, `claude-opus-5`, `deepseek-v4-pro`, `gpt-5.6-luna`, `grok-4.5-medium` — tried in order, first one that responds wins.
 - **Not for**: file reads, simple keyword searches, web browsing, basic code edits.
-- **How to brief it**: Oracle starts with a fresh context, so the main agent gathers context first (itself or via Search subagents) and sends a self-contained brief with quoted evidence. Supporting files go in the subagent tool's `context_paths` (`"path"` or `"path:start-end"`); their contents are inlined into the prompt with line numbers so Oracle can answer without re-reading the repo. Hard caps: 50KB per entry, 150KB total — oversized calls are rejected with an error so the main agent retries with narrower line ranges.
+- **Always asks first**: the main agent never dispatches Oracle on its own initiative. A consultation costs 5-10 minutes and real money, so it asks you first ("want me to consult Oracle?") and only dispatches once you agree — unless you already asked for Oracle by name in your request, in which case it skips the question and proceeds directly.
+- **How to brief it**: Oracle starts with a fresh context, so the main agent gathers context first (itself or via Search subagents) and sends a self-contained brief with quoted evidence, marking each finding **VERIFIED** (read directly) or **HYPOTHESIS** (reported by Search, unchecked) so Oracle doesn't waste time re-verifying a false lead. Supporting files go in the subagent tool's `context_paths` (`"path"` or `"path:start-end"`); their contents are inlined into the prompt with line numbers. **Any file the brief cites as `path:line` is also read and attached automatically** — even a shortened path (e.g. `pipeline.py:120` instead of the full path) — so the main agent doesn't need to re-list everything in `context_paths`. Hard caps: 64KB per entry, 256KB total — oversized calls are rejected with an error so the main agent retries with narrower line ranges.
 
 ### Search
 
 - **Purpose**: Fast, parallel code search.
 - **When to use**: finding files and code by functionality or concept, chaining multiple searches, locating all occurrences of a pattern across the codebase.
-- **Models**: `gemini-3.7-flash`, `deepseek-v4-flash`.
-- **Characteristics**: runs multiple tool calls in parallel per turn, completes within 3 turns, returns a list of files with line ranges.
+- **Models**: `gemini-3.7-flash`, `deepseek-v4-flash-free`, `deepseek-v4-flash`.
+- **Characteristics**: runs multiple tool calls in parallel per turn, aims to complete within 3 turns, returns a list of files with line ranges. This is a locator agent (which file, which line) — for anything that needs deeper judgment, verify its findings yourself before treating them as fact.
 
 ### Custom subagents
 
