@@ -68,7 +68,6 @@
     "grammy": "^1.44.0",
     "ignore": "^7.0.5",
     "ky": "^2.0.2",
-    "pi-devin-auth": "^0.1.2",
     "pi-mcp-adapter": "2.11.0"
   },
   "overrides": {

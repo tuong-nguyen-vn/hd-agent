@@ -51,18 +51,10 @@ Select authentication method:
  ↑↓ navigate  enter select  escape/ctrl+c cancel
 ```
 
-- **Sign in with an account** — đăng nhập OAuth cho các provider như Devin, GitHub Copilot, OpenRouter, v.v.
+- **Sign in with an account** — đăng nhập OAuth cho các provider như GitHub Copilot, OpenRouter, v.v.
 - **Sign in with an API key** — nhập API key thủ công cho các provider như HDWEBSOFT, OpenAI, Anthropic, v.v.
 
 Dùng `↑`/`↓` để di chuyển, `Enter` để chọn, `Esc` hoặc `Ctrl+C` để hủy.
-
-### Devin (Sign in with an account)
-
-1. Gõ `/login`.
-2. Chọn **Sign in with an account**.
-3. Chọn **Devin** từ danh sách provider.
-4. Bạn sẽ được chuyển đến luồng OAuth của Devin. Nếu chưa có API key, yêu cầu admin cấp key.
-5. Hoàn tất đăng nhập. Thông tin xác thực được lưu tự động.
 
 ### HDWEBSOFT (Sign in with an API key)
 
@@ -306,18 +298,10 @@ Select authentication method:
  ↑↓ navigate  enter select  escape/ctrl+c cancel
 ```
 
-- **Sign in with an account** — OAuth login for providers like Devin, GitHub Copilot, OpenRouter, etc.
+- **Sign in with an account** — OAuth login for providers like GitHub Copilot, OpenRouter, etc.
 - **Sign in with an API key** — manual API key entry for providers like HDWEBSOFT, OpenAI, Anthropic, etc.
 
 Use `↑`/`↓` to navigate, `Enter` to select, `Esc` or `Ctrl+C` to cancel.
-
-### Devin (Sign in with an account)
-
-1. Run `/login`.
-2. Select **Sign in with an account**.
-3. Select **Devin** from the provider list.
-4. You will be redirected to Devin's OAuth flow. If you don't have an API key yet, request one from your admin.
-5. Complete the sign-in. The credential is saved automatically.
 
 ### HDWEBSOFT (Sign in with an API key)
 

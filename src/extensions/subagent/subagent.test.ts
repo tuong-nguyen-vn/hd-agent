@@ -220,13 +220,13 @@ describe("resolveSubagentModel", () => {
 
   test("a bare model id shared by multiple providers yields every authenticated candidate, current provider first", () => {
     const proxyFlash = { provider: "proxy", id: "flash" } as never;
-    const devinFlash = { provider: "devin", id: "flash" } as never;
+    const openaiFlash = { provider: "openai", id: "flash" } as never;
     const unauthedFlash = { provider: "other", id: "flash" } as never;
-    const authedProviders = new Set(["proxy", "devin"]);
+    const authedProviders = new Set(["proxy", "openai"]);
     const ctx2 = {
-      model: { provider: "devin", id: "parent-model" } as never,
+      model: { provider: "openai", id: "parent-model" } as never,
       modelRegistry: {
-        getAll: () => [proxyFlash, devinFlash, unauthedFlash],
+        getAll: () => [proxyFlash, openaiFlash, unauthedFlash],
         hasConfiguredAuth: (m: { provider: string }) =>
           authedProviders.has(m.provider),
       },
@@ -241,12 +241,12 @@ describe("resolveSubagentModel", () => {
       source: "bundled",
     });
 
-    expect(candidates).toEqual([devinFlash, proxyFlash]);
+    expect(candidates).toEqual([openaiFlash, proxyFlash]);
   });
 
   test("comma-separated model list is tried in the declared order", () => {
     const geminiFlash = { provider: "proxy", id: "gemini-3.7-flash" } as never;
-    const swe = { provider: "devin", id: "glm-5-3" } as never;
+    const swe = { provider: "openai", id: "glm-5-3" } as never;
     const ctx2 = {
       model: { provider: "proxy", id: "parent-model" } as never,
       modelRegistry: {
