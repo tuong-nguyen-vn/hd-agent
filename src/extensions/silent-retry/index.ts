@@ -40,16 +40,20 @@ function isAssistantMessageConstructor(
 // and runs in the factory, not at module-import time.
 let cachedIsRetryable: IsRetryableAssistantError | undefined;
 
-async function getIsRetryableAssistantError(): Promise<IsRetryableAssistantError> {
+async function getIsRetryableAssistantError(): Promise<
+  IsRetryableAssistantError | undefined
+> {
   if (cachedIsRetryable) {
     return cachedIsRetryable;
   }
-  const { isRetryableAssistantError } =
-    (await import("@earendil-works/pi-ai")) as {
-      isRetryableAssistantError: IsRetryableAssistantError;
-    };
-  cachedIsRetryable = isRetryableAssistantError;
-  return isRetryableAssistantError;
+  const mod = (await import("@earendil-works/pi-ai")) as {
+    isRetryableAssistantError?: unknown;
+  };
+  const fn = mod.isRetryableAssistantError;
+  if (typeof fn === "function") {
+    cachedIsRetryable = fn as IsRetryableAssistantError;
+  }
+  return cachedIsRetryable;
 }
 
 // Pi can have multiple pi-coding-agent copies (hoisted + nested). Patch every
@@ -132,6 +136,9 @@ let constructorsPromise: Promise<AssistantMessageConstructor[]> | undefined;
 
 async function applySilentRetryPatches(): Promise<number> {
   const isRetryableAssistantError = await getIsRetryableAssistantError();
+  if (!isRetryableAssistantError) {
+    return 0;
+  }
   constructorsPromise ??= resolveAssistantMessageConstructors();
   let patched = 0;
   for (const ctor of await constructorsPromise) {
