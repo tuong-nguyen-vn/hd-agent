@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { withBoundedOverlay } from "./bounded-overlay";
 
 // Load the upstream extension lazily through a non-literal dynamic import. The
 // vendor ships raw (type-unclean) TypeScript, so a static `import` would pull
@@ -18,9 +19,28 @@ const ASK_USER_BLOCKED_EVENT = "rpiv:ask-user:blocked";
 // bridge the questionnaire keeps reporting "working" the whole time it is open.
 const HERDR_BLOCKED_EVENT = "herdr:blocked";
 
+const TOOL_NAME = "ask_user_question";
+
+// The upstream loader calls `pi.registerTool` itself, so the overlay cap has
+// to be spliced in at registration time rather than by re-registering.
+function interceptToolRegistration(pi: ExtensionAPI): ExtensionAPI {
+  return new Proxy(pi, {
+    get(target, prop, _receiver) {
+      if (prop === "registerTool") {
+        return (def: Parameters<ExtensionAPI["registerTool"]>[0]) =>
+          target.registerTool(
+            def.name === TOOL_NAME ? withBoundedOverlay(def) : def
+          );
+      }
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
 export default async function (pi: ExtensionAPI): Promise<void> {
   const { default: loader } = await import(UPSTREAM_SPEC as string);
-  loader(pi);
+  loader(interceptToolRegistration(pi));
 
   pi.events.on(ASK_USER_BLOCKED_EVENT, (data) => {
     const active = (data as { active?: boolean } | null)?.active === true;
