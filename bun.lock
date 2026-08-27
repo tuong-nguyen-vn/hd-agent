@@ -5,7 +5,7 @@
     "": {
       "name": "hd-agent",
       "dependencies": {
-        "@juicesharp/rpiv-ask-user-question": "2.4.0",
+        "@juicesharp/rpiv-ask-user-question": "2.7.1",
         "diff": "^9.0.0",
         "fzf": "^0.5.2",
         "grammy": "^1.44.0",
@@ -113,9 +113,9 @@
 
     "@hono/node-server": ["@hono/node-server@2.0.12", "", { "peerDependencies": { "hono": "^4" } }, "sha512-eWpQYr67tqJLeaSUl0Q+TquuYfUdTibpOJlUMV2FfUP7+KqCC5TufnwnlXL6mobZBJbGAYRd7ZvEBDCbLInjhg=="],
 
-    "@juicesharp/rpiv-ask-user-question": ["@juicesharp/rpiv-ask-user-question@2.4.0", "", { "dependencies": { "@juicesharp/rpiv-config": "^2.4.0", "typebox": "^1.1.24" }, "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*", "@juicesharp/rpiv-i18n": "*" }, "optionalPeers": ["@juicesharp/rpiv-i18n"] }, "sha512-JVWc6CrePUgAEP3g6C3vrJBqZ6JSS56HQy7+2QZBdwwtcxqCNCHdPgXMJ43sexeJvusSJKTadeDJcc/4kuJEGA=="],
+    "@juicesharp/rpiv-ask-user-question": ["@juicesharp/rpiv-ask-user-question@2.7.1", "", { "dependencies": { "@juicesharp/rpiv-config": "^2.7.1", "typebox": "^1.1.24" }, "peerDependencies": { "@earendil-works/pi-coding-agent": "*", "@earendil-works/pi-tui": "*", "@juicesharp/rpiv-i18n": "*" }, "optionalPeers": ["@juicesharp/rpiv-i18n"] }, "sha512-S4muZ/IbQ5M3xRX49b2r1CfxdkMmREjq+gv9j4qnyZ0BaEHNHTJ61NIerRzgmYt4FeteXqJB8XV3x8pZvq/GGg=="],
 
-    "@juicesharp/rpiv-config": ["@juicesharp/rpiv-config@2.4.0", "", { "dependencies": { "typebox": "^1.1.24" } }, "sha512-yUeDLfpAeKv3fdoBsye6bDy8M+TOQDAo8wX7DY9Qqyh60dT65AmWT7HQ/BOc3o08n/5TrwTlX9EnZcPAcgz4pw=="],
+    "@juicesharp/rpiv-config": ["@juicesharp/rpiv-config@2.7.1", "", { "dependencies": { "typebox": "^1.1.24" } }, "sha512-6X1nHd8OQthbgGhkStaNxOMrUzFBjf2dKqYRgo4vjeGxr0hKvGgxVPE233kXiZNtGUTK3t+IfsbfIw2X07Q5Pg=="],
 
     "@mariozechner/clipboard": ["@mariozechner/clipboard@0.3.9", "", { "optionalDependencies": { "@mariozechner/clipboard-darwin-arm64": "0.3.9", "@mariozechner/clipboard-darwin-universal": "0.3.9", "@mariozechner/clipboard-darwin-x64": "0.3.9", "@mariozechner/clipboard-linux-arm64-gnu": "0.3.9", "@mariozechner/clipboard-linux-arm64-musl": "0.3.9", "@mariozechner/clipboard-linux-riscv64-gnu": "0.3.9", "@mariozechner/clipboard-linux-x64-gnu": "0.3.9", "@mariozechner/clipboard-linux-x64-musl": "0.3.9", "@mariozechner/clipboard-win32-arm64-msvc": "0.3.9", "@mariozechner/clipboard-win32-x64-msvc": "0.3.9" } }, "sha512-ABnA53mdfkGZwOFUdZNv2S0CWGO/EIuPj8Vv9xmBFmSYg/qFc7ihO6q5FcQjvoE67kZpWkEc4AhD6B/os04yuA=="],
 
@@ -688,10 +688,6 @@
     "@earendil-works/pi-agent-core/diff": ["diff@8.0.4", "", {}, "sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw=="],
 
     "@earendil-works/pi-coding-agent/diff": ["diff@8.0.4", "", {}, "sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw=="],
-
-    "@juicesharp/rpiv-ask-user-question/typebox": ["typebox@1.1.38", "", {}, "sha512-pZ0aQPmMmXoUvSbeuWf/Hzsc+avNw/Zd6VeE8CFgkVGWyuHPJvqeJJDeJqLve+K70LvjYIoleGcoJHPT17cWoA=="],
-
-    "@juicesharp/rpiv-config/typebox": ["typebox@1.1.38", "", {}, "sha512-pZ0aQPmMmXoUvSbeuWf/Hzsc+avNw/Zd6VeE8CFgkVGWyuHPJvqeJJDeJqLve+K70LvjYIoleGcoJHPT17cWoA=="],
 
     "@smithy/core/@smithy/types": ["@smithy/types@4.14.2", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-P+otAxbV4CqBybp7EkcJCrig63yE2E7PuNVOmilVMRcx/O+QDzGULTrKsq4DV13gSfak9ObPrWaHl/9bL5YcWw=="],
 
