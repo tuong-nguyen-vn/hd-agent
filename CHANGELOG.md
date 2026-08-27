@@ -2,9 +2,31 @@
 
 ## Unreleased
 
+## v0.16.0
+
 ### Features
 
+- Cap the `ask_user_question` overlay at 70% of the terminal height so the assistant text that led to the question stays readable above it. The dialog is handed a terminal-rows value that matches the cap, so its scroll window and pi-tui's overlay slice agree and the footer is never cut off. Upstream `@juicesharp/rpiv-ask-user-question` bumped to 2.7.1 (terminal BEL when waiting, global note on the Submit tab, footer hints that follow `collapseKey`, `guidance.description`).
+- Require user approval before consulting Oracle, and have the main agent reach for `web_search`/`web_fetch` on unfamiliar or possibly-stale library and API ground instead of answering from memory.
+- Add a `context_paths` param to the subagent tool that inlines files (optionally `path:start-end` ranges) into the subagent prompt, and inline the sources a delegation brief cites — resolved directly or by unique suffix against `git ls-files`, whole when small, windowed around the citation when large — so Oracle stops rediscovering them. Briefs carry VERIFIED/HYPOTHESIS labels; caps are 64KB per file and 256KB total.
+- Route Oracle to `gpt-5.6-sol` through the hdwebsoft gate: a subagent-only spec outside the provider registry, spawned with an HMAC gate token the gateway's oracle-gate plugin validates, held to a 272K context window.
+- Give reasoning subagents a 300s stall leash (was 120s), matching the gateway's read timeout, so a long think no longer silently falls back to the next model candidate.
+- Ease fullscreen wheel scrolling with a smooth-scroll extension: each notch adds 3 lines to an outstanding distance drained at 60fps with ease-out.
+- Prewarm the diff highlighter from `session_start` and repaint once it lands.
 - Add `gemini-3.7-flash` model to hdwebsoft-proxy and tuongnguyen-proxy (tuongnguyen-proxy now exposes only `gemini-3.7-flash` among Gemini Flash models). Default model references across settings, bundled agents, docs, and tests updated from `gemini-3.6-flash` to `gemini-3.7-flash`.
+- Add `glm-5-3` (GLM thinking map simplified to high-only) and bump tuongnguyen-proxy's GLM model to 5.3. Rename the hdwebsoft-backup provider to Model Backup Free and add `x-preview-f-free` (Ox Alpha, 1M context) to it.
+- Drop Claude and SWE models from the hdwebsoft-proxy registry, and remove the Devin provider together with the `pi-devin-auth` dependency.
+- Symlink `pi` to the HD Agent launcher during installation.
+
+### Bug Fixes
+
+- Stop holding a pi `ExtensionContext` across session replacement in the subagent extension: Pi 0.84 invalidates the ctx on `/clear`, resume, fork, `/reload`, and quit, and the prewarm timer and long-running subagent retries were reading it afterwards and killing the process.
+- Stop the first diff render of a session from crashing before the highlighter loads (the first edit/write/apply_patch showed only its title).
+- Guard the launcher against a Bun that predates `EnvHttpProxyAgent` and have `install.sh` upgrade such a Bun instead of skipping it.
+- Guard the silent-retry patch against a `@earendil-works/pi-ai` copy that does not export `isRetryableAssistantError`, which crashed session resume.
+- Hide the `minimal` thinking level for Gemini 3.x Flash models to avoid a proxy 400.
+- Drop the dead `find` tool from the Oracle and Search agents' tool lists (hd-agent's glob extension replaces it, so pi silently ran them with fewer tools).
+- Disable detached mode on Windows to avoid spawning a console window.
 
 ## v0.15.1
 
