@@ -77,18 +77,6 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         thinkingLevelMap: { off: null, minimal: null },
       },
       {
-        id: "gemini-3.5-flash",
-        name: "Gemini 3.5 Flash",
-        api: "google-generative-ai",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
-        reasoning: true,
-        input: ["text", "image"],
-        cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
-        contextWindow: 1048576,
-        maxTokens: 65536,
-        thinkingLevelMap: { off: null, minimal: null },
-      },
-      {
         id: "gemini-3.1-pro",
         name: "Gemini 3.1 Pro",
         api: "google-generative-ai",
