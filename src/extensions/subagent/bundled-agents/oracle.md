@@ -5,7 +5,7 @@ description: >-
   guidance. Consult as a subagent for code reviews, architecture feedback,
   difficult bugs, complex implementations, and alternative perspectives.
 tools: grep, glob, read, web_search, web_fetch
-model: gpt-5.6-sol,claude-opus-5,gpt-5.6-luna,grok-4.5-medium
+model: gpt-5.6-sol,claude-opus-5,gpt-5.6-luna
 ---
 
 You are the Oracle — an AI advisor with advanced reasoning capabilities.
