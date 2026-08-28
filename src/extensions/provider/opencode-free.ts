@@ -37,12 +37,6 @@ type FreeModelSpec = {
 
 const FREE_MODELS: readonly FreeModelSpec[] = [
   {
-    id: "big-pickle",
-    name: "Big Pickle",
-    contextWindow: 200_000,
-    maxTokens: 128_000,
-  },
-  {
     id: "deepseek-v4-flash-free",
     name: "DeepSeek V4 Flash",
     contextWindow: 200_000,
