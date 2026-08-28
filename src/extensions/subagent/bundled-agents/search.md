@@ -2,7 +2,7 @@
 name: Search
 description: Fast, parallel code search agent. Use when you need to find files and code based on functionality or concepts, chain multiple searches, or locate all occurrences of patterns across the codebase.
 tools: grep, glob, read
-model: glm-5-3-flash,gemini-3.7-flash,gpt-5.6-luna
+model: gpt-5.6-luna,gemini-3.7-flash,glm-5-3-flash
 ---
 
 You are a fast code search agent.
