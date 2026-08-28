@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.17.0
+
+### Features
+
+- Add `gpt-5.3-codex-spark` model to hdwebsoft-proxy and set it as the primary Search subagent model. Add `isQuotaError()` to skip same-model retries on exhausted quota/rate-limit errors (429, 402, rate limit, quota) and fall back to the next candidate immediately.
+- Add `glm-5-3-flash` model to hdwebsoft-proxy and set it as the second Search subagent fallback.
+- Remove `deepseek-v4-pro`, `deepseek-v4-flash`, `gemini-3.5-flash`, and `grok-4.5-medium` from hdwebsoft-proxy and subagent fallback lists.
+- Remove `x-preview-f-free` and `big-pickle` from the opencode-free provider.
+
 ## v0.16.0
 
 ### Features
