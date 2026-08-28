@@ -35,14 +35,7 @@ type FreeModelSpec = {
   readonly maxTokens: number;
 };
 
-const FREE_MODELS: readonly FreeModelSpec[] = [
-  {
-    id: "mimo-v2.5-free",
-    name: "MiMo v2.5",
-    contextWindow: 200_000,
-    maxTokens: 128_000,
-  },
-];
+const FREE_MODELS: readonly FreeModelSpec[] = [];
 
 export function getOpencodeFreeModels(): ProviderModelConfig[] {
   return FREE_MODELS.map((m) => ({
