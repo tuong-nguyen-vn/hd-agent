@@ -50,6 +50,29 @@ export function stallTimeoutForModel(model: Model<any> | undefined): number {
 // fallbacks for flaky-but-recoverable failures.
 export const MAX_SAME_MODEL_RETRIES = 2;
 
+// Error signatures that indicate exhausted quota or rate-limiting rather
+// than a transient hiccup. Retrying the same model wastes time; fall back
+// to the next candidate immediately.
+const QUOTA_ERROR_PATTERNS: readonly RegExp[] = [
+  /\b429\b/,
+  /\b402\b/,
+  /rate.?limit/i,
+  /quota/i,
+  /insufficient.{0,20}(token|credit|balance|quota)/i,
+  /exceeded.{0,20}(token|credit|balance|quota)/i,
+];
+
+export function isQuotaError(
+  thrown: unknown,
+  errorMessage: string | undefined
+): boolean {
+  const text = [
+    thrown instanceof Error ? thrown.message : String(thrown ?? ""),
+    errorMessage ?? "",
+  ].join(" ");
+  return QUOTA_ERROR_PATTERNS.some((re) => re.test(text));
+}
+
 const inSubagent = new AsyncLocalStorage<true>();
 
 // jiti's extension-compile cache is process-global, so one throwaway
@@ -400,8 +423,17 @@ export async function runSubagent(
             attempt.snapshot.stopReason === "error" ||
             attempt.stalled);
         const hasMoreRetries = r < MAX_SAME_MODEL_RETRIES;
+        const quotaExhausted = isQuotaError(
+          attempt.thrown,
+          attempt.snapshot.errorMessage
+        );
 
-        if (!failedBeforeAnyProgress || !hasMoreRetries || signal?.aborted) {
+        if (
+          !failedBeforeAnyProgress ||
+          !hasMoreRetries ||
+          signal?.aborted ||
+          quotaExhausted
+        ) {
           break;
         }
       }
