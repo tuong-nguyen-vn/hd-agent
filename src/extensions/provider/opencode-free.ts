@@ -54,12 +54,6 @@ const FREE_MODELS: readonly FreeModelSpec[] = [
     contextWindow: 200_000,
     maxTokens: 128_000,
   },
-  {
-    id: "x-preview-f-free",
-    name: "Ox Alpha",
-    contextWindow: 1_000_000,
-    maxTokens: 128_000,
-  },
 ];
 
 export function getOpencodeFreeModels(): ProviderModelConfig[] {
