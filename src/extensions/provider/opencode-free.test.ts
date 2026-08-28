@@ -4,10 +4,9 @@ import { getOpencodeFreeModels } from "./opencode-free";
 describe("opencode-free", () => {
   it("returns a static free-model list without network", () => {
     const models = getOpencodeFreeModels();
-    expect(models.length).toBe(2);
+    expect(models.length).toBe(1);
 
     const ids = models.map((m) => m.id);
-    expect(ids).toContain("deepseek-v4-flash-free");
     expect(ids).toContain("mimo-v2.5-free");
   });
 

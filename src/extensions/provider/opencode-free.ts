@@ -37,12 +37,6 @@ type FreeModelSpec = {
 
 const FREE_MODELS: readonly FreeModelSpec[] = [
   {
-    id: "deepseek-v4-flash-free",
-    name: "DeepSeek V4 Flash",
-    contextWindow: 200_000,
-    maxTokens: 128_000,
-  },
-  {
     id: "mimo-v2.5-free",
     name: "MiMo v2.5",
     contextWindow: 200_000,
