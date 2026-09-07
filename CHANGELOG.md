@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- Replace `gemini-3.7-flash` with `gemini-3.8-flash` in both proxies and in the `viewMedia`, `readSession`, and `sessionTitle` defaults, and promote it to the first Search subagent candidate ahead of `gpt-5.6-luna`.
+
 ## v0.17.0
 
 ### Features

@@ -197,7 +197,7 @@ describe("resolveSubagentModel", () => {
   });
 
   test("unknown model in a comma-separated list is skipped, remaining models are used", () => {
-    const geminiFlash = { provider: "proxy", id: "gemini-3.7-flash" } as never;
+    const geminiFlash = { provider: "proxy", id: "gemini-3.8-flash" } as never;
     const ctx2 = {
       model: { provider: "proxy", id: "parent-model" } as never,
       modelRegistry: {
@@ -210,7 +210,7 @@ describe("resolveSubagentModel", () => {
       name: "Search",
       description: "Search",
       tools: undefined,
-      model: "glm-5-3, gemini-3.7-flash",
+      model: "glm-5-3, gemini-3.8-flash",
       systemPrompt: "",
       source: "bundled",
     });
@@ -245,7 +245,7 @@ describe("resolveSubagentModel", () => {
   });
 
   test("comma-separated model list is tried in the declared order", () => {
-    const geminiFlash = { provider: "proxy", id: "gemini-3.7-flash" } as never;
+    const geminiFlash = { provider: "proxy", id: "gemini-3.8-flash" } as never;
     const swe = { provider: "openai", id: "glm-5-3" } as never;
     const ctx2 = {
       model: { provider: "proxy", id: "parent-model" } as never,
@@ -259,7 +259,7 @@ describe("resolveSubagentModel", () => {
       name: "Search",
       description: "Search",
       tools: undefined,
-      model: "gemini-3.7-flash, glm-5-3",
+      model: "gemini-3.8-flash, glm-5-3",
       systemPrompt: "",
       source: "bundled",
     });

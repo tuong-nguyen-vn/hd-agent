@@ -96,7 +96,7 @@ describe("ModelResolver.resolveReference", () => {
 });
 
 describe("ModelResolver.resolveCandidates", () => {
-  const geminiFlash = makeModel("proxy", "gemini-3.7-flash");
+  const geminiFlash = makeModel("proxy", "gemini-3.8-flash");
   const swe = makeModel("openai", "glm-5-3", { input: ["text"] });
 
   test("comma-separated references are tried in declared order, deduped", async () => {
@@ -106,7 +106,7 @@ describe("ModelResolver.resolveCandidates", () => {
     );
     const candidates = await ModelResolver.resolveCandidates(
       registry,
-      "gemini-3.7-flash, glm-5-3"
+      "gemini-3.8-flash, glm-5-3"
     );
     expect(candidates).toEqual([geminiFlash, swe]);
   });
@@ -115,7 +115,7 @@ describe("ModelResolver.resolveCandidates", () => {
     const registry = makeRegistry([geminiFlash], new Set(["proxy"]));
     const candidates = await ModelResolver.resolveCandidates(
       registry,
-      "gemini-3.7-flash, proxy/gemini-3.7-flash"
+      "gemini-3.8-flash, proxy/gemini-3.8-flash"
     );
     expect(candidates).toEqual([geminiFlash]);
   });
@@ -129,7 +129,7 @@ describe("ModelResolver.resolveCandidates", () => {
     const registry = makeRegistry([geminiFlash], new Set(["proxy"]));
     const candidates = await ModelResolver.resolveCandidates(
       registry,
-      "  , gemini-3.7-flash , "
+      "  , gemini-3.8-flash , "
     );
     expect(candidates).toEqual([geminiFlash]);
   });

@@ -115,8 +115,8 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         },
       },
       {
-        id: "gemini-3.7-flash",
-        name: "Gemini 3.7 Flash",
+        id: "gemini-3.8-flash",
+        name: "Gemini 3.8 Flash",
         api: "google-generative-ai",
         baseUrl: `${TUONGNGUYEN_PROXY_ROOT}/v1beta`,
         reasoning: true,

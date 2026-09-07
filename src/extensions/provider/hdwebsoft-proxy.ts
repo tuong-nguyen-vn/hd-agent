@@ -53,8 +53,8 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
     authHeader: true,
     models: [
       {
-        id: "gemini-3.7-flash",
-        name: "Gemini 3.7 Flash",
+        id: "gemini-3.8-flash",
+        name: "Gemini 3.8 Flash",
         api: "google-generative-ai",
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
         reasoning: true,
