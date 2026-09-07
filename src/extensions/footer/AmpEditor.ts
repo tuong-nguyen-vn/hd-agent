@@ -27,12 +27,21 @@ type AmpEditorOptions = {
 };
 
 const MIN_INPUT_LINES = 3;
+// Below this the status label reads as noise; the bare spinner is used instead.
+const MIN_STATUS_WIDTH = 12;
+
+// Pi does not export WorkingStatusIndicator, so derive it from the base class
+// to keep the override in step with pi's signature.
+type WorkingStatusIndicator = NonNullable<
+  Parameters<CustomEditor["setWorkingStatusIndicator"]>[0]
+>;
 
 export function fitBorder(
   left: string,
   right: string,
   width: number,
-  border: (text: string) => string
+  border: (text: string) => string,
+  middle = ""
 ): string {
   if (width <= 0) {
     return "";
@@ -64,6 +73,14 @@ export function fitBorder(
   }
 
   const gap = Math.max(0, width - fixedWidth - leftWidth - rightWidth);
+  const middleWidth = visibleWidth(middle);
+  // The middle label is the editor's scroll marker: drop it rather than
+  // squeeze the labels that frame it.
+  if (middleWidth > 0 && gap >= middleWidth + 1) {
+    const before = Math.floor((gap - middleWidth) / 2);
+    const after = gap - middleWidth - before;
+    return `${border("─")}${leftText}${border("─".repeat(before))}${middle}${border("─".repeat(after))}${rightText}${border("─")}`;
+  }
   return `${border("─")}${leftText}${border("─".repeat(gap))}${rightText}${border("─")}`;
 }
 
@@ -84,6 +101,18 @@ export function formatContext(ctx: ExtensionContext): string {
     return "? of context";
   }
   return `${Math.round(usage.percent)}% of ${formatTokens(contextWindow)}`;
+}
+
+function scrollMarker(
+  theme: Theme,
+  arrow: string,
+  hiddenLineCount: number
+): string {
+  // Pi spells this "↑ N more", but both ends of this border already carry
+  // labels — the compact form still fits between them at typical widths.
+  return hiddenLineCount > 0
+    ? theme.fg("muted", ` ${arrow} ${hiddenLineCount} `)
+    : "";
 }
 
 function formatGit(state: GitState, theme: Theme): string {
@@ -107,13 +136,17 @@ function formatGit(state: GitState, theme: Theme): string {
 }
 
 export class AmpEditor extends CustomEditor {
+  private workingStatus: WorkingStatusIndicator | undefined;
+
   public constructor(
     tui: TUI,
     theme: EditorTheme,
     keybindings: KeybindingsManager,
     private readonly options: AmpEditorOptions
   ) {
-    super(tui, theme, keybindings, { paddingX: 1 });
+    // embedWorkingStatus makes pi hand the streaming indicator to this editor
+    // instead of stacking it above; renderTopBorder() places it.
+    super(tui, theme, keybindings, { paddingX: 1, embedWorkingStatus: true });
     // Seed prompt history from disk so up/down arrow navigation works across
     // sessions. Uses the base addToHistory() (not the override below) so this
     // replay doesn't immediately re-persist the same entries back to disk.
@@ -125,6 +158,64 @@ export class AmpEditor extends CustomEditor {
   public override addToHistory(text: string): void {
     super.addToHistory(text);
     PromptHistory.persist((this as unknown as { history: string[] }).history);
+  }
+
+  public override setWorkingStatusIndicator(
+    indicator: WorkingStatusIndicator | undefined
+  ): void {
+    super.setWorkingStatusIndicator(indicator);
+    this.workingStatus = indicator;
+  }
+
+  protected override renderTopBorder(
+    width: number,
+    hiddenLineCount: number
+  ): string {
+    const { ctx, pi } = this.options;
+    const theme = ctx.ui.theme;
+    const model =
+      ctx.model && ctx.model.provider
+        ? `${ctx.model.provider}/${ctx.model.id}`
+        : (ctx.model?.id ?? "no model");
+    const level = pi.getThinkingLevel();
+    const right =
+      theme.fg("success", ` ${level} `) + theme.fg("muted", `${model} `);
+    // Cost/context scan the whole session — served from an event-invalidated
+    // cache so typing does no per-keystroke session walks.
+    const left =
+      this.renderWorkingStatus(width, visibleWidth(right)) ??
+      theme.fg("muted", ` ${this.options.getStats().contextText} `);
+
+    return fitBorder(
+      left,
+      right,
+      width,
+      (text) => this.borderColor(text),
+      scrollMarker(theme, "↑", hiddenLineCount)
+    );
+  }
+
+  protected override renderBottomBorder(
+    width: number,
+    hiddenLineCount: number
+  ): string {
+    const { ctx } = this.options;
+    const theme = ctx.ui.theme;
+    const stats = this.options.getStats();
+    const path = Paths.abbreviateHome(ctx.sessionManager.getCwd());
+    const git = formatGit(this.options.getGitState(), theme);
+
+    const left =
+      stats.cost > 0 ? theme.fg("muted", ` $${stats.cost.toFixed(2)} `) : "";
+    const right = theme.fg("muted", ` ${path}`) + git + theme.fg("muted", " ");
+
+    return fitBorder(
+      left,
+      right,
+      width,
+      (text) => this.borderColor(text),
+      scrollMarker(theme, "↓", hiddenLineCount)
+    );
   }
 
   public override render(width: number): string[] {
@@ -141,31 +232,29 @@ export class AmpEditor extends CustomEditor {
         ...Array.from({ length: missingInputLines }, () => " ".repeat(width))
       );
     }
-
-    const { ctx, pi } = this.options;
-    const theme = ctx.ui.theme;
-    const model =
-      ctx.model && ctx.model.provider
-        ? `${ctx.model.provider}/${ctx.model.id}`
-        : (ctx.model?.id ?? "no model");
-    const level = pi.getThinkingLevel();
-    // Cost/context scan the whole session — served from an event-invalidated
-    // cache so typing does no per-keystroke session walks.
-    const stats = this.options.getStats();
-    const path = Paths.abbreviateHome(ctx.sessionManager.getCwd());
-    const git = formatGit(this.options.getGitState(), theme);
-    const border = (text: string) => this.borderColor(text);
-
-    const topLeft = theme.fg("muted", ` ${stats.contextText} `);
-    const topRight =
-      theme.fg("success", ` ${level} `) + theme.fg("muted", `${model} `);
-    const bottomLeft =
-      stats.cost > 0 ? theme.fg("muted", ` $${stats.cost.toFixed(2)} `) : "";
-    const bottomRight =
-      theme.fg("muted", ` ${path}`) + git + theme.fg("muted", " ");
-
-    lines[0] = fitBorder(topLeft, topRight, width, border);
-    lines[lines.length - 1] = fitBorder(bottomLeft, bottomRight, width, border);
     return lines;
+  }
+
+  // Full label when it fits beside the model chip, bare spinner otherwise, so
+  // the top border never drops the model to make room for the status.
+  private renderWorkingStatus(
+    width: number,
+    rightWidth: number
+  ): string | undefined {
+    const status = this.workingStatus;
+    if (!status) {
+      return undefined;
+    }
+    const budget = width - rightWidth - 5;
+    if (budget >= MIN_STATUS_WIDTH) {
+      const label = status.renderInBorder(budget);
+      if (visibleWidth(label) > 0) {
+        return ` ${label} `;
+      }
+    }
+    const spinner = status.renderSpinnerInBorder(
+      Math.max(0, width - rightWidth - 4)
+    );
+    return visibleWidth(spinner) > 0 ? ` ${spinner} ` : undefined;
   }
 }
