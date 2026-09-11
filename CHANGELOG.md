@@ -4,6 +4,7 @@
 
 ### Features
 
+- Replace `glm-5.3` with `glm-5-2` on tuongnguyen-proxy, matching hdwebsoft-proxy's entry: `openai-completions` on `/v1` instead of `anthropic-messages` on the root, 200K context.
 - Replace `gemini-3.7-flash` with `gemini-3.8-flash` in both proxies and in the `viewMedia`, `readSession`, and `sessionTitle` defaults, and promote it to the first Search subagent candidate ahead of `gpt-5.6-luna`.
 - Remove `gemini-3.6-flash` from hdwebsoft-proxy.
 - Draw the editor chrome through pi-tui 0.85's `renderTopBorder`/`renderBottomBorder` hooks instead of rewriting rendered lines, so the editor's scroll markers survive and the footer no longer overwrites the last autocomplete row. The streaming working indicator is now embedded in the top border, taking the context chip's place while a turn runs. Requires Pi >= 0.85.0.
