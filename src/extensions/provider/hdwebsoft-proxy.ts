@@ -116,6 +116,28 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         },
       },
       {
+        id: "gpt-5.6-terra",
+        name: "GPT-5.6 Terra",
+        api: "openai-completions",
+        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
+        contextWindow: 272000,
+        maxTokens: 128000,
+        thinkingLevelMap: {
+          off: "none",
+          minimal: null,
+          xhigh: "xhigh",
+          max: "max",
+        },
+        compat: {
+          supportsDeveloperRole: false,
+          supportsReasoningEffort: true,
+          maxTokensField: "max_tokens",
+        },
+      },
+      {
         id: "mimo-v2.5",
         name: "MiMo v2.5",
         api: "openai-completions",
