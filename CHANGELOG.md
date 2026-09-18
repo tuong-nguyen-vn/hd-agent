@@ -5,6 +5,7 @@
 ### Features
 
 - Remove `mimo-v2.5` from hdwebsoft-proxy.
+- Remove `gemini-3.1-flash-image` from hdwebsoft-proxy; painter no longer targets it.
 
 ## v0.18.0
 

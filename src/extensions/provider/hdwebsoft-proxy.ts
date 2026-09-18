@@ -88,17 +88,6 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         },
       },
       {
-        id: "gemini-3.1-flash-image",
-        name: "Gemini Nano Banana 2",
-        api: "google-generative-ai",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
-        reasoning: false,
-        input: ["image"],
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-        contextWindow: 1048576,
-        maxTokens: 65536,
-      },
-      {
         id: "gpt-5.6-luna",
         name: "GPT-5.6 Luna",
         api: "openai-completions",
