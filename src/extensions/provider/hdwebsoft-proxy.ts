@@ -3,6 +3,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
+import { NativeImageCapture } from "../../shared/NativeImageCapture";
 import {
   buildContextLines,
   colorFor,
@@ -51,6 +52,10 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
   pi.registerProvider(PROVIDER_ID, {
     name: "HDWEBSOFT Proxy",
     authHeader: true,
+    // Routes this provider's openai-completions models through the image tee
+    // (per-model `api` still wins, so Gemini/Anthropic entries are untouched).
+    api: "openai-completions",
+    streamSimple: NativeImageCapture.streamSimpleFor("hdwebsoft-proxy"),
     models: [
       {
         id: "gemini-3.8-flash",

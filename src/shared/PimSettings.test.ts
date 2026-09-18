@@ -63,6 +63,7 @@ describe("PimSettings", () => {
       exa: { apiKey: "exa-test" },
       jina: { apiKey: "jina-test" },
       painter: {},
+      nativeImageGen: { enabled: true },
       viewMedia: { directToModel: {} },
       readSession: {},
       sessionTitle: {},
@@ -95,6 +96,24 @@ describe("PimSettings", () => {
     });
 
     await expect(PimSettings.getViewMediaModel()).resolves.toBe("vision-model");
+  });
+
+  test("reads native image generation settings with defaults", async () => {
+    await expect(PimSettings.getNativeImageGenEnabled()).resolves.toBe(true);
+    await expect(PimSettings.getNativeImageGenModels()).resolves.toEqual([
+      "gpt-5.6-luna",
+    ]);
+
+    await PimSettings.set("nativeImageGen", {
+      enabled: false,
+      models: " GPT-5.6-Luna, gpt-5.6-sol ,,",
+    });
+
+    await expect(PimSettings.getNativeImageGenEnabled()).resolves.toBe(false);
+    await expect(PimSettings.getNativeImageGenModels()).resolves.toEqual([
+      "gpt-5.6-luna",
+      "gpt-5.6-sol",
+    ]);
   });
 
   test("rejects invalid root setting values", async () => {

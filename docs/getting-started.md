@@ -99,7 +99,11 @@ File: `~/.pim/settings.json`
     "apiKey": ""
   },
   "painter": {
-    "model": "gpt-image-2"
+    "model": "gpt-5.6-luna"
+  },
+  "nativeImageGen": {
+    "enabled": true,
+    "models": "gpt-5.6-luna"
   },
   "viewMedia": {
     "model": "gemini-3.8-flash"
@@ -134,12 +138,38 @@ EXA_API_KEY='your-key' JINA_API_KEY='your-key' hd-agent
 
 #### Painter (tạo ảnh)
 
-Thiết lập model dùng để tạo ảnh. Model phải tồn tại trong `~/.pi/agent/models.json` với provider dùng API `openai-completions`.
+Thiết lập model dùng để tạo ảnh. Model phải tồn tại trong `~/.pi/agent/models.json`, dùng API `openai-completions`
+và provider phải phục vụ `/responses` kèm tool `image_generation` (vd `gpt-5.6-luna` trên proxy).
+Có thể khai báo nhiều model cách nhau bằng dấu phẩy, painter thử lần lượt theo thứ tự đó.
 
 ```json
 {
   "painter": {
-    "model": "gpt-image-2"
+    "model": "gpt-5.6-luna"
+  }
+}
+```
+
+Các lần gọi painter trong cùng một session pi nối tiếp nhau qua `previous_response_id`
+(giữ ngữ cảnh text và ăn prompt cache). Muốn ảnh sau đồng nhất với ảnh trước thì dùng
+`mode: "edit"` không kèm `input` — painter tự đính kèm lại ảnh cuối nó vừa tạo.
+Truyền `continue_session: false` khi muốn tạo ảnh mới hoàn toàn độc lập.
+
+#### Tạo ảnh ngay trong main agent (native)
+
+Khi model chính là một trong `nativeImageGen.models` (mặc định `gpt-5.6-luna`) trên proxy đi kèm,
+HD Agent gắn thêm tool `image_generation` của proxy vào chính request chat của model. Nói "vẽ cho tôi X"
+là nó vẽ ngay trong lượt đó, không cần gọi `painter`. Ảnh được lưu thành `./image-<timestamp>.jpg`,
+hiện inline ngay dưới câu trả lời (kitty/iTerm2/Ghostty) và đưa vào context của model.
+Ở chế độ không có TUI (`-p`, Telegram) thì đường dẫn file được ghi thẳng vào câu trả lời.
+`painter` tự ẩn khi đang dùng model native và hiện lại khi đổi sang model khác.
+Tắt bằng `nativeImageGen.enabled: false`.
+
+```json
+{
+  "nativeImageGen": {
+    "enabled": true,
+    "models": "gpt-5.6-luna"
   }
 }
 ```
@@ -346,7 +376,11 @@ File: `~/.pim/settings.json`
     "apiKey": ""
   },
   "painter": {
-    "model": "gpt-image-2"
+    "model": "gpt-5.6-luna"
+  },
+  "nativeImageGen": {
+    "enabled": true,
+    "models": "gpt-5.6-luna"
   },
   "viewMedia": {
     "model": "gemini-3.8-flash"
@@ -381,12 +415,38 @@ EXA_API_KEY='your-key' JINA_API_KEY='your-key' hd-agent
 
 #### Painter (image generation)
 
-Set the model used for image generation. The model must exist in `~/.pi/agent/models.json` with a provider that uses `openai-completions` API.
+Set the model used for image generation. The model must exist in `~/.pi/agent/models.json`, use the
+`openai-completions` API, and its provider must serve `/responses` with the `image_generation` tool
+(e.g. `gpt-5.6-luna` on a proxy). A comma-separated list is tried in order as fallbacks.
 
 ```json
 {
   "painter": {
-    "model": "gpt-image-2"
+    "model": "gpt-5.6-luna"
+  }
+}
+```
+
+painter calls in a pi session chain onto the previous painter response via `previous_response_id`
+(text context + prompt cache). For a follow-up that must stay visually consistent, use
+`mode: "edit"` without `input` — painter re-attaches the last image it made. Pass
+`continue_session: false` to start a fresh, unrelated image.
+
+#### Native image generation in the main agent
+
+When the main model is one of `nativeImageGen.models` (default `gpt-5.6-luna`) on a bundled proxy,
+HD Agent appends the proxy's `image_generation` tool to the model's own chat requests, so "draw me X"
+is answered in the same turn — no `painter` call. The image is saved as `./image-<timestamp>.jpg`,
+rendered inline right under the reply (kitty/iTerm2/Ghostty), and fed back into the model's context.
+In headless runs (`-p`, Telegram) the saved path is appended to the reply instead.
+`painter` is hidden while a native model is active and returns when you switch to one that isn't.
+Turn it off with `nativeImageGen.enabled: false`.
+
+```json
+{
+  "nativeImageGen": {
+    "enabled": true,
+    "models": "gpt-5.6-luna"
   }
 }
 ```

@@ -39,6 +39,16 @@ const Schema = Type.Object({
     },
     { default: {} }
   ),
+  nativeImageGen: Type.Object(
+    {
+      // When the main model is one of `models`, the proxy's image_generation
+      // tool rides along on its chat requests and painter is hidden.
+      enabled: Type.Boolean({ default: true }),
+      // Comma-separated model ids that accept the tool on /chat/completions.
+      models: Type.Optional(Type.String()),
+    },
+    { default: { enabled: true } }
+  ),
   viewMedia: Type.Object(
     {
       // A single model id, "provider/model", or a comma-separated list tried
@@ -139,8 +149,23 @@ export class PimSettings {
   public static async getPainterModel(): Promise<string> {
     return (
       PimSettings.normalize((await PimSettings.get("painter")).model) ??
-      "gemini-3.1-flash-image,gpt-image-2"
+      "gpt-5.6-luna"
     );
+  }
+
+  public static async getNativeImageGenEnabled(): Promise<boolean> {
+    return (await PimSettings.get("nativeImageGen")).enabled;
+  }
+
+  /** Model ids allowed to paint natively; `gpt-5.6-luna` unless overridden. */
+  public static async getNativeImageGenModels(): Promise<readonly string[]> {
+    const raw =
+      PimSettings.normalize((await PimSettings.get("nativeImageGen")).models) ??
+      "gpt-5.6-luna";
+    return raw
+      .split(",")
+      .map((id) => id.trim().toLowerCase())
+      .filter((id) => id.length > 0);
   }
 
   public static async getViewMediaModel(): Promise<string> {

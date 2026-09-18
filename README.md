@@ -120,7 +120,11 @@ the example below shows every currently supported setting:
     "apiKey": ""
   },
   "painter": {
-    "model": "gpt-image-2"
+    "model": "gpt-5.6-luna"
+  },
+  "nativeImageGen": {
+    "enabled": true,
+    "models": "gpt-5.6-luna"
   },
   "viewMedia": {
     "model": "gemini-3.8-flash"
@@ -150,9 +154,27 @@ For `viewMedia`, the provider's `api` controls the vision request protocol:
 
 For OpenAI-compatible proxies that serve Gemini or Claude model IDs through
 `/v1/chat/completions`, set the provider's `api` to `openai-completions`; the
-model name does not determine the wire protocol. `painter` requires its model's
-provider to use `openai-completions` for `/images/generations` and
-`/images/edits`.
+model name does not determine the wire protocol.
+
+`painter.model` takes a comma-separated fallback chain of `openai-completions`
+chat models. painter speaks one protocol: `<baseUrl>/responses` with the
+`image_generation` tool (`gpt-5.6-luna` on either proxy). Calls in a session
+chain onto the previous painter response via `previous_response_id` (text
+context + prompt cache); `mode: "edit"` without `input` re-attaches the last
+image painter made, which is what keeps a series visually consistent. Pass
+`continue_session: false` for a fresh, unrelated image.
+
+### Native image generation
+
+When the main model is one of `nativeImageGen.models` (default
+`gpt-5.6-luna`) on a bundled proxy, HD Agent appends the proxy's
+`image_generation` tool to the model's own chat requests, so "draw me X"
+is answered in the same turn — no `painter` call. The generated image is
+saved as `./image-<timestamp>.jpg`, rendered inline (kitty/iTerm2/Ghostty)
+right under the reply, and fed back into the model's context. In headless
+runs (`-p`, Telegram) the saved path is appended to the reply instead.
+`painter` is hidden while a native model is active and returns when you
+switch to one that isn't. Set `nativeImageGen.enabled: false` to turn this off.
 
 ### Recommended Pi Settings (Optional)
 

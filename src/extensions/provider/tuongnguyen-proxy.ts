@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { NativeImageCapture } from "../../shared/NativeImageCapture";
 
 const TUONGNGUYEN_PROXY_ROOT = "https://proxy.tuongnguyen.work";
 
@@ -6,6 +7,10 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
   pi.registerProvider("tuongnguyen-proxy", {
     name: "Tuong Nguyen Proxy",
     authHeader: true,
+    // Routes this provider's openai-completions models through the image tee
+    // (per-model `api` still wins, so Gemini/Anthropic entries are untouched).
+    api: "openai-completions",
+    streamSimple: NativeImageCapture.streamSimpleFor("tuongnguyen-proxy"),
     models: [
       {
         id: "swe-2-medium",
