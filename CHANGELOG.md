@@ -4,6 +4,7 @@
 
 ### Features
 
+- Replace `glm-5-2` on hdwebsoft-proxy with the same `swe-2-medium`, `swe-2-high`, and `swe-2-max` entries.
 - Replace `glm-5-2` on tuongnguyen-proxy with `swe-2-medium`, `swe-2-high`, and `swe-2-max` (262K context, `openai-completions` on `/v1`).
 - Replace `glm-5.3` with `glm-5-2` on tuongnguyen-proxy, matching hdwebsoft-proxy's entry: `openai-completions` on `/v1` instead of `anthropic-messages` on the root, 200K context.
 - Replace `gemini-3.7-flash` with `gemini-3.8-flash` in both proxies and in the `viewMedia`, `readSession`, and `sessionTitle` defaults, and promote it to the first Search subagent candidate ahead of `gpt-5.6-luna`.
