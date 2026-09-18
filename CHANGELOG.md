@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Remove `mimo-v2.5` from hdwebsoft-proxy.
+
 ## v0.18.0
 
 ### Features
