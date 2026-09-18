@@ -6,6 +6,7 @@
 
 - Remove `mimo-v2.5` from hdwebsoft-proxy.
 - Remove `gemini-3.1-flash-image` from hdwebsoft-proxy; painter no longer targets it.
+- Remove `gpt-5.3-codex-spark` from hdwebsoft-proxy.
 
 ## v0.18.0
 

@@ -229,31 +229,6 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
           maxTokensField: "max_tokens",
         },
       },
-      {
-        id: "gpt-5.3-codex-spark",
-        name: "GPT-5.3 Codex Spark",
-        api: "openai-completions",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
-        reasoning: true,
-        input: ["text"],
-        cost: { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
-        contextWindow: 200000,
-        maxTokens: 131072,
-        thinkingLevelMap: {
-          off: "none",
-          minimal: null,
-          low: "low",
-          medium: "medium",
-          high: "high",
-          xhigh: "xhigh",
-          max: "max",
-        },
-        compat: {
-          supportsDeveloperRole: false,
-          supportsReasoningEffort: true,
-          maxTokensField: "max_tokens",
-        },
-      },
     ],
   });
 
