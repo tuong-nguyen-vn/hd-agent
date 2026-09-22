@@ -3,6 +3,7 @@ import type {
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type { validateToolArguments as ValidateFn } from "@earendil-works/pi-ai";
+import type { JsonObject } from "@earendil-works/pi-ai";
 import type { Static, TSchema } from "typebox";
 import { Levenshtein } from "./Levenshtein";
 
@@ -183,7 +184,7 @@ export class Tools {
               type: "toolCall",
               id: "",
               name: def.name,
-              arguments: cleaned as Record<string, unknown>,
+              arguments: cleaned as JsonObject,
             }
           ) as Static<TParams>;
         } catch (err) {
@@ -403,7 +404,7 @@ function revalidateBranch(branch: JsonSchema, value: unknown): Issue[] {
         type: "toolCall",
         id: "",
         name: "_branch",
-        arguments: (value ?? {}) as Record<string, unknown>,
+        arguments: (value ?? {}) as JsonObject,
       }
     );
     return [];

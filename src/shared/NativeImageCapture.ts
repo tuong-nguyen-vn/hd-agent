@@ -1,7 +1,7 @@
 import type {
   Api,
   AssistantMessageEventStream,
-  Context,
+  TranscriptContext,
   Model,
   SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
@@ -74,7 +74,7 @@ export class NativeImageCapture {
     providerId: string
   ): (
     model: Model<Api>,
-    context: Context,
+    context: TranscriptContext,
     options?: SimpleStreamOptions
   ) => AssistantMessageEventStream {
     shared.providers.add(providerId);
@@ -88,7 +88,7 @@ export class NativeImageCapture {
   /** Provider `streamSimple` for `openai-completions` models. */
   public static streamSimple(
     model: Model<Api>,
-    context: Context,
+    context: TranscriptContext,
     options?: SimpleStreamOptions
   ): AssistantMessageEventStream {
     const base: FetchLike = options?.fetch ?? globalThis.fetch;
