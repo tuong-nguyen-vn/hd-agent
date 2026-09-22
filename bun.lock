@@ -6,6 +6,7 @@
       "name": "hd-agent",
       "dependencies": {
         "@juicesharp/rpiv-ask-user-question": "2.7.1",
+        "@silvia-odwyer/photon-node": "0.3.4",
         "diff": "^9.0.0",
         "fzf": "^0.5.2",
         "grammy": "^1.44.0",
@@ -21,7 +22,7 @@
         "prettier": "^3.8.4",
       },
       "peerDependencies": {
-        "@earendil-works/pi-coding-agent": ">=0.84.0",
+        "@earendil-works/pi-coding-agent": ">=0.85.0",
       },
       "optionalPeers": [
         "@earendil-works/pi-coding-agent",

@@ -63,6 +63,7 @@
   },
   "dependencies": {
     "@juicesharp/rpiv-ask-user-question": "2.7.1",
+    "@silvia-odwyer/photon-node": "0.3.4",
     "diff": "^9.0.0",
     "fzf": "^0.5.2",
     "grammy": "^1.44.0",

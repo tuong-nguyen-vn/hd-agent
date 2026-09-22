@@ -64,6 +64,7 @@ describe("PimSettings", () => {
       jina: { apiKey: "jina-test" },
       painter: {},
       nativeImageGen: { enabled: true },
+      imagePreview: { maxWidthCells: 60, palette: true },
       viewMedia: { directToModel: {} },
       readSession: {},
       sessionTitle: {},

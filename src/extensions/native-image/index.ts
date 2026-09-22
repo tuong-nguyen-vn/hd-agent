@@ -2,23 +2,22 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import type { convertToPng as ConvertToPng } from "@earendil-works/pi-coding-agent";
 import type { Api, ImageContent, Model } from "@earendil-works/pi-ai";
-import {
-  Container,
-  getCapabilities,
-  Image,
-  Text,
-} from "@earendil-works/pi-tui";
+import { Container, Text } from "@earendil-works/pi-tui";
+import { ImagePreview } from "../../shared/ImagePreview";
 import {
   type CapturedImage,
   NativeImageCapture,
 } from "../../shared/NativeImageCapture";
 import { Paths } from "../../shared/Paths";
 import { PimSettings } from "../../shared/PimSettings";
+import { StableImage } from "../../shared/StableImage";
 
 const CUSTOM_TYPE = "native-image";
+/** Box width for messages written before the width was recorded. */
 const IMAGE_WIDTH_CELLS = 60;
+/** Cap on retained `Image` instances; each one pins a preview's base64. */
+const MAX_CACHED_IMAGE_COMPONENTS = 32;
 const PAINTER_TOOL = "painter";
 /** Fills an assistant turn that was nothing but an image, so it isn't blank. */
 const IMAGE_ONLY_REPLY = "🖼️ Image generated (shown below).";
@@ -33,8 +32,10 @@ type NativeImageDetails = {
   readonly path: string;
   readonly model: string;
   readonly bytes: number;
-  /** PNG copy for kitty, whose graphics protocol only takes PNG. */
+  /** Downscaled PNG for the terminal; never sent to the model. */
   readonly preview?: ImageContent;
+  /** Cell width `preview` was sized for; 0 means previews were off. */
+  readonly previewWidthCells?: number;
 };
 
 /**
@@ -59,22 +60,23 @@ export async function isNativeImageModel(
   return allowed.includes(model.id.toLowerCase());
 }
 
-async function kittyPreview(
+async function terminalPreview(
   image: CapturedImage
-): Promise<ImageContent | undefined> {
-  if (getCapabilities().images !== "kitty" || image.mimeType === "image/png") {
-    return undefined;
-  }
-  const { convertToPng } =
-    (await import("@earendil-works/pi-coding-agent")) as {
-      convertToPng: typeof ConvertToPng;
-    };
-  const converted = await convertToPng(image.data, image.mimeType).catch(
-    () => null
-  );
-  return converted
-    ? { type: "image", data: converted.data, mimeType: converted.mimeType }
-    : undefined;
+): Promise<Pick<NativeImageDetails, "preview" | "previewWidthCells">> {
+  const options = await PimSettings.getImagePreview();
+  const preview = await ImagePreview.build(image.data, image.mimeType, options);
+  return {
+    previewWidthCells: options.maxWidthCells,
+    ...(preview
+      ? {
+          preview: {
+            type: "image",
+            data: preview.data,
+            mimeType: preview.mimeType,
+          },
+        }
+      : {}),
+  };
 }
 
 /**
@@ -110,7 +112,7 @@ async function publish(
   image: CapturedImage
 ): Promise<void> {
   const { path, bytes } = await saveCapturedImage(ctx.cwd, image);
-  const preview = await kittyPreview(image);
+  const preview = await terminalPreview(image);
   pi.sendMessage<NativeImageDetails>(
     {
       customType: CUSTOM_TYPE,
@@ -126,7 +128,7 @@ async function publish(
         path,
         model: image.model,
         bytes,
-        ...(preview ? { preview } : {}),
+        ...preview,
       },
     },
     { triggerTurn: false }
@@ -152,6 +154,42 @@ function firstImage(
   return content.find((block): block is ImageContent => block.type === "image");
 }
 
+/**
+ * pi rebuilds a custom message's component on every `invalidate()` (theme
+ * change, grammar load, the terminal reporting its cell size). A fresh `Image`
+ * takes a fresh kitty image id, which makes the terminal re-upload the whole
+ * payload; reusing the instance keeps the id and costs only a placement.
+ */
+const imageComponents = new Map<string, StableImage>();
+
+function imageComponent(
+  path: string | undefined,
+  image: ImageContent,
+  widthCells: number,
+  fallbackColor: (text: string) => string
+): StableImage {
+  const cached = path === undefined ? undefined : imageComponents.get(path);
+  if (cached) {
+    return cached;
+  }
+  const component = new StableImage(
+    image.data,
+    image.mimeType,
+    { fallbackColor },
+    { maxWidthCells: widthCells }
+  );
+  if (path !== undefined) {
+    if (imageComponents.size >= MAX_CACHED_IMAGE_COMPONENTS) {
+      const oldest = imageComponents.keys().next().value;
+      if (oldest !== undefined) {
+        imageComponents.delete(oldest);
+      }
+    }
+    imageComponents.set(path, component);
+  }
+  return component;
+}
+
 export default function (pi: ExtensionAPI): void {
   let painterHiddenHere = false;
 
@@ -170,14 +208,15 @@ export default function (pi: ExtensionAPI): void {
           0
         )
       );
-      const image = details?.preview ?? firstImage(message.content);
+      const widthCells = details?.previewWidthCells ?? IMAGE_WIDTH_CELLS;
+      const image =
+        widthCells > 0
+          ? (details?.preview ?? firstImage(message.content))
+          : undefined;
       if (image) {
         container.addChild(
-          new Image(
-            image.data,
-            image.mimeType,
-            { fallbackColor: (s: string) => theme.fg("muted", s) },
-            { maxWidthCells: IMAGE_WIDTH_CELLS }
+          imageComponent(details?.path, image, widthCells, (s: string) =>
+            theme.fg("muted", s)
           )
         );
       }

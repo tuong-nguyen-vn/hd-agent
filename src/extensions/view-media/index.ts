@@ -2,22 +2,25 @@ import type {
   AgentToolResult,
   ExtensionAPI,
   Theme,
-  convertToPng as ConvertToPng,
 } from "@earendil-works/pi-coding-agent";
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
-import { getCapabilities, Image } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { ImagePreview, type PreviewImage } from "../../shared/ImagePreview";
 import { ModelResolver, type ResolvedModel } from "../../shared/ModelResolver";
 import { Paths } from "../../shared/Paths";
 import { PimSettings } from "../../shared/PimSettings";
 import {
   Renderer,
   type StatefulToolCallTitleContext,
+  type StatefulToolCallTitleState,
 } from "../../shared/Renderer";
+import { StableImage } from "../../shared/StableImage";
 import { Tools } from "../../shared/Tools";
 
 const PREVIEW_LINES = 5;
+/** Box width for results written before the width was recorded. */
+const IMAGE_WIDTH_CELLS = 60;
 
 // Conservative local cap for inline base64 payloads. Gemini documents 20 MB
 // for inline audio; video allows up to 100 MB and PDF up to 50 MB, but the
@@ -73,13 +76,24 @@ type ViewMediaDetails = {
   readonly visionModel?: string;
   /** Base64 image data for terminal-only preview. Never sent to the model. */
   readonly previewData?: string;
-  /** Mime type of `previewData` (may differ from `mimeType` if converted for Kitty). */
+  /** Mime type of `previewData` (PNG once the preview has been downscaled). */
   readonly previewMimeType?: string;
+  /** Cell width `previewData` was sized for. */
+  readonly previewWidthCells?: number;
 };
 
 type ViewMediaRenderContext = StatefulToolCallTitleContext & {
   readonly args?: Partial<ViewMediaInput>;
   readonly cwd: string;
+};
+
+/**
+ * The preview `Image` is kept across re-renders: a fresh one takes a fresh
+ * kitty image id, which makes the terminal re-upload the whole payload.
+ */
+type ViewMediaRenderState = StatefulToolCallTitleState & {
+  previewImage?: StableImage;
+  previewData?: string;
 };
 
 export function mediaFromPath(p: string): DetectedMedia | undefined {
@@ -109,24 +123,33 @@ export function assertMediaSize(bytes: number, path: string): void {
 }
 
 /**
- * Prepare base64 image data for terminal-only preview. Kitty's graphics
- * protocol hard-codes PNG (`f=100`), so non-PNG images must be converted or
- * they render as garbage. Other protocols (iTerm2, sixel) accept the raw
- * bytes as-is.
+ * Terminal-only preview, downscaled to the box the TUI draws it in.
+ * `undefined` when previews are off or the terminal cannot show images.
  */
 async function buildPreview(
   base64: string,
   mimeType: string
-): Promise<{ data: string; mimeType: string }> {
-  if (mimeType === "image/png" || getCapabilities().images !== "kitty") {
-    return { data: base64, mimeType };
-  }
-  const { convertToPng } =
-    (await import("@earendil-works/pi-coding-agent")) as {
-      convertToPng: typeof ConvertToPng;
-    };
-  const converted = await convertToPng(base64, mimeType).catch(() => null);
-  return converted ?? { data: base64, mimeType };
+): Promise<PreviewImage | undefined> {
+  return await ImagePreview.build(
+    base64,
+    mimeType,
+    await PimSettings.getImagePreview()
+  );
+}
+
+function previewDetails(
+  preview: PreviewImage | undefined
+): Pick<
+  ViewMediaDetails,
+  "previewData" | "previewMimeType" | "previewWidthCells"
+> {
+  return preview
+    ? {
+        previewData: preview.data,
+        previewMimeType: preview.mimeType,
+        previewWidthCells: preview.widthCells,
+      }
+    : {};
 }
 
 function renderTitle(
@@ -483,9 +506,7 @@ export async function runVisionFallback(
           bytes,
           source: "vision-fallback" as const,
           visionModel,
-          ...(preview
-            ? { previewData: preview.data, previewMimeType: preview.mimeType }
-            : {}),
+          ...previewDetails(preview),
         } satisfies ViewMediaDetails,
       };
     } catch {
@@ -569,8 +590,7 @@ export default function (pi: ExtensionAPI): void {
               kind: detected.kind,
               mimeType,
               bytes: buffer.length,
-              previewData: preview.data,
-              previewMimeType: preview.mimeType,
+              ...previewDetails(preview),
             } satisfies ViewMediaDetails,
           };
         }
@@ -584,8 +604,7 @@ export default function (pi: ExtensionAPI): void {
             mimeType,
             bytes: buffer.length,
             source: "direct" as const,
-            previewData: preview.data,
-            previewMimeType: preview.mimeType,
+            ...previewDetails(preview),
           } satisfies ViewMediaDetails,
         };
       }
@@ -611,8 +630,7 @@ export default function (pi: ExtensionAPI): void {
               kind: detected.kind,
               mimeType,
               bytes: buffer.length,
-              previewData: preview.data,
-              previewMimeType: preview.mimeType,
+              ...previewDetails(preview),
             } satisfies ViewMediaDetails,
           };
         }
@@ -633,8 +651,7 @@ export default function (pi: ExtensionAPI): void {
             mimeType,
             bytes: buffer.length,
             source: "direct" as const,
-            previewData: preview.data,
-            previewMimeType: preview.mimeType,
+            ...previewDetails(preview),
           } satisfies ViewMediaDetails,
         };
       };
@@ -706,11 +723,17 @@ export default function (pi: ExtensionAPI): void {
         !options.isPartial &&
         details.source !== "direct"
       ) {
-        container.addChild(
-          new Image(details.previewData, previewMimeType, {
-            fallbackColor: (s: string) => theme.fg("toolOutput", s),
-          })
-        );
+        const state = ctx.state as ViewMediaRenderState;
+        if (state.previewData !== details.previewData) {
+          state.previewImage = new StableImage(
+            details.previewData,
+            previewMimeType,
+            { fallbackColor: (s: string) => theme.fg("toolOutput", s) },
+            { maxWidthCells: details.previewWidthCells ?? IMAGE_WIDTH_CELLS }
+          );
+          state.previewData = details.previewData;
+        }
+        container.addChild(state.previewImage as StableImage);
         container.invalidate();
       }
 

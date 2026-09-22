@@ -49,6 +49,17 @@ const Schema = Type.Object({
     },
     { default: { enabled: true } }
   ),
+  imagePreview: Type.Object(
+    {
+      // Width of the inline image box in terminal cells; 0 disables inline
+      // previews entirely (the terminal shows only the saved path).
+      maxWidthCells: Type.Integer({ minimum: 0, default: 60 }),
+      // Quantise previews to a 256-colour palette: ~3x fewer bytes to push to
+      // the terminal for a photo-like image, at the cost of light dithering.
+      palette: Type.Boolean({ default: true }),
+    },
+    { default: { maxWidthCells: 60, palette: true } }
+  ),
   viewMedia: Type.Object(
     {
       // A single model id, "provider/model", or a comma-separated list tried
@@ -166,6 +177,13 @@ export class PimSettings {
       .split(",")
       .map((id) => id.trim().toLowerCase())
       .filter((id) => id.length > 0);
+  }
+
+  public static async getImagePreview(): Promise<{
+    readonly maxWidthCells: number;
+    readonly palette: boolean;
+  }> {
+    return PimSettings.get("imagePreview");
   }
 
   public static async getViewMediaModel(): Promise<string> {
