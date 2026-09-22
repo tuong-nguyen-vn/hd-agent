@@ -1,6 +1,7 @@
-import type {
-  ExtensionAPI,
-  ExtensionContext,
+import {
+  type ExtensionAPI,
+  type ExtensionContext,
+  resizeImage,
 } from "@earendil-works/pi-coding-agent";
 import type { Api, ImageContent, Model } from "@earendil-works/pi-ai";
 import { Container, Text } from "@earendil-works/pi-tui";
@@ -101,6 +102,35 @@ export async function saveCapturedImage(
 }
 
 /**
+ * The copy of a captured image that goes into the conversation. pi applies a
+ * model's `inputLimits.images.resize` to tool results, but not to custom
+ * messages, so a native image would otherwise ride every later request at
+ * full size. The file on disk keeps the original bytes.
+ */
+export async function modelImage(
+  image: CapturedImage,
+  model: Model<Api> | undefined
+): Promise<ImageContent> {
+  const original: ImageContent = {
+    type: "image",
+    data: image.data,
+    mimeType: image.mimeType,
+  };
+  const resize = model?.inputLimits?.images?.resize;
+  if (!resize) {
+    return original;
+  }
+  const resized = await resizeImage(
+    new Uint8Array(Buffer.from(image.data, "base64")),
+    image.mimeType,
+    resize
+  ).catch(() => null);
+  return resized?.wasResized
+    ? { type: "image", data: resized.data, mimeType: resized.mimeType }
+    : original;
+}
+
+/**
  * Saves a captured image and posts it back into the session as a custom
  * message: pi renders it through the renderer below and feeds it to the
  * model as a user-role image on the next request, the same path an image
@@ -112,12 +142,15 @@ async function publish(
   image: CapturedImage
 ): Promise<void> {
   const { path, bytes } = await saveCapturedImage(ctx.cwd, image);
-  const preview = await terminalPreview(image);
+  const [preview, content] = await Promise.all([
+    terminalPreview(image),
+    modelImage(image, ctx.model),
+  ]);
   pi.sendMessage<NativeImageDetails>(
     {
       customType: CUSTOM_TYPE,
       content: [
-        { type: "image", data: image.data, mimeType: image.mimeType },
+        content,
         {
           type: "text",
           text: `[native image] ${image.model} generated this image in its previous reply; saved to ${path}.`,

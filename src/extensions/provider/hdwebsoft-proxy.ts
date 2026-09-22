@@ -4,6 +4,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { NativeImageCapture } from "../../shared/NativeImageCapture";
+import { IMAGE_INPUT_LIMITS } from "./image-limits";
 import {
   buildContextLines,
   colorFor,
@@ -64,6 +65,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
         contextWindow: 1048576,
         maxTokens: 65536,
@@ -76,6 +78,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 2, output: 12, cacheRead: 0.2, cacheWrite: 0 },
         contextWindow: 1048576,
         maxTokens: 65536,
@@ -94,6 +97,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
         contextWindow: 272000,
         maxTokens: 128000,
@@ -116,6 +120,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
         contextWindow: 272000,
         maxTokens: 128000,

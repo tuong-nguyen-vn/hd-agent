@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { NativeImageCapture } from "../../shared/NativeImageCapture";
+import { IMAGE_INPUT_LIMITS } from "./image-limits";
 
 const TUONGNGUYEN_PROXY_ROOT = "https://proxy.tuongnguyen.work";
 
@@ -67,6 +68,7 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         baseUrl: `${TUONGNGUYEN_PROXY_ROOT}/v1`,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
         contextWindow: 500000,
         maxTokens: 128000,
@@ -92,6 +94,7 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         baseUrl: `${TUONGNGUYEN_PROXY_ROOT}/v1`,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 2.5, output: 15, cacheRead: 0.25, cacheWrite: 3.125 },
         contextWindow: 500000,
         maxTokens: 128000,
@@ -117,6 +120,7 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         baseUrl: `${TUONGNGUYEN_PROXY_ROOT}/v1`,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
         contextWindow: 1050000,
         maxTokens: 128000,
@@ -155,6 +159,7 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         baseUrl: `${TUONGNGUYEN_PROXY_ROOT}/v1beta`,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 1.5, output: 7.5, cacheRead: 0.15, cacheWrite: 0 },
         contextWindow: 1048576,
         maxTokens: 65536,
@@ -167,6 +172,7 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         baseUrl: TUONGNGUYEN_PROXY_ROOT,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
         contextWindow: 200000,
         maxTokens: 128000,
@@ -187,6 +193,7 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         baseUrl: TUONGNGUYEN_PROXY_ROOT,
         reasoning: true,
         input: ["text", "image"],
+        inputLimits: IMAGE_INPUT_LIMITS,
         cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
         contextWindow: 200000,
         maxTokens: 128000,

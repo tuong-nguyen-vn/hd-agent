@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { saveCapturedImage } from "./index";
+import type { Api, Model } from "@earendil-works/pi-ai";
+import { modelImage, saveCapturedImage } from "./index";
 
 const PNG_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
@@ -56,5 +57,74 @@ describe("saveCapturedImage", () => {
     expect(third.path.endsWith("image-2026-02-02T02-02-02-002-3.jpg")).toBe(
       true
     );
+  });
+});
+
+/** A noisy PNG, so the encoder cannot collapse it below a byte cap. */
+async function noisyPng(size: number): Promise<string> {
+  const photon = await import("@silvia-odwyer/photon-node");
+  const pixels = new Uint8Array(size * size * 4);
+  for (let i = 0; i < pixels.length; i += 4) {
+    pixels.set([(i * 7) % 251, (i * 13) % 241, (i * 29) % 239, 255], i);
+  }
+  const image = new photon.PhotonImage(pixels, size, size);
+  try {
+    return Buffer.from(image.get_bytes()).toString("base64");
+  } finally {
+    image.free();
+  }
+}
+
+function modelWith(
+  resize: { maxWidth: number; maxHeight: number; maxBytes: number } | undefined
+): Model<Api> {
+  return {
+    id: "m",
+    name: "m",
+    api: "openai-completions",
+    provider: "p",
+    baseUrl: "https://example.test",
+    reasoning: false,
+    input: ["text", "image"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 1000,
+    maxTokens: 100,
+    ...(resize ? { inputLimits: { images: { resize } } } : {}),
+  };
+}
+
+describe("modelImage", () => {
+  test("passes the original through when the model declares no limits", async () => {
+    const image = { data: PNG_B64, mimeType: "image/png", model: "x" };
+    expect(await modelImage(image, modelWith(undefined))).toEqual({
+      type: "image",
+      data: PNG_B64,
+      mimeType: "image/png",
+    });
+    expect(await modelImage(image, undefined)).toMatchObject({ data: PNG_B64 });
+  });
+
+  test("re-encodes to the model's byte cap without changing pixels", async () => {
+    const data = await noisyPng(256);
+    const model = modelWith({
+      maxWidth: 512,
+      maxHeight: 512,
+      maxBytes: 64 * 1024,
+    });
+
+    const sent = await modelImage(
+      { data, mimeType: "image/png", model: "x" },
+      model
+    );
+
+    expect(data.length).toBeGreaterThan(64 * 1024);
+    expect(sent.data.length).toBeLessThan(64 * 1024);
+    expect(sent.mimeType).toBe("image/jpeg");
+    const photon = await import("@silvia-odwyer/photon-node");
+    const decoded = photon.PhotonImage.new_from_byteslice(
+      new Uint8Array(Buffer.from(sent.data, "base64"))
+    );
+    expect([decoded.get_width(), decoded.get_height()]).toEqual([256, 256]);
+    decoded.free();
   });
 });
