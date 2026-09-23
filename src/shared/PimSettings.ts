@@ -160,7 +160,7 @@ export class PimSettings {
   public static async getPainterModel(): Promise<string> {
     return (
       PimSettings.normalize((await PimSettings.get("painter")).model) ??
-      "gpt-5.6-luna"
+      "gpt-6-luna"
     );
   }
 
@@ -168,11 +168,11 @@ export class PimSettings {
     return (await PimSettings.get("nativeImageGen")).enabled;
   }
 
-  /** Model ids allowed to paint natively; `gpt-5.6-luna` unless overridden. */
+  /** Model ids allowed to paint natively; `gpt-6-luna` unless overridden. */
   public static async getNativeImageGenModels(): Promise<readonly string[]> {
     const raw =
       PimSettings.normalize((await PimSettings.get("nativeImageGen")).models) ??
-      "gpt-5.6-luna";
+      "gpt-6-luna";
     return raw
       .split(",")
       .map((id) => id.trim().toLowerCase())

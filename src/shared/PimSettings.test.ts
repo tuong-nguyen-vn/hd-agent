@@ -102,18 +102,18 @@ describe("PimSettings", () => {
   test("reads native image generation settings with defaults", async () => {
     await expect(PimSettings.getNativeImageGenEnabled()).resolves.toBe(true);
     await expect(PimSettings.getNativeImageGenModels()).resolves.toEqual([
-      "gpt-5.6-luna",
+      "gpt-6-luna",
     ]);
 
     await PimSettings.set("nativeImageGen", {
       enabled: false,
-      models: " GPT-5.6-Luna, gpt-5.6-sol ,,",
+      models: " GPT-6-Luna, gpt-6-sol ,,",
     });
 
     await expect(PimSettings.getNativeImageGenEnabled()).resolves.toBe(false);
     await expect(PimSettings.getNativeImageGenModels()).resolves.toEqual([
-      "gpt-5.6-luna",
-      "gpt-5.6-sol",
+      "gpt-6-luna",
+      "gpt-6-sol",
     ]);
   });
 

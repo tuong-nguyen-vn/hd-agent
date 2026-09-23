@@ -91,8 +91,8 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         },
       },
       {
-        id: "gpt-5.6-luna",
-        name: "GPT-5.6 Luna",
+        id: "gpt-6-luna",
+        name: "GPT-6 Luna",
         api: "openai-completions",
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
         reasoning: true,
@@ -114,8 +114,8 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         },
       },
       {
-        id: "gpt-5.6-terra",
-        name: "GPT-5.6 Terra",
+        id: "gpt-6-sol",
+        name: "GPT-6 Sol",
         api: "openai-completions",
         baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
         reasoning: true,

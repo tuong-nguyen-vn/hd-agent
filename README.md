@@ -120,11 +120,11 @@ the example below shows every currently supported setting:
     "apiKey": ""
   },
   "painter": {
-    "model": "gpt-5.6-luna"
+    "model": "gpt-6-luna"
   },
   "nativeImageGen": {
     "enabled": true,
-    "models": "gpt-5.6-luna"
+    "models": "gpt-6-luna"
   },
   "viewMedia": {
     "model": "gemini-3.8-flash"
@@ -158,7 +158,7 @@ model name does not determine the wire protocol.
 
 `painter.model` takes a comma-separated fallback chain of `openai-completions`
 chat models. painter speaks one protocol: `<baseUrl>/responses` with the
-`image_generation` tool (`gpt-5.6-luna` on either proxy). Calls in a session
+`image_generation` tool (`gpt-6-luna` on either proxy). Calls in a session
 chain onto the previous painter response via `previous_response_id` (text
 context + prompt cache); `mode: "edit"` without `input` re-attaches the last
 image painter made, which is what keeps a series visually consistent. Pass
@@ -167,7 +167,7 @@ image painter made, which is what keeps a series visually consistent. Pass
 ### Native image generation
 
 When the main model is one of `nativeImageGen.models` (default
-`gpt-5.6-luna`) on a bundled proxy, HD Agent appends the proxy's
+`gpt-6-luna`) on a bundled proxy, HD Agent appends the proxy's
 `image_generation` tool to the model's own chat requests, so "draw me X"
 is answered in the same turn — no `painter` call. The generated image is
 saved as `./image-<timestamp>.jpg`, rendered inline (kitty/iTerm2/Ghostty)

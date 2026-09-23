@@ -519,7 +519,7 @@ export default function (pi: ExtensionAPI): void {
         return errResult(
           `painter: no model "${modelRef}" found in any configured provider. ` +
             `painter needs an "openai-completions" model whose provider serves /responses with the ` +
-            `image_generation tool (e.g. gpt-5.6-luna); set painter.model in ~/.pim/settings.json.`
+            `image_generation tool (e.g. gpt-6-luna); set painter.model in ~/.pim/settings.json.`
         );
       }
 

@@ -224,14 +224,14 @@ describe("NativeImageCapture.teeFetch", () => {
 
 describe("NativeImageCapture.injectImageTool", () => {
   const payload = {
-    model: "gpt-5.6-luna",
+    model: "gpt-6-luna",
     messages: [{ role: "user", content: "draw a cat" }],
     tools: [{ type: "function", function: { name: "bash" } }],
     stream: true,
   };
 
   test("appends the image tool after the function tools", () => {
-    const out = NativeImageCapture.injectImageTool(payload, "gpt-5.6-luna");
+    const out = NativeImageCapture.injectImageTool(payload, "gpt-6-luna");
     expect(out).toEqual({
       ...payload,
       tools: [...payload.tools, IMAGE_GENERATION_TOOL],
@@ -241,7 +241,7 @@ describe("NativeImageCapture.injectImageTool", () => {
 
   test("creates the tools array when the request had none", () => {
     const { tools: _tools, ...bare } = payload;
-    const out = NativeImageCapture.injectImageTool(bare, "gpt-5.6-luna");
+    const out = NativeImageCapture.injectImageTool(bare, "gpt-6-luna");
     expect(out?.tools).toEqual([IMAGE_GENERATION_TOOL]);
   });
 
@@ -251,14 +251,14 @@ describe("NativeImageCapture.injectImageTool", () => {
     ).toBeUndefined();
     expect(
       NativeImageCapture.injectImageTool(
-        { model: "gpt-5.6-luna", input: [] },
-        "gpt-5.6-luna"
+        { model: "gpt-6-luna", input: [] },
+        "gpt-6-luna"
       )
     ).toBeUndefined();
     expect(
       NativeImageCapture.injectImageTool(
         { ...payload, tools: [IMAGE_GENERATION_TOOL] },
-        "gpt-5.6-luna"
+        "gpt-6-luna"
       )
     ).toBeUndefined();
     expect(NativeImageCapture.injectImageTool(null, "x")).toBeUndefined();
@@ -267,8 +267,8 @@ describe("NativeImageCapture.injectImageTool", () => {
 
 describe("NativeImageCapture.streamSimple", () => {
   const model = {
-    id: "gpt-5.6-luna",
-    name: "GPT-5.6 Luna",
+    id: "gpt-6-luna",
+    name: "GPT-6 Luna",
     api: "openai-completions",
     provider: "hdwebsoft-proxy",
     baseUrl: "https://proxy.example/v1",
@@ -326,7 +326,7 @@ describe("NativeImageCapture.streamSimple", () => {
     expect(NativeImageCapture.hasTee("hdwebsoft-proxy")).toBe(true);
     expect(NativeImageCapture.peek("s2")).toEqual([]);
     expect(NativeImageCapture.drain("s1")).toEqual([
-      { mimeType: "image/png", data: PNG_B64, model: "gpt-5.6-luna" },
+      { mimeType: "image/png", data: PNG_B64, model: "gpt-6-luna" },
     ]);
     expect(NativeImageCapture.peek("s1")).toEqual([]);
   });

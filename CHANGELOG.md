@@ -7,6 +7,9 @@
 - Remove `mimo-v2.5` from hdwebsoft-proxy.
 - Remove `gemini-3.1-flash-image` from hdwebsoft-proxy; painter no longer targets it.
 - Remove `gpt-5.3-codex-spark` from hdwebsoft-proxy.
+- Rename `gpt-5.6-luna` to `gpt-6-luna` and `gpt-5.6-terra` to `gpt-6-sol` on hdwebsoft-proxy.
+- On tuongnguyen-proxy, rename `gpt-5.6-luna` to `gpt-6-luna` and `gpt-5.6-sol` to `gpt-6-sol`, and drop `gpt-5.6-terra`. The painter, `nativeImageGen`, Search, and Oracle defaults now point at `gpt-6-luna`.
+- Remove `deepseek-v4-pro` and `gpt-image-2` from tuongnguyen-proxy.
 
 ## v0.18.0
 

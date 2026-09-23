@@ -60,8 +60,8 @@ function makeOptions(
   };
 }
 
-const luna = () => makeModel("hdwebsoft-proxy", "gpt-5.6-luna");
-const LUNA_KEY = "hdwebsoft-proxy/gpt-5.6-luna";
+const luna = () => makeModel("hdwebsoft-proxy", "gpt-6-luna");
+const LUNA_KEY = "hdwebsoft-proxy/gpt-6-luna";
 
 const originalFetch = globalThis.fetch;
 
@@ -150,7 +150,7 @@ describe("runPainterFallback", () => {
     );
 
     expect(calledUrl).toBe("https://hdwebsoft-proxy.example.com/v1/responses");
-    expect(postedBody.model).toBe("gpt-5.6-luna");
+    expect(postedBody.model).toBe("gpt-6-luna");
     expect(postedBody.input).toEqual([
       { role: "user", content: [{ type: "input_text", text: "a cat" }] },
     ]);
@@ -442,8 +442,8 @@ describe("runPainterFallback", () => {
   });
 
   test("falls back to the next candidate when the first errors", async () => {
-    const bad = makeModel("proxy-a", "gpt-5.6-luna");
-    const good = makeModel("proxy-b", "gpt-5.6-luna");
+    const bad = makeModel("proxy-a", "gpt-6-luna");
+    const good = makeModel("proxy-b", "gpt-6-luna");
     const registry = makeRegistry([bad, good], new Set(["proxy-a", "proxy-b"]));
     let calls = 0;
     mockFetch((url) => {
@@ -463,14 +463,14 @@ describe("runPainterFallback", () => {
     );
 
     expect(result.image?.b64).toBe("BBBB");
-    expect(result.usedModel).toBe("proxy-b/gpt-5.6-luna");
+    expect(result.usedModel).toBe("proxy-b/gpt-6-luna");
     expect(result.errors).toHaveLength(1);
     expect(calls).toBe(2);
   });
 
   test("returns no image when all candidates fail", async () => {
-    const a = makeModel("proxy-a", "gpt-5.6-luna");
-    const b = makeModel("proxy-b", "gpt-5.6-luna");
+    const a = makeModel("proxy-a", "gpt-6-luna");
+    const b = makeModel("proxy-b", "gpt-6-luna");
     const registry = makeRegistry([a, b], new Set(["proxy-a", "proxy-b"]));
     mockFetch(() => ({ status: 500, body: "err" }));
 

@@ -23,7 +23,7 @@ describe("saveCapturedImage", () => {
     const now = new Date("2026-09-14T08:21:19.123Z");
     const saved = await saveCapturedImage(
       dir,
-      { data: PNG_B64, mimeType: "image/jpeg", model: "gpt-5.6-luna" },
+      { data: PNG_B64, mimeType: "image/jpeg", model: "gpt-6-luna" },
       now
     );
 
