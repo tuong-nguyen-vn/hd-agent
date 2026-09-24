@@ -142,6 +142,31 @@ export function registerTuongNguyenProxy(pi: ExtensionAPI): void {
         },
         compat: { forceAdaptiveThinking: true },
       },
+      {
+        id: "deepseek-v4.1-flash",
+        name: "DeepSeek V4.1 Flash",
+        api: "openai-completions",
+        baseUrl: `${TUONGNGUYEN_PROXY_ROOT}/v1`,
+        reasoning: true,
+        input: ["text"],
+        cost: { input: 0.435, output: 0.87, cacheRead: 0.004, cacheWrite: 0 },
+        contextWindow: 1000000,
+        maxTokens: 384000,
+        thinkingLevelMap: {
+          off: null,
+          minimal: null,
+          low: null,
+          medium: null,
+          high: "high",
+          xhigh: null,
+          max: "max",
+        },
+        compat: {
+          supportsDeveloperRole: false,
+          supportsReasoningEffort: true,
+          maxTokensField: "max_tokens",
+        },
+      },
     ],
   });
 }

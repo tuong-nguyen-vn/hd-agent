@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Add `deepseek-v4.1-flash` to tuongnguyen-proxy (1M context, 384K max output).
+- Collapse `swe-2-medium`, `swe-2-high`, and `swe-2-max` into a single reasoning `swe-2` on both proxies (effort `medium`/`high`/`max`).
+- Add `deepseek-v4-1-flash` to hdwebsoft-proxy (131K context).
+
 ## v0.19.0
 
 ### Features
