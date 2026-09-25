@@ -6,7 +6,7 @@
 
 - Add `deepseek-v4.1-flash` to tuongnguyen-proxy (1M context, 384K max output).
 - Collapse `swe-2-medium`, `swe-2-high`, and `swe-2-max` into a single reasoning `swe-2` on both proxies (effort `medium`/`high`/`max`).
-- Add `deepseek-v4-1-flash` to hdwebsoft-proxy (131K context).
+- Add `deepseek-v4-1-flash` to hdwebsoft-proxy (300K context, 131K max output).
 - Remove `gemini-3.1-pro` from hdwebsoft-proxy.
 - Remove `glm-5-3` from hdwebsoft-proxy; `glm-5-3-flash` stays, with its context window raised from 200K to 300K.
 
