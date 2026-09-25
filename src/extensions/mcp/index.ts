@@ -1,7 +1,37 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionHandler,
+  SessionStartEvent,
+} from "@earendil-works/pi-coding-agent";
 import { withMcpRenderer } from "./render";
 
 type McpAdapter = (pi: ExtensionAPI) => void;
+type SessionStartHandler = ExtensionHandler<SessionStartEvent>;
+
+// Records the adapter's session_start handlers so they can be replayed:
+// since pi 0.86, handlers registered mid-dispatch only apply to later
+// dispatches, so the adapter's own handler would miss the session that
+// loaded it and leave MCP uninitialized.
+function captureSessionStart(
+  pi: ExtensionAPI,
+  handlers: SessionStartHandler[]
+): ExtensionAPI {
+  const on = pi.on.bind(pi) as (
+    event: string,
+    handler: ExtensionHandler<unknown, unknown>
+  ) => () => void;
+  const wrapped = Object.create(pi) as ExtensionAPI;
+  wrapped.on = ((
+    event: string,
+    handler: ExtensionHandler<unknown, unknown>
+  ) => {
+    if (event === "session_start") {
+      handlers.push(handler as SessionStartHandler);
+    }
+    return on(event, handler);
+  }) as ExtensionAPI["on"];
+  return wrapped;
+}
 
 // Deferred to session_start so the heavy pi-mcp-adapter dynamic import
 // (~400-540ms) doesn't block the critical startup path. The proxy tool,
@@ -10,7 +40,7 @@ type McpAdapter = (pi: ExtensionAPI) => void;
 export default function (pi: ExtensionAPI): void {
   let initialized = false;
 
-  pi.on("session_start", async () => {
+  pi.on("session_start", async (event, ctx) => {
     if (initialized) {
       return;
     }
@@ -20,7 +50,11 @@ export default function (pi: ExtensionAPI): void {
       const { default: mcpAdapter } = (await import(moduleName)) as {
         readonly default: McpAdapter;
       };
-      mcpAdapter(withMcpRenderer(pi));
+      const startHandlers: SessionStartHandler[] = [];
+      mcpAdapter(captureSessionStart(withMcpRenderer(pi), startHandlers));
+      for (const handler of startHandlers) {
+        await handler(event, ctx);
+      }
     } catch (error) {
       console.error(
         "hd-agent: failed to load pi-mcp-adapter:",

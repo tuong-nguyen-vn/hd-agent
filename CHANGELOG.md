@@ -9,6 +9,10 @@
 - Add `deepseek-v4-1-flash` to hdwebsoft-proxy (131K context).
 - Remove `gemini-3.1-pro` from hdwebsoft-proxy.
 
+### Bug Fixes
+
+- Fix `/mcp` and MCP tools reporting "MCP not initialized". Since pi 0.86, a handler registered while an event is being dispatched only runs on later dispatches. pi-mcp-adapter is loaded inside `session_start`, so its own `session_start` handler never ran for the first session. HD Agent now replays that handler for the session that loaded the adapter.
+
 ## v0.19.0
 
 ### Features
