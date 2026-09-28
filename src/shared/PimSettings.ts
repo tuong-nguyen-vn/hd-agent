@@ -65,9 +65,9 @@ const Schema = Type.Object({
       // A single model id, "provider/model", or a comma-separated list tried
       // in order as fallbacks (mirrors subagent agent model config).
       model: Type.Optional(Type.String()),
-      // Per-model direct-to-model flag, keyed by "provider/id". When true,
-      // view_media sends the raw image to the main model instead of calling
-      // a dedicated vision model for a text description.
+      // Per-model direct-to-model override, keyed by "provider/id". Unset
+      // means direct for image-capable models; false forces the dedicated
+      // vision model even when the main model can read images.
       directToModel: Type.Record(Type.String(), Type.Boolean(), {
         default: {},
       }),
@@ -195,9 +195,9 @@ export class PimSettings {
 
   public static async getViewMediaDirectToModel(
     modelKey: string
-  ): Promise<boolean> {
+  ): Promise<boolean | undefined> {
     const map = (await PimSettings.get("viewMedia")).directToModel;
-    return map[modelKey] ?? false;
+    return map[modelKey];
   }
 
   public static async getReadSessionModel(): Promise<string> {

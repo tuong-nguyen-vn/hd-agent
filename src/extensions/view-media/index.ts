@@ -524,8 +524,8 @@ export default function (pi: ExtensionAPI): void {
     label: "view_media",
     description:
       "View an image, video, audio, or PDF file and return a description. " +
-      "Images render inline in the terminal; non-image media uses Gemini inline analysis. " +
-      "Uses the configured view_media model and comma-separated fallbacks.",
+      "Images go straight to the current model when it accepts image input; " +
+      "otherwise, and for non-image media, the configured view_media model (with comma-separated fallbacks) describes them.",
     promptSnippet: "View a media file",
     parameters: Type.Object({
       path: Type.String({
@@ -574,7 +574,9 @@ export default function (pi: ExtensionAPI): void {
       };
 
       const key = ctx.model ? modelKey(ctx.model) : "";
-      const directToModel = await PimSettings.getViewMediaDirectToModel(key);
+      const directToModel =
+        (await PimSettings.getViewMediaDirectToModel(key)) ??
+        modelSupportsImages(ctx.model);
       if (directToModel && detected.kind === "image") {
         const preview = await buildPreview(base64, mimeType);
         if (!modelSupportsImages(ctx.model)) {
@@ -751,7 +753,9 @@ export default function (pi: ExtensionAPI): void {
         ctx.ui.notify("No active model", "error");
         return;
       }
-      const current = await PimSettings.getViewMediaDirectToModel(key);
+      const current =
+        (await PimSettings.getViewMediaDirectToModel(key)) ??
+        modelSupportsImages(ctx.model);
       let next: boolean;
       if (arg === "true" || arg === "false") {
         next = arg === "true";

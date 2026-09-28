@@ -59,7 +59,7 @@ describe("/vision-direct command", () => {
     Object.defineProperty(PimSettings, "set", { value: originalSet });
   });
 
-  function mockSettings(directToModel: boolean) {
+  function mockSettings(directToModel: boolean | undefined) {
     Object.defineProperty(PimSettings, "getViewMediaDirectToModel", {
       value: async () => directToModel,
       configurable: true,
@@ -67,7 +67,8 @@ describe("/vision-direct command", () => {
     Object.defineProperty(PimSettings, "get", {
       value: async () => ({
         model: undefined,
-        directToModel: directToModel ? { "openai/gpt-4o": true } : {},
+        directToModel:
+          directToModel === undefined ? {} : { "openai/gpt-4o": directToModel },
       }),
       configurable: true,
     });
@@ -86,6 +87,33 @@ describe("/vision-direct command", () => {
       {
         type: "info",
         message: "Direct-to-model: ON",
+      },
+    ]);
+  });
+
+  test("unset defaults to ON for an image model, so toggle turns it OFF", async () => {
+    mockSettings(undefined);
+    const notifications: { type: string; message: string }[] = [];
+    const handler = pi.commands.get("vision-direct")!;
+    await handler(undefined, makeCtx(imageModel, notifications));
+    expect(notifications).toEqual([
+      {
+        type: "info",
+        message: "Direct-to-model: OFF",
+      },
+    ]);
+  });
+
+  test("unset stays OFF for a text-only model, so toggle is blocked", async () => {
+    mockSettings(undefined);
+    const notifications: { type: string; message: string }[] = [];
+    const handler = pi.commands.get("vision-direct")!;
+    await handler(undefined, makeCtx(textOnlyModel, notifications));
+    expect(notifications).toEqual([
+      {
+        type: "error",
+        message:
+          "Cannot enable direct-to-model: current model does not support image input",
       },
     ]);
   });
