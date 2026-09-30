@@ -17,6 +17,7 @@ import {
 } from "../../shared/Renderer";
 import { StableImage } from "../../shared/StableImage";
 import { Tools } from "../../shared/Tools";
+import { attachImagePaths } from "./attach-images";
 
 const PREVIEW_LINES = 5;
 /** Box width for results written before the width was recorded. */
@@ -112,6 +113,16 @@ function modelSupportsImages(model: unknown): boolean {
 
 function modelKey(model: { provider: string; id: string }): string {
   return `${model.provider}/${model.id}`;
+}
+
+/** Honors a `/vision-direct false` override for image-capable models. */
+async function sendsImagesDirect(
+  model: { provider: string; id: string } | undefined
+): Promise<boolean> {
+  if (!model || !modelSupportsImages(model)) {
+    return false;
+  }
+  return (await PimSettings.getViewMediaDirectToModel(modelKey(model))) ?? true;
 }
 
 export function assertMediaSize(bytes: number, path: string): void {
@@ -524,6 +535,7 @@ export default function (pi: ExtensionAPI): void {
     label: "view_media",
     description:
       "View an image, video, audio, or PDF file and return a description. " +
+      "Do not call it for images already attached to the user's message. " +
       "Images go straight to the current model when it accepts image input; " +
       "otherwise, and for non-image media, the configured view_media model (with comma-separated fallbacks) describes them.",
     promptSnippet: "View a media file",
@@ -741,6 +753,24 @@ export default function (pi: ExtensionAPI): void {
 
       return container;
     },
+  });
+
+  pi.on("input", async (event, ctx) => {
+    if (!(await sendsImagesDirect(ctx.model))) {
+      return { action: "continue" as const };
+    }
+    const resize = event.streamingBehavior
+      ? ctx.model?.inputLimits?.images?.resize
+      : undefined;
+    const attached = await attachImagePaths(event.text, ctx.cwd, resize);
+    if (attached.images.length === 0) {
+      return { action: "continue" as const };
+    }
+    return {
+      action: "transform" as const,
+      text: attached.text,
+      images: [...(event.images ?? []), ...attached.images],
+    };
   });
 
   pi.registerCommand("vision-direct", {
