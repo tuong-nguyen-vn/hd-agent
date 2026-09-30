@@ -10,7 +10,7 @@ const ANIMATOR = Symbol.for("pim.smooth-scroll-animator");
 
 type AltScreenInstance = {
   wheelScrollLines: number;
-  routeWheel(event: WheelEventInput): void;
+  routeWheel(event: WheelEventInput, delta?: number): void;
   doRender(): void;
   requestRender(): void;
   [ANIMATOR]?: WheelAnimator;
@@ -128,14 +128,15 @@ export default function (pi: ExtensionAPI): void {
         if (step) {
           // Drive the stock routing (nested scroll views, scrollbar hover,
           // and the requestRender that keeps the glide going) with the eased
-          // step size: wheelScrollLines is the multiplier routeWheel applies
-          // to a single notch.
+          // step size. Older pi scales a single notch by wheelScrollLines;
+          // newer pi takes a signed line delta as the second argument. Each
+          // version ignores the channel it doesn't know, so feed both.
           self.wheelScrollLines = step.magnitude;
-          originalRouteWheel.call(self, {
-            direction: step.direction,
-            x: step.x,
-            y: step.y,
-          });
+          originalRouteWheel.call(
+            self,
+            { direction: step.direction, x: step.x, y: step.y },
+            step.direction * step.magnitude
+          );
         }
         originalDoRender.call(self);
       };

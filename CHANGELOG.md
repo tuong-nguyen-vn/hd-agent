@@ -12,6 +12,7 @@
 
 ### Bug Fixes
 
+- Fix mouse-wheel scrolling doing nothing on pi 0.99+, which changed `routeWheel` to take a signed line delta as its second argument. The smooth-scroll patch now passes the delta as well as `wheelScrollLines`, so it works on both old and new pi.
 - Fix `/mcp` and MCP tools reporting "MCP not initialized". Since pi 0.86, a handler registered while an event is being dispatched only runs on later dispatches. pi-mcp-adapter is loaded inside `session_start`, so its own `session_start` handler never ran for the first session. HD Agent now replays that handler for the session that loaded the adapter.
 
 ## v0.19.0
