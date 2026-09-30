@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { realpath } from "node:fs/promises";
-import { delimiter, dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve, sep } from "node:path";
 
 const PI_PACKAGE = "@earendil-works/pi-coding-agent";
 
@@ -127,6 +127,22 @@ function resolveGlobalPiCli(): string | null {
   return Bun.file(cliPath).size > 0 ? cliPath : null;
 }
 
+// Pi's jiti aliases only cover static imports. Dynamic `import()`s in
+// extensions (and the modules they pull in) go through Bun's own resolver,
+// which looks for pi in the extension's node_modules, and pi installs git
+// packages with --omit=dev --omit=peer, so pi isn't there. NODE_PATH lets
+// that lookup fall back to the running pi's packages.
+function hostModuleDirs(piCli: string): string[] {
+  const piPackageDir = dirname(dirname(resolve(piCli)));
+  const dirs = [join(piPackageDir, "node_modules")];
+  const segment = `${sep}node_modules${sep}`;
+  const idx = piPackageDir.lastIndexOf(segment);
+  if (idx >= 0) {
+    dirs.push(piPackageDir.slice(0, idx + segment.length - 1));
+  }
+  return dirs;
+}
+
 const cliArgs = process.argv.slice(2);
 
 // Pi's argparse rejects prompts beginning with `-` and doesn't honour `--`
@@ -198,7 +214,13 @@ try {
 
 const piCli = await findPiCli();
 const startupRenderPreload = join(import.meta.dir, "startup-render.ts");
-const childEnv: NodeJS.ProcessEnv = { ...process.env, AMP_PI_CLI: piCli };
+const childEnv: NodeJS.ProcessEnv = {
+  ...process.env,
+  AMP_PI_CLI: piCli,
+  NODE_PATH: [...hostModuleDirs(piCli), process.env["NODE_PATH"]]
+    .filter(Boolean)
+    .join(delimiter),
+};
 if (childEnv["HERDR_ENV"] === "1" && !childEnv["HERDR_AGENT"]) {
   childEnv["HERDR_AGENT"] = "pi";
 }
