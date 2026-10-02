@@ -47,7 +47,7 @@
     "check": "bun run typecheck && bun run test && bun run lint && bun run format"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": ">=0.87.0"
+    "@earendil-works/pi-coding-agent": ">=1.0.0"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-coding-agent": {
@@ -55,7 +55,7 @@
     }
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.87.0",
+    "@earendil-works/pi-coding-agent": "1.0.0",
     "@types/bun": "latest",
     "@typescript/native-preview": "^7.0.0-dev.20260612.1",
     "oxlint": "^1.69.0",
@@ -68,8 +68,7 @@
     "fzf": "^0.5.2",
     "grammy": "^1.44.0",
     "ignore": "^7.0.5",
-    "ky": "^2.0.2",
-    "pi-mcp-adapter": "2.11.0"
+    "ky": "^2.0.2"
   },
   "overrides": {
     "protobufjs": "^7.6.5",
@@ -82,7 +81,7 @@
     "@hono/node-server": "^2.0.12"
   },
   "allowScripts": {
-    "@google/genai@1.52.0": true,
+    "@google/genai@2.21.0": true,
     "koffi@2.16.3": true,
     "protobufjs@7.6.5": true
   }

@@ -4,6 +4,7 @@
 
 ### Features
 
+- Require Pi 1.0. MCP now runs on Pi's built-in MCP support (`mcp.json`, `/mcp`, `pi mcp add|list|login`) instead of the bundled `pi-mcp-adapter`, which is removed along with HD Agent's MCP wrapper and renderer.
 - Rename `gpt-6-sol` to `gpt-6.1-sol` on both proxies (tuongnguyen-proxy keeps `gpt-6-sol` too for now).
 - Add `deepseek-v4.1-flash` to tuongnguyen-proxy (1M context, 384K max output).
 - Collapse `swe-2-medium`, `swe-2-high`, and `swe-2-max` into a single reasoning `swe-2` on both proxies (effort `medium`/`high`/`max`).
@@ -13,8 +14,12 @@
 
 ### Bug Fixes
 
-- Fix mouse-wheel scrolling doing nothing on pi 0.99+, which changed `routeWheel` to take a signed line delta as its second argument. The smooth-scroll patch now passes the delta as well as `wheelScrollLines`, so it works on both old and new pi.
-- Fix `/mcp` and MCP tools reporting "MCP not initialized". Since pi 0.86, a handler registered while an event is being dispatched only runs on later dispatches. pi-mcp-adapter is loaded inside `session_start`, so its own `session_start` handler never ran for the first session. HD Agent now replays that handler for the session that loaded the adapter.
+- Fix tool `promptGuidelines` (skill, read_session, codemode, tool_search, …) missing from the HD Agent system prompt on Pi 0.99+, which moved them into per-tool `toolGuidelines`.
+- Keep prompt sections that built-in extensions add, such as MCP's `mcp_servers` list, in the HD Agent system prompt.
+- Fix finished assistant messages that hit a retryable error rendering as if still streaming: the silent-retry patch now forwards `updateContent`'s `isStreaming` flag.
+- Fix `hd-agent` failing to find Pi through `PATH`: Pi's bin is the bundled `dist/bundle/cli.js`, so the launcher now walks up to the package and runs its `dist/cli.js`.
+- Remove the `uncaughtException` AbortError guard, which never worked: every `uncaughtException` listener runs, so Pi's crash handler exited regardless.
+- Fix mouse-wheel scrolling doing nothing on pi 0.99+, which changed `routeWheel` to take a signed line delta as its second argument. The smooth-scroll patch now passes each eased step as that delta.
 
 ## v0.19.0
 

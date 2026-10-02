@@ -53,8 +53,8 @@ async function resolvePathPiCli(): Promise<string | null> {
       return null;
     }
 
-    const cliPath = await resolveRealPath(piBin);
-    if (await isPiPackageCli(cliPath)) {
+    const cliPath = await piPackageCli(await resolveRealPath(piBin));
+    if (cliPath) {
       return cliPath;
     }
 
@@ -71,14 +71,26 @@ async function resolvePathPiCli(): Promise<string | null> {
   return null;
 }
 
-async function isPiPackageCli(cliPath: string): Promise<boolean> {
-  const pkgPath = join(dirname(cliPath), "..", "package.json");
-  try {
-    const pkg = (await Bun.file(pkgPath).json()) as { readonly name?: string };
-    return pkg.name === PI_PACKAGE;
-  } catch {
-    return false;
+// pi's bin is the bundled `dist/bundle/cli.js`, but HD Agent's prototype
+// patches target the unbundled modules, so run `dist/cli.js` from the same
+// package instead.
+async function piPackageCli(binPath: string): Promise<string | null> {
+  let dir = dirname(binPath);
+  for (let depth = 0; depth < 3; depth++) {
+    try {
+      const pkg = (await Bun.file(join(dir, "package.json")).json()) as {
+        readonly name?: string;
+      };
+      if (pkg.name === PI_PACKAGE) {
+        const cliPath = join(dir, "dist", "cli.js");
+        return (await isFile(cliPath)) ? cliPath : null;
+      }
+    } catch {
+      // No package.json at this level; keep walking up.
+    }
+    dir = dirname(dir);
   }
+  return null;
 }
 
 async function resolveRealPath(path: string): Promise<string> {

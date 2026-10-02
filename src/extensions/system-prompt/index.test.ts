@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import type { Skill } from "@earendil-works/pi-coding-agent";
-import { formatSkillsForAmpPrompt } from "./index";
+import type {
+  BeforeAgentStartEvent,
+  ExtensionAPI,
+  ExtensionContext,
+  Skill,
+} from "@earendil-works/pi-coding-agent";
+import registerSystemPrompt, { formatSkillsForAmpPrompt } from "./index";
 
 const skill: Skill = {
   name: "agent-browser",
@@ -31,5 +36,78 @@ describe("formatSkillsForAmpPrompt", () => {
     expect(prompt).toContain(
       "<location>/skills/agent-browser/SKILL.md</location>"
     );
+  });
+});
+
+type PromptOptions = BeforeAgentStartEvent["systemPromptOptions"];
+type Handler = (
+  event: BeforeAgentStartEvent,
+  ctx: ExtensionContext
+) => Promise<unknown>;
+
+function promptOptions(overrides: Partial<PromptOptions> = {}): PromptOptions {
+  return {
+    selectedTools: ["read", "skill"],
+    toolSnippets: {},
+    toolGuidelines: {
+      read: ["Read before editing."],
+      skill: ["Invoke skills by name."],
+      inactive: ["Never shown."],
+    },
+    promptGuidelines: ["Read before editing.", "Extra guideline."],
+    appendSystemPrompt: "",
+    sections: {},
+    cwd: "/repo",
+    contextFiles: [],
+    skills: [],
+    ...overrides,
+  };
+}
+
+async function runHandler(options: PromptOptions): Promise<void> {
+  let handler: Handler | undefined;
+  const pi = {
+    on: (event: string, cb: Handler) => {
+      if (event === "before_agent_start") {
+        handler = cb;
+      }
+    },
+  } as unknown as ExtensionAPI;
+  registerSystemPrompt(pi);
+  await handler?.(
+    { systemPromptOptions: options } as BeforeAgentStartEvent,
+    { model: undefined } as ExtensionContext
+  );
+}
+
+describe("before_agent_start", () => {
+  test("includes the guidelines of selected tools once", async () => {
+    const options = promptOptions();
+    await runHandler(options);
+    const prompt = options.forceSystemPrompt ?? "";
+
+    expect(prompt).toContain("- Invoke skills by name.");
+    expect(prompt).toContain("- Extra guideline.");
+    expect(prompt).not.toContain("Never shown.");
+    expect(prompt.split("Read before editing.")).toHaveLength(2);
+  });
+
+  test("carries sections that later handlers add", async () => {
+    const options = promptOptions();
+    await runHandler(options);
+    options.sections["mcp_servers"] = "- docs: product docs";
+
+    expect(options.forceSystemPrompt).toEndWith(
+      "<mcp_servers>\n- docs: product docs\n</mcp_servers>"
+    );
+  });
+
+  test("lets a later systemPrompt override win", async () => {
+    const options = promptOptions();
+    await runHandler(options);
+    options.forceSystemPrompt = "custom";
+
+    expect(options.forceSystemPrompt).toBe("custom");
+    expect({ ...options }.forceSystemPrompt).toBe("custom");
   });
 });

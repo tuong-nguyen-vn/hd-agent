@@ -13,7 +13,7 @@ type AssistantMessageLike = {
 };
 
 type AssistantMessagePrototype = {
-  updateContent: (message: AssistantMessageLike) => void;
+  updateContent: (message: AssistantMessageLike, isStreaming?: boolean) => void;
   [PATCH_STATE]?: true;
 };
 
@@ -155,7 +155,10 @@ async function applySilentRetryPatches(): Promise<number> {
     // RetryStatusIndicator. If all retries are exhausted, auto_retry_end
     // surfaces the error once via showError. Non-retryable errors (quota,
     // billing, context overflow) are still rendered immediately.
-    prototype.updateContent = function (message: AssistantMessageLike): void {
+    prototype.updateContent = function (
+      message: AssistantMessageLike,
+      isStreaming?: boolean
+    ): void {
       if (
         message.stopReason === "error" &&
         !message.content.some((c) => c.type === "toolCall") &&
@@ -164,10 +167,14 @@ async function applySilentRetryPatches(): Promise<number> {
         // Pass a copy without stopReason so the original updateContent skips
         // the "Error: <message>" line. The original message object keeps
         // stopReason/errorMessage so pi core's retry logic still fires.
-        originalUpdateContent.call(this, { ...message, stopReason: undefined });
+        originalUpdateContent.call(
+          this,
+          { ...message, stopReason: undefined },
+          isStreaming
+        );
         return;
       }
-      originalUpdateContent.call(this, message);
+      originalUpdateContent.call(this, message, isStreaming);
     };
 
     patched++;

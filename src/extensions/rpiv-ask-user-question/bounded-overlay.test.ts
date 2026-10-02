@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   OVERLAY_MAX_HEIGHT_PERCENT,
   boundedOverlayContext,
@@ -52,7 +53,7 @@ describe("boundedOverlayContext", () => {
         notify() {},
       },
     };
-    return { ctx, calls };
+    return { ctx: ctx as ExtensionContext, calls };
   }
 
   test("forces overlay maxHeight and hands the factory a bounded tui", async () => {

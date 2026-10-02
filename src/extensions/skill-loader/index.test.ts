@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type {
   ExtensionAPI,
-  ExtensionContext,
+  ExtensionToolContext,
   Theme,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
@@ -64,11 +64,11 @@ function skillPrompt(filePath: string): string {
 function context(
   systemPrompt: string,
   sessionManager: object
-): ExtensionContext {
+): ExtensionToolContext {
   return {
     getSystemPrompt: () => systemPrompt,
     sessionManager,
-  } as ExtensionContext;
+  } as ExtensionToolContext;
 }
 
 function makeSkill(): string {

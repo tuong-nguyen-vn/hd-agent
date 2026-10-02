@@ -14,40 +14,24 @@ function isAbortError(reason: unknown): boolean {
   return reason instanceof Error && reason.name === "AbortError";
 }
 
+const ABORT_GUARD = Symbol.for("pim.abort-guard");
+
 // Pressing Escape aborts the active tool/stream signal. Some cancellable work
 // (fetch, worker requests, subagent sessions) only surfaces that as a
 // rejected promise after the synchronous abort() call has already returned,
 // once nothing is left to await it. Swallow only AbortError here so
 // cancellation is a no-op from the user's perspective; anything else is
-// logged (not hidden) instead of taking down the session.
-process.on("unhandledRejection", (reason) => {
-  if (isAbortError(reason)) {
-    return;
-  }
-  console.error("pim: unhandled rejection:", reason);
-});
-
-// pi's own AbortController.abort() call (e.g. restoreQueuedMessagesToEditor
-// on Escape) dispatches to any synchronous "abort" listeners still attached
-// to the active run's signal (streaming readers, etc). If one of those
-// throws, it bubbles up *synchronously* through abort() itself, out of the
-// keystroke handler - pressing Escape while the model is actively
-// streaming/thinking hits this path. pi registers its own uncaughtException
-// handler via prependListener during startup (restores the terminal, then
-// unconditionally calls process.exit(1)), which runs *before* any handler an
-// extension adds with plain `.on()` - so a normal listener here would never
-// get a chance to run. Extensions load after that registration, so
-// prependListener here puts this handler in front instead, letting it
-// swallow AbortError before pi's handler can kill the process. Anything else
-// is left alone (not exited here) - Node keeps invoking the remaining
-// uncaughtException listeners in order, so pi's own handler still runs
-// after this one and restores the terminal / exits as designed.
-process.prependListener("uncaughtException", (error) => {
-  if (isAbortError(error)) {
-    return;
-  }
-  console.error("pim: uncaught exception:", error);
-});
+// logged (not hidden) instead of taking down the session. /reload re-imports
+// this module, so a process-wide flag keeps it to one listener.
+if (!(globalThis as Record<symbol, unknown>)[ABORT_GUARD]) {
+  (globalThis as Record<symbol, unknown>)[ABORT_GUARD] = true;
+  process.on("unhandledRejection", (reason) => {
+    if (isAbortError(reason)) {
+      return;
+    }
+    console.error("pim: unhandled rejection:", reason);
+  });
+}
 
 const shortcuts = [
   ["Ctrl+C", "Clear editor (first) / exit (second)"],

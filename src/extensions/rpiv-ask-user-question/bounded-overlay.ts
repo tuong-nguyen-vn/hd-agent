@@ -62,7 +62,7 @@ function boundedOverlayOptions(options: CustomOptions): CustomOptions {
   return { ...options, overlayOptions: resolve() };
 }
 
-export function boundedOverlayContext(ctx: ExtensionContext): ExtensionContext {
+export function boundedOverlayContext<C extends ExtensionContext>(ctx: C): C {
   const custom: CustomUi = <T>(
     factory: CustomFactory<T>,
     options?: CustomOptions

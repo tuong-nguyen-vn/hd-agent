@@ -23,7 +23,6 @@ async function installPatch(): Promise<void> {
 }
 
 type FakeAltScreen = {
-  wheelScrollLines: number;
   currentLayout: undefined;
   altScreenActive: boolean;
   renderRequests: number;
@@ -40,7 +39,6 @@ function makeFakeAltScreen(scrolls: number[]): FakeAltScreen {
   // terminal. altScreenActive=false makes the stock doRender a no-op so each
   // doRender() call stands in for one rendered frame.
   const self = Object.create(TuiAltScreen.prototype) as FakeAltScreen;
-  self.wheelScrollLines = 1;
   self.currentLayout = undefined;
   self.altScreenActive = false;
   self.renderRequests = 0;

@@ -59,18 +59,15 @@ try {
 
     const requireFromPi = createRequire(piCli);
     const piTuiEntry = requireFromPi.resolve("@earendil-works/pi-tui");
-    const piTui = (await import(
+    const { TuiBase: TuiCtor } = (await import(
       pathToFileURL(join(dirname(piTuiEntry), "tui.js")).href
     )) as {
       readonly TuiBase?: new (...args: never[]) => TuiType;
-      readonly TUI?: new (...args: never[]) => TuiType;
     };
-    // pi-tui <0.84.0 exports a TUI class; 0.84.0+ exports TuiBase instead.
-    const TuiCtor = piTui.TuiBase ?? piTui.TUI;
     if (TuiCtor) {
       const originalRequestRender = TuiCtor.prototype.requestRender;
       const originalRequestImmediateRender = TuiCtor.prototype
-        .requestImmediateRender as ((this: TuiType) => void) | undefined;
+        .requestImmediateRender as (this: TuiType) => void;
 
       let released = false;
       let failsafe: ReturnType<typeof setTimeout> | null = null;
@@ -91,16 +88,14 @@ try {
         originalRequestRender.call(this, force);
       };
 
-      if (typeof originalRequestImmediateRender === "function") {
-        TuiCtor.prototype.requestImmediateRender = function (): void {
-          if (!released) {
-            // eslint-disable-next-line @typescript-eslint/no-this-alias
-            activeTui = this;
-            return;
-          }
-          originalRequestImmediateRender.call(this);
-        };
-      }
+      TuiCtor.prototype.requestImmediateRender = function (): void {
+        if (!released) {
+          // eslint-disable-next-line @typescript-eslint/no-this-alias
+          activeTui = this;
+          return;
+        }
+        originalRequestImmediateRender.call(this);
+      };
 
       const suppress = (): void => {
         if (!released) {
