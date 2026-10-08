@@ -22,11 +22,13 @@ export async function formatSkillsForAmpPrompt(
 
 type PromptOptions = BeforeAgentStartEvent["systemPromptOptions"];
 
+// Hidden tools are reachable only through another tool (e.g. codemode), so
+// pi leaves their rules out of the prompt; match that here.
 function collectGuidelines(options: PromptOptions): string[] {
   const guidelines = [
-    ...options.selectedTools.flatMap(
-      (name) => options.toolGuidelines[name] ?? []
-    ),
+    ...options.selectedTools
+      .filter((name) => !options.hiddenTools.includes(name))
+      .flatMap((name) => options.toolGuidelines[name] ?? []),
     ...options.promptGuidelines,
   ].map((g) => g.trim());
   return [...new Set(guidelines.filter(Boolean))];

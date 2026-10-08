@@ -44,6 +44,8 @@ describe("grep tool renderer", () => {
       expanded: false,
       showImages: true,
       isError: false,
+      durationMs: undefined,
+      outputPad: 0,
     };
     const callComponent = tool.renderCall!(args, stubTheme, callContext);
 
@@ -85,6 +87,8 @@ describe("grep tool renderer", () => {
       expanded: false,
       showImages: true,
       isError: true,
+      durationMs: undefined,
+      outputPad: 0,
     };
     const callComponent = tool.renderCall!(args, stubTheme, context);
     const resultComponent = tool.renderResult!(

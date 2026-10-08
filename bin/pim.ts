@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { realpath } from "node:fs/promises";
 import { delimiter, dirname, join, resolve, sep } from "node:path";
+import { HostTerminal } from "../src/shared/HostTerminal.ts";
 
 const PI_PACKAGE = "@earendil-works/pi-coding-agent";
 
@@ -235,6 +236,15 @@ const childEnv: NodeJS.ProcessEnv = {
 };
 if (childEnv["HERDR_ENV"] === "1" && !childEnv["HERDR_AGENT"]) {
   childEnv["HERDR_AGENT"] = "pi";
+}
+// Without OSC 8, pi prints Markdown links as `text (url)` and leaves clicking
+// to the terminal's own URL detection, which stops at the wrap and swallows
+// the closing parenthesis. An explicit PI_HYPERLINKS still wins.
+if (
+  childEnv["PI_HYPERLINKS"] === undefined &&
+  HostTerminal.isOrcaOrHerdr(childEnv)
+) {
+  childEnv["PI_HYPERLINKS"] = "1";
 }
 const proc = Bun.spawn({
   cmd: [process.execPath, "--preload", startupRenderPreload, piCli, ...cliArgs],

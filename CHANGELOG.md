@@ -4,7 +4,7 @@
 
 ### Features
 
-- Require Pi 1.0. MCP now runs on Pi's built-in MCP support (`mcp.json`, `/mcp`, `pi mcp add|list|login`) instead of the bundled `pi-mcp-adapter`, which is removed along with HD Agent's MCP wrapper and renderer.
+- Require Pi 1.1. MCP now runs on Pi's built-in MCP support (`mcp.json`, `/mcp`, `pi mcp add|list|login`) instead of the bundled `pi-mcp-adapter`, which is removed along with HD Agent's MCP wrapper and renderer.
 - Rename `gpt-6-sol` to `gpt-6.1-sol` on both proxies (tuongnguyen-proxy keeps `gpt-6-sol` too for now).
 - Add `deepseek-v4.1-flash` to tuongnguyen-proxy (1M context, 384K max output).
 - Collapse `swe-2-medium`, `swe-2-high`, and `swe-2-max` into a single reasoning `swe-2` on both proxies (effort `medium`/`high`/`max`).
@@ -20,6 +20,9 @@
 - Fix `hd-agent` failing to find Pi through `PATH`: Pi's bin is the bundled `dist/bundle/cli.js`, so the launcher now walks up to the package and runs its `dist/cli.js`.
 - Remove the `uncaughtException` AbortError guard, which never worked: every `uncaughtException` listener runs, so Pi's crash handler exited regardless.
 - Fix mouse-wheel scrolling doing nothing on pi 0.99+, which changed `routeWheel` to take a signed line delta as its second argument. The smooth-scroll patch now passes each eased step as that delta.
+- Fix Ctrl+click on links in Orca and Herdr opening a URL cut off at the line wrap or with a trailing `)`: the launcher sets `PI_HYPERLINKS=1` there, so pi emits OSC 8 links instead of printing `text (url)` for the terminal to guess at.
+- Fix fullscreen copy in Orca and Herdr flashing "Copied!" without reaching the user's clipboard when attached from another machine: the copy now always sends OSC 52 too, not only the host's native clipboard write.
+- Leave the guidelines of tools Pi hides (reachable only through another tool, such as codemode) out of the HD Agent system prompt, matching Pi 1.0.4+.
 
 ## v0.19.0
 

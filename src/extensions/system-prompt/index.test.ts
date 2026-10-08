@@ -48,6 +48,7 @@ type Handler = (
 function promptOptions(overrides: Partial<PromptOptions> = {}): PromptOptions {
   return {
     selectedTools: ["read", "skill"],
+    hiddenTools: [],
     toolSnippets: {},
     toolGuidelines: {
       read: ["Read before editing."],
@@ -90,6 +91,15 @@ describe("before_agent_start", () => {
     expect(prompt).toContain("- Extra guideline.");
     expect(prompt).not.toContain("Never shown.");
     expect(prompt.split("Read before editing.")).toHaveLength(2);
+  });
+
+  test("leaves out the guidelines of hidden tools", async () => {
+    const options = promptOptions({ hiddenTools: ["skill"] });
+    await runHandler(options);
+    const prompt = options.forceSystemPrompt ?? "";
+
+    expect(prompt).toContain("- Read before editing.");
+    expect(prompt).not.toContain("Invoke skills by name.");
   });
 
   test("carries sections that later handlers add", async () => {
