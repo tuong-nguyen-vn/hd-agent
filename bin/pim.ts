@@ -246,6 +246,15 @@ if (
 ) {
   childEnv["PI_HYPERLINKS"] = "1";
 }
+// Orca and Herdr route OSC 52 to the user's machine, but pi only adds it when
+// it detects SSH or no display, so attached from elsewhere "Copied!" reached
+// only the host's clipboard. An explicit PI_CLIPBOARD_OSC52 still wins.
+if (
+  childEnv["PI_CLIPBOARD_OSC52"] === undefined &&
+  HostTerminal.isOrcaOrHerdr(childEnv)
+) {
+  childEnv["PI_CLIPBOARD_OSC52"] = "1";
+}
 const proc = Bun.spawn({
   cmd: [process.execPath, "--preload", startupRenderPreload, piCli, ...cliArgs],
   stdio: [
