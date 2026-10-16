@@ -102,6 +102,16 @@ describe("before_agent_start", () => {
     expect(prompt).not.toContain("Invoke skills by name.");
   });
 
+  test("tolerates Pi before 1.0.4, which has no hiddenTools", async () => {
+    const options = promptOptions();
+    delete (options as Partial<PromptOptions>).hiddenTools;
+    await runHandler(options);
+    const prompt = options.forceSystemPrompt ?? "";
+
+    expect(prompt).toContain("- Read before editing.");
+    expect(prompt).toContain("- Invoke skills by name.");
+  });
+
   test("carries sections that later handlers add", async () => {
     const options = promptOptions();
     await runHandler(options);

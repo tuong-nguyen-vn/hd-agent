@@ -23,6 +23,8 @@
 - Fix Ctrl+click on links in Orca and Herdr opening a URL cut off at the line wrap or with a trailing `)`: the launcher sets `PI_HYPERLINKS=1` there, so pi emits OSC 8 links instead of printing `text (url)` for the terminal to guess at.
 - Fix copying in Orca and Herdr flashing "Copied!" without reaching the user's clipboard when attached from another machine: the launcher sets Pi 1.2's `PI_CLIPBOARD_OSC52=1` there, so every copy also sends OSC 52, not only the host's native clipboard write.
 - Leave the guidelines of tools Pi hides (reachable only through another tool, such as codemode) out of the HD Agent system prompt, matching Pi 1.0.4+.
+- Fix the HD Agent system prompt failing with `undefined is not an object (evaluating 'options.hiddenTools.includes')` on Pi before 1.0.4, which has no hidden tools.
+- Warn at startup when the running Pi is older than HD Agent requires: git installs of HD Agent update on their own, and nothing else checks the Pi version.
 
 ## v0.19.0
 

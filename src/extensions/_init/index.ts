@@ -1,3 +1,5 @@
+import { realpath } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -33,6 +35,34 @@ if (!(globalThis as Record<symbol, unknown>)[ABORT_GUARD]) {
   });
 }
 
+// Under Bun, an extension's import of the Pi package can resolve to HD Agent's
+// own dev copy instead of the running Pi, so read the version next to the CLI.
+async function runningPiVersion(): Promise<string | undefined> {
+  const entry = process.argv[1];
+  if (!entry) {
+    return undefined;
+  }
+  try {
+    let dir = dirname(await realpath(entry));
+    while (true) {
+      const file = Bun.file(join(dir, "package.json"));
+      if (await file.exists()) {
+        const pkg = (await file.json()) as { name?: string; version?: string };
+        if (pkg.name === "@earendil-works/pi-coding-agent") {
+          return pkg.version;
+        }
+      }
+      const parent = dirname(dir);
+      if (parent === dir) {
+        return undefined;
+      }
+      dir = parent;
+    }
+  } catch {
+    return undefined;
+  }
+}
+
 const shortcuts = [
   ["Ctrl+C", "Clear editor (first) / exit (second)"],
   ["Escape", "Cancel autocomplete / abort streaming"],
@@ -56,7 +86,12 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   }
 
   const pkgPath = `${import.meta.dir}/../../../package.json`;
-  const { version } = (await Bun.file(pkgPath).json()) as { version: string };
+  const { version, peerDependencies } = (await Bun.file(pkgPath).json()) as {
+    version: string;
+    peerDependencies?: Record<string, string>;
+  };
+  const piRange = peerDependencies?.["@earendil-works/pi-coding-agent"];
+  const piVersion = await runningPiVersion();
 
   const keyCol = Math.max(...shortcuts.map(([k]) => k.length)) + 2;
 
@@ -69,6 +104,20 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     // edit/write/apply_patch result needs to render.
     void DiffRenderer.ready;
     ctx.ui.setHiddenThinkingLabel("✓ Thinking...");
+
+    // Git installs of HD Agent update independently of Pi and nothing
+    // enforces the peer range, so an outdated Pi otherwise fails obscurely.
+    if (
+      event.reason === "startup" &&
+      piRange &&
+      piVersion &&
+      !Bun.semver.satisfies(piVersion, piRange)
+    ) {
+      ctx.ui.notify(
+        `HD Agent requires Pi ${piRange}, but Pi ${piVersion} is running. Run \`pi update\` to upgrade.`,
+        "warning"
+      );
+    }
 
     if (event.reason !== "startup" && event.reason !== "new") {
       return;

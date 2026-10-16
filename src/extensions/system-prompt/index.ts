@@ -23,11 +23,13 @@ export async function formatSkillsForAmpPrompt(
 type PromptOptions = BeforeAgentStartEvent["systemPromptOptions"];
 
 // Hidden tools are reachable only through another tool (e.g. codemode), so
-// pi leaves their rules out of the prompt; match that here.
+// pi leaves their rules out of the prompt; match that here. Pi before 1.0.4
+// has no hiddenTools, and git installs of HD Agent update past the user's Pi.
 function collectGuidelines(options: PromptOptions): string[] {
+  const hiddenTools = options.hiddenTools ?? [];
   const guidelines = [
     ...options.selectedTools
-      .filter((name) => !options.hiddenTools.includes(name))
+      .filter((name) => !hiddenTools.includes(name))
       .flatMap((name) => options.toolGuidelines[name] ?? []),
     ...options.promptGuidelines,
   ].map((g) => g.trim());
