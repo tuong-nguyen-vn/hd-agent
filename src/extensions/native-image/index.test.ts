@@ -3,7 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
-import { modelImage, saveCapturedImage } from "./index";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { modelImage, painterHiddenInSession, saveCapturedImage } from "./index";
 
 const PNG_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
@@ -126,5 +127,35 @@ describe("modelImage", () => {
     );
     expect([decoded.get_width(), decoded.get_height()]).toEqual([256, 256]);
     decoded.free();
+  });
+});
+
+describe("painterHiddenInSession", () => {
+  const ctxWith = (entries: readonly object[]): ExtensionContext =>
+    ({
+      sessionManager: { getBranch: () => entries },
+    }) as unknown as ExtensionContext;
+  const state = (hiddenHere: boolean) => ({
+    type: "custom",
+    customType: "native-image-painter",
+    data: { hiddenHere },
+  });
+
+  test("is false for a session that never recorded the claim", () => {
+    expect(painterHiddenInSession(ctxWith([]))).toBe(false);
+    expect(
+      painterHiddenInSession(
+        ctxWith([{ type: "custom", customType: "other", data: {} }])
+      )
+    ).toBe(false);
+  });
+
+  test("follows the latest recorded claim on the branch", () => {
+    expect(painterHiddenInSession(ctxWith([state(false), state(true)]))).toBe(
+      true
+    );
+    expect(painterHiddenInSession(ctxWith([state(true), state(false)]))).toBe(
+      false
+    );
   });
 });

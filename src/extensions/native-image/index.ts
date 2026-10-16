@@ -15,6 +15,9 @@ import { PimSettings } from "../../shared/PimSettings";
 import { StableImage } from "../../shared/StableImage";
 
 const CUSTOM_TYPE = "native-image";
+const PAINTER_STATE_TYPE = "native-image-painter";
+
+type PainterState = { readonly hiddenHere: boolean };
 /** Box width for messages written before the width was recorded. */
 const IMAGE_WIDTH_CELLS = 60;
 /** Cap on retained `Image` instances; each one pins a preview's base64. */
@@ -223,8 +226,28 @@ function imageComponent(
   return component;
 }
 
+// Pi 1.3+ restores a resumed session's active tools, so whether painter was
+// hidden by this extension rather than the user must live in the session.
+export function painterHiddenInSession(ctx: ExtensionContext): boolean {
+  const entries = ctx.sessionManager.getBranch();
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry?.type === "custom" && entry.customType === PAINTER_STATE_TYPE) {
+      return (entry.data as PainterState | undefined)?.hiddenHere === true;
+    }
+  }
+  return false;
+}
+
 export default function (pi: ExtensionAPI): void {
   let painterHiddenHere = false;
+  const setPainterHiddenHere = (hiddenHere: boolean): void => {
+    if (painterHiddenHere === hiddenHere) {
+      return;
+    }
+    painterHiddenHere = hiddenHere;
+    pi.appendEntry<PainterState>(PAINTER_STATE_TYPE, { hiddenHere });
+  };
 
   pi.registerMessageRenderer<NativeImageDetails>(
     CUSTOM_TYPE,
@@ -343,7 +366,7 @@ export default function (pi: ExtensionAPI): void {
     if (native) {
       if (visible) {
         pi.setActiveTools(active.filter((name) => name !== PAINTER_TOOL));
-        painterHiddenHere = true;
+        setPainterHiddenHere(true);
       }
       return;
     }
@@ -353,10 +376,11 @@ export default function (pi: ExtensionAPI): void {
     if (!visible && painterHiddenHere) {
       pi.setActiveTools([...active, PAINTER_TOOL]);
     }
-    painterHiddenHere = false;
+    setPainterHiddenHere(false);
   };
 
   pi.on("session_start", async (_event, ctx) => {
+    painterHiddenHere = painterHiddenInSession(ctx);
     await syncPainter(ctx.model);
   });
 

@@ -25,6 +25,7 @@
 - Leave the guidelines of tools Pi hides (reachable only through another tool, such as codemode) out of the HD Agent system prompt, matching Pi 1.0.4+.
 - Fix the HD Agent system prompt failing with `undefined is not an object (evaluating 'options.hiddenTools.includes')` on Pi before 1.0.4, which has no hidden tools.
 - Warn at startup when the running Pi is older than HD Agent requires: git installs of HD Agent update on their own, and nothing else checks the Pi version.
+- Fix `painter` staying hidden after resuming, on Pi 1.3+, a session that last used a model that paints natively (`gpt-6-luna`) and switching to one that cannot: Pi now restores a resumed session's active tools, so the claim that HD Agent hid `painter` is kept in the session.
 
 ## v0.19.0
 
