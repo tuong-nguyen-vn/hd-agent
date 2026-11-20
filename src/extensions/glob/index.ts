@@ -89,7 +89,8 @@ export default function (pi: ExtensionAPI): void {
 
       const effectiveCwd = cwd ? Paths.requireAbsolute(cwd) : ctx.cwd;
       const limit = headLimit ?? GLOB_HEAD_LIMIT_MAX;
-      const resolvedPathFormat = pathFormat ?? DEFAULT_PATH_FORMAT;
+      const resolvedPathFormat = (pathFormat ??
+        DEFAULT_PATH_FORMAT) as GlobPathFormat;
       const absolutePath = Paths.resolve(path ?? ".", effectiveCwd);
       const matches = await findFiles(absolutePath, pattern, {
         exclude,
@@ -133,8 +134,7 @@ export default function (pi: ExtensionAPI): void {
     renderResult(result, options, theme, context) {
       const state = context.state as GlobCallState;
       const details = result.details as
-        | { readonly fileCount?: number }
-        | undefined;
+        { readonly fileCount?: number } | undefined;
 
       if (details?.fileCount !== undefined) {
         state.fileCount = details.fileCount;

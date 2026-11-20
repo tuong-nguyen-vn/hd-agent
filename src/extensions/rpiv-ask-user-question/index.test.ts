@@ -98,6 +98,9 @@ describe("rpiv-ask-user-question extension entry", () => {
       terminal: { rows, columns: 100, hideCursor() {}, showCursor() {} },
       requestRender() {},
       setFocus() {},
+      // 2.15 mounts inline by default; a visible overlay forces the stacked
+      // overlay presentation, which is the path this wrapper caps.
+      getTopmostVisibleOverlay: () => ({}),
     };
     let overlayOptions: any;
     let lines: string[] = [];
@@ -107,10 +110,18 @@ describe("rpiv-ask-user-question extension entry", () => {
       isProjectTrusted: () => true,
       ui: {
         custom: async (factory: any, options: any) => {
-          overlayOptions = options.overlayOptions;
-          const component = await factory(tui, theme, {}, () => {});
-          lines = component.render(100);
-          return { answers: [], cancelled: true };
+          if (options?.overlay) {
+            overlayOptions = options.overlayOptions;
+          }
+          const result = await new Promise((resolve) => {
+            const component = factory(tui, theme, {}, resolve);
+            if (options?.overlay && component?.render) {
+              lines = component.render(100);
+            }
+            // Component created without settling = user declined.
+            queueMicrotask(() => resolve({ answers: [], cancelled: true }));
+          });
+          return result;
         },
         notify() {},
       },

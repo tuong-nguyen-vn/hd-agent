@@ -111,8 +111,7 @@ export default function (pi: ExtensionAPI): void {
 
       if (!options.isPartial && state.outcome === undefined) {
         const details = result.details as
-          | Pick<WebFetchOutcome, "format" | "totalBytes">
-          | undefined;
+          Pick<WebFetchOutcome, "format" | "totalBytes"> | undefined;
 
         if (
           details?.format !== undefined &&

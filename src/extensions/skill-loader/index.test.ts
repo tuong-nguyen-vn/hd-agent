@@ -100,6 +100,8 @@ const renderContext = {
   isError: false,
   durationMs: undefined,
   outputPad: 0,
+  keyText: (_kb: unknown) => "",
+  keyHint: (_kb: unknown, _d: string) => "",
   lastComponent: undefined,
   invalidate: () => {},
 };

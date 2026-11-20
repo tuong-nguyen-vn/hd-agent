@@ -15,14 +15,7 @@ export type UsageData = {
 };
 
 export type UsageStyle =
-  | "title"
-  | "ctx"
-  | "fam"
-  | "muted"
-  | "pct"
-  | "dim"
-  | "ok"
-  | "error";
+  "title" | "ctx" | "fam" | "muted" | "pct" | "dim" | "ok" | "error";
 
 export type UsageColorFn = (style: UsageStyle, text: string) => string;
 

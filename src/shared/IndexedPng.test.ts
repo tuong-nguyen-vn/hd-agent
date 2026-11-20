@@ -19,7 +19,7 @@ async function decode(
 }
 
 function chunkLength(png: Uint8Array, type: string): number | undefined {
-  for (let at = 8; at + 8 <= png.length; ) {
+  for (let at = 8; at + 8 <= png.length;) {
     const length = new DataView(png.buffer, png.byteOffset + at).getUint32(0);
     const name = String.fromCharCode(...png.subarray(at + 4, at + 8));
     if (name === type) {

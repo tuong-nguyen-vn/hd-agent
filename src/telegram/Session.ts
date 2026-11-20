@@ -38,8 +38,7 @@ export type SessionSettings = {
 };
 
 export type SetCwdResult =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly error: string };
+  { readonly ok: true } | { readonly ok: false; readonly error: string };
 
 export type SetModelResult =
   | { readonly ok: true; readonly id: string }
@@ -434,8 +433,7 @@ export class Session {
       sessionManager,
       model,
       thinkingLevel: this.currentSettings.thinkingLevel as
-        | ThinkingLevel
-        | undefined,
+        ThinkingLevel | undefined,
       customTools: [Tools.wrap(sendFile), Tools.wrap(taskTool)],
     });
 

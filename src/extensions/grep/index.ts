@@ -94,9 +94,11 @@ export default function (pi: ExtensionAPI): void {
       }
 
       const effectiveCwd = cwd ? Paths.requireAbsolute(cwd) : ctx.cwd;
-      const resolvedPathFormat = pathFormat ?? DEFAULT_PATH_FORMAT;
+      const resolvedPathFormat = (pathFormat ??
+        DEFAULT_PATH_FORMAT) as GrepPathFormat;
       const resolvedContext = context ?? 0;
-      const resolvedOutputMode = outputMode ?? DEFAULT_OUTPUT_MODE;
+      const resolvedOutputMode = (outputMode ??
+        DEFAULT_OUTPUT_MODE) as GrepOutputMode;
       const limit = Math.min(
         headLimit ?? GREP_HEAD_LIMIT_MAX,
         GREP_HEAD_LIMIT_MAX
@@ -173,8 +175,7 @@ export default function (pi: ExtensionAPI): void {
     renderResult(result, options, theme, context) {
       const state = context.state as GrepCallState;
       const details = result.details as
-        | { readonly fileCount?: number }
-        | undefined;
+        { readonly fileCount?: number } | undefined;
 
       if (details?.fileCount !== undefined) {
         state.fileCount = details.fileCount;

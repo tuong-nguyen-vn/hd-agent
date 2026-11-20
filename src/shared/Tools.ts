@@ -39,7 +39,11 @@ function validateToolArguments(
   return cachedValidate(...args);
 }
 
-type Issue = { readonly path: string; readonly message: string };
+type Issue = {
+  readonly path: string;
+  readonly message: string;
+  readonly missingProps?: readonly string[];
+};
 
 // JSON Schema validation keywords that some providers (notably Anthropic)
 // reject in tool input schemas. Stripping them from the wire schema keeps
@@ -215,7 +219,7 @@ export class Tools {
     toolName: string,
     schema: JsonSchema,
     err: unknown,
-    args?: unknown
+    _args?: unknown
   ): string {
     const message = err instanceof Error ? err.message : String(err);
     if (!message.startsWith("Validation failed for tool")) {
@@ -223,8 +227,8 @@ export class Tools {
     }
 
     const raw = parseIssues(message);
-    const collapsed = collapseAnyOf(raw, schema, args);
-    const issues = collapsed.map((issue) => formatIssue(issue, schema));
+    const grouped = groupMissingIssues(raw);
+    const issues = grouped.map((issue) => formatIssue(issue, schema));
 
     const header = `Validation failed for tool "${toolName}":`;
     if (issues.length === 0) {
@@ -258,64 +262,34 @@ function parseIssues(message: string): Issue[] {
 }
 
 /**
- * Pi emits one error per anyOf branch plus a `must match a schema in anyOf`
- * parent error, producing 6+ noisy lines for a 6-variant union. Replace the
- * whole cluster with a single synthesised line. If the actual value has a
- * discriminator that matches one branch, surface only that branch's real
- * errors instead.
+ * The validator reports each missing property as `<path>: missing`. Group
+ * properties that share a parent object into one `missing required
+ * propert(y|ies)` line so a schema requiring several fields produces a single
+ * actionable message instead of one line per field.
  */
-function collapseAnyOf(
-  issues: readonly Issue[],
-  schema: JsonSchema,
-  args: unknown
-): Issue[] {
-  const handled = new Set<number>();
-  const inserts = new Map<number, Issue[]>();
-
-  issues.forEach((issue, idx) => {
-    if (handled.has(idx) || issue.message !== "must match a schema in anyOf") {
-      return;
-    }
-    const node = walkSchema(schema, issue.path);
-    const branches = node?.anyOf ?? node?.oneOf;
-    if (!node || !branches) {
-      return;
-    }
-    handled.add(idx);
-    issues.forEach((other, otherIdx) => {
-      if (handled.has(otherIdx)) {
-        return;
-      }
-      if (other.path === issue.path || isUnderPath(other.path, issue.path)) {
-        handled.add(otherIdx);
-      }
-    });
-
-    const value = walkValue(args, issue.path);
-    const matched = matchDiscriminatedBranch(branches, value);
-    if (matched) {
-      const branchIssues = revalidateBranch(matched, value).map((sub) => ({
-        path: joinPath(issue.path, sub.path),
-        message: sub.message,
-      }));
-      inserts.set(idx, branchIssues);
-    } else {
-      inserts.set(idx, [
-        { path: issue.path, message: describeAnyOf(branches) },
-      ]);
-    }
-  });
-
+function groupMissingIssues(issues: readonly Issue[]): Issue[] {
+  const groups = new Map<string, { index: number; props: string[] }>();
   const result: Issue[] = [];
-  issues.forEach((issue, idx) => {
-    if (inserts.has(idx)) {
-      result.push(...inserts.get(idx)!);
-      return;
-    }
-    if (!handled.has(idx)) {
+  for (const issue of issues) {
+    if (issue.message !== "missing") {
       result.push(issue);
+      continue;
     }
-  });
+    const dot = issue.path.lastIndexOf(".");
+    const parent = dot === -1 ? "" : issue.path.slice(0, dot);
+    const prop = dot === -1 ? issue.path : issue.path.slice(dot + 1);
+    const group = groups.get(parent);
+    if (group) {
+      group.props.push(prop);
+      continue;
+    }
+    groups.set(parent, { index: result.length, props: [prop] });
+    result.push({ path: parent, message: "missing", missingProps: [prop] });
+  }
+  for (const [, group] of groups) {
+    const issue = result[group.index]!;
+    result[group.index] = { ...issue, missingProps: group.props };
+  }
   return result;
 }
 
@@ -396,24 +370,6 @@ function findDiscriminator(
   return undefined;
 }
 
-function revalidateBranch(branch: JsonSchema, value: unknown): Issue[] {
-  try {
-    validateToolArguments(
-      { name: "_branch", parameters: branch as TSchema } as never,
-      {
-        type: "toolCall",
-        id: "",
-        name: "_branch",
-        arguments: (value ?? {}) as JsonObject,
-      }
-    );
-    return [];
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return parseIssues(message);
-  }
-}
-
 function walkSchema(
   schema: JsonSchema | undefined,
   path: string
@@ -444,33 +400,6 @@ function walkSchema(
   return current;
 }
 
-function walkValue(value: unknown, path: string): unknown {
-  if (!path) {
-    return value;
-  }
-  let current = value;
-  for (const part of path.split(".")) {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-    if (Array.isArray(current)) {
-      current = current[Number(part)];
-    } else if (isRecord(current)) {
-      current = current[part];
-    } else {
-      return undefined;
-    }
-  }
-  return current;
-}
-
-function isUnderPath(candidate: string, parent: string): boolean {
-  if (!parent) {
-    return candidate.length > 0;
-  }
-  return candidate.startsWith(`${parent}.`);
-}
-
 function joinPath(parent: string, child: string): string {
   if (!parent) {
     return child;
@@ -486,31 +415,62 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function formatIssue(issue: Issue, schema: JsonSchema): string {
-  const requiredMatch = issue.message.match(
-    /^must have required propert(?:y|ies) (.+)$/
-  );
-  if (requiredMatch) {
-    const props = requiredMatch[1]!;
-    const parent = issue.path.includes(".")
-      ? issue.path.slice(0, issue.path.lastIndexOf("."))
-      : "";
-    const where = parent ? ` at ${parent}` : "";
-    const noun = props.includes(",") ? "properties" : "property";
+  if (issue.missingProps) {
+    const props = issue.missingProps.join(", ");
+    const where = issue.path ? ` at ${issue.path}` : "";
+    const noun = issue.missingProps.length > 1 ? "properties" : "property";
     return `missing required ${noun}${where}: ${props}`;
   }
 
-  if (issue.message === "must be equal to one of the allowed values") {
+  const expectedMatch = issue.message.match(/^expected (?:one of )?(.+)$/);
+  if (expectedMatch) {
+    // A `foo.type: expected one of [...]` issue is the union discriminator
+    // mismatching — surface it on the union path with the allowed variants.
+    const unionNode = walkSchema(schema, parentOf(issue.path));
+    const branches = unionNode?.anyOf ?? unionNode?.oneOf;
+    if (branches && findDiscriminator(branches)) {
+      return `${parentOf(issue.path)}: ${describeAnyOf(branches)}`;
+    }
+
     const node = walkSchema(schema, issue.path);
-    if (node?.enum && node.enum.length > 0) {
-      const values = node.enum.map(displayValue).join(", ");
+    const enumValues = allowedValues(node);
+    if (enumValues) {
+      const values = enumValues.map(displayValue).join(", ");
       return `${issue.path}: must be one of: ${values}`;
     }
+    return `${issue.path}: must be ${expectedMatch[1]}`;
   }
 
   if (!issue.path) {
     return issue.message;
   }
   return `${issue.path}: ${issue.message}`;
+}
+
+function parentOf(path: string): string {
+  const dot = path.lastIndexOf(".");
+  return dot === -1 ? "" : path.slice(0, dot);
+}
+
+function allowedValues(
+  node: JsonSchema | undefined
+): readonly unknown[] | undefined {
+  if (!node) {
+    return undefined;
+  }
+  if (node.enum && node.enum.length > 0) {
+    return node.enum;
+  }
+  const branches = node.anyOf ?? node.oneOf;
+  if (branches) {
+    const consts = branches
+      .map((b) => (b && "const" in b ? b.const : undefined))
+      .filter((v) => v !== undefined);
+    if (consts.length === branches.length && consts.length > 0) {
+      return consts;
+    }
+  }
+  return undefined;
 }
 
 /**

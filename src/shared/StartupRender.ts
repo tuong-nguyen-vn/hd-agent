@@ -10,15 +10,13 @@ type StartupRenderState = {
 export class StartupRender {
   public static suppress(): void {
     const state = (globalThis as Record<symbol, unknown>)[STATE_KEY] as
-      | StartupRenderState
-      | undefined;
+      StartupRenderState | undefined;
     state?.suppress();
   }
 
   public static release(tui?: TUI): void {
     const state = (globalThis as Record<symbol, unknown>)[STATE_KEY] as
-      | StartupRenderState
-      | undefined;
+      StartupRenderState | undefined;
     state?.release(tui);
   }
 }

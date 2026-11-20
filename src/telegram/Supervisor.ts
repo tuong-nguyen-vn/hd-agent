@@ -24,8 +24,7 @@ export type Mode = {
 };
 
 export type UpdateResult =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly error: string };
+  { readonly ok: true } | { readonly ok: false; readonly error: string };
 
 export class Supervisor {
   public static async install(): Promise<void> {

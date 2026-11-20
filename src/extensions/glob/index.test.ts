@@ -51,6 +51,8 @@ describe("glob tool renderer", () => {
       isError: false,
       durationMs: undefined,
       outputPad: 0,
+      keyText: (_kb: unknown) => "",
+      keyHint: (_kb: unknown, _d: string) => "",
     };
     const callComponent = tool.renderCall!(args, stubTheme, callContext);
 
@@ -94,6 +96,8 @@ describe("glob tool renderer", () => {
       isError: true,
       durationMs: undefined,
       outputPad: 0,
+      keyText: (_kb: unknown) => "",
+      keyHint: (_kb: unknown, _d: string) => "",
     };
     const callComponent = tool.renderCall!(args, stubTheme, context);
     const resultComponent = tool.renderResult!(

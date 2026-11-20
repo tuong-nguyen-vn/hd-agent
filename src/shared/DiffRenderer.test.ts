@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
+import { initTheme } from "@earendil-works/pi-coding-agent";
 import { DiffLines, type ToolDiffHunk } from "./DiffLines";
 import { DiffRenderer, type DiffHighlighter } from "./DiffRenderer";
 
@@ -92,6 +93,7 @@ describe("DiffRenderer.highlightHunkLines", () => {
 
 describe("DiffRenderer.render", () => {
   beforeAll(async () => {
+    initTheme("dark");
     await DiffRenderer.ready;
   });
 
