@@ -2,8 +2,16 @@
 
 ## Unreleased
 
+## v0.20.0
+
 ### Features
 
+- Timed-out `bash` commands keep running as background jobs instead of being killed. A process-local `Jobs` registry tracks them (16-job cap, terminal states) and a new `jobs` tool lists, inspects, and kills them.
+- `subagent` gains a `background` flag: returns a job id immediately, keeps running in-process, and delivers its result back to the session via a queued follow-up message. Killed via `jobs kill`; does not survive process restart.
+- Telegram scheduled tasks gain `watch` triggers: a user-defined probe command polled on an interval fires the task only when its output fingerprint changes. Baseline never fires; failed probes retry; state persists across daemon restarts.
+- `/trust-report` command plus a startup advisory: enumerates every project/user config source (.pi settings/mcp/extensions/skills/prompts/themes, .agents/skills, AGENTS.md/CLAUDE.md) with declarations and redacted secrets.
+- `/tasks` in Pi shows process-local background jobs (status, exit, duration); `/tasks` in Telegram shows the thread's scheduled tasks (schedule kind, watch state, next run).
+- `compare_models` tool: sends one prompt to 2–4 models in parallel (text-only, no tools) and returns answers side-by-side with cost, tokens, and latency.
 - Require Pi 1.2. MCP now runs on Pi's built-in MCP support (`mcp.json`, `/mcp`, `pi mcp add|list|login`) instead of the bundled `pi-mcp-adapter`, which is removed along with HD Agent's MCP wrapper and renderer.
 - Rename `gpt-6-sol` to `gpt-6.1-sol` on both proxies (tuongnguyen-proxy keeps `gpt-6-sol` too for now).
 - Add `deepseek-v4.1-flash` to tuongnguyen-proxy (1M context, 384K max output).
