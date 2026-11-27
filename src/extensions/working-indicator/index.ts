@@ -2,6 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { markSessionActive, notifyAgentCompletion } from "./notifications";
 
 const FINAL_WIDGET_ID = "pim-working-finished";
 
@@ -43,6 +44,10 @@ export default function (pi: ExtensionAPI): void {
     });
   };
 
+  pi.on("session_start", (_event, ctx) => {
+    markSessionActive(ctx.sessionManager.getSessionFile());
+  });
+
   pi.on("agent_start", (_event, ctx) => {
     if (!ctx.hasUI) {
       return;
@@ -58,6 +63,7 @@ export default function (pi: ExtensionAPI): void {
 
   pi.on("agent_end", (_event, ctx) => {
     stopTimer();
+    notifyAgentCompletion(pi, ctx.sessionManager.getSessionFile());
     if (!ctx.hasUI) {
       return;
     }
