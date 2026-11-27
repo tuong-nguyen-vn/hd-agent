@@ -14,10 +14,15 @@ import {
   runSubagent,
   type SubagentDetails,
 } from "./subagent";
+import {
+  markSessionActive,
+  notifyBackgroundCompletion,
+} from "./notifications";
 
 // Deferred so the jiti compile pass runs after the session's initial paint
 // and setup instead of competing with them for the event loop.
 const PREWARM_DELAY_MS = 3_000;
+let activeSessionFile: string | undefined;
 
 // Indirection so tests can observe the background path without a real
 // nested session. Production always uses runSubagent itself.
@@ -55,6 +60,8 @@ export default function (pi: ExtensionAPI): void {
     // every ctx getter throws — and a throw from a timer callback is an
     // uncaught exception that kills the process.
     const cwd = ctx.cwd;
+    activeSessionFile = ctx.sessionManager?.getSessionFile();
+    markSessionActive(activeSessionFile);
     cancelPrewarm();
     prewarmTimer = setTimeout(() => {
       prewarmTimer = undefined;
@@ -63,7 +70,9 @@ export default function (pi: ExtensionAPI): void {
     prewarmTimer.unref?.();
   });
 
-  pi.on("session_shutdown", cancelPrewarm);
+  pi.on("session_shutdown", () => {
+    cancelPrewarm();
+  });
 
   Tools.register<typeof subagentSchema, SubagentDetails>(pi, {
     name: "subagent",
@@ -104,6 +113,7 @@ export default function (pi: ExtensionAPI): void {
           ctx,
           agentName: input.agent,
           run: runSubagentForTool,
+          sessionFile: ctx.sessionManager?.getSessionFile(),
         });
       }
 
@@ -134,9 +144,11 @@ function startBackgroundSubagent(
     readonly ctx: Parameters<typeof runSubagent>[1];
     readonly agentName: string | undefined;
     readonly run: BackgroundSubagentRun;
+    readonly sessionFile: string | undefined;
   }
 ): AgentToolResult<SubagentDetails> {
   const controller = new AbortController();
+  const sessionFile = args.sessionFile;
   const job = Jobs.create({
     kind: "subagent",
     title:
@@ -165,6 +177,7 @@ function startBackgroundSubagent(
           exitCode: 0,
           output: { text: text.slice(0, 32_768) },
         });
+        notifyBackgroundCompletion(pi, sessionFile, job.id);
         notify(pi, job.id, "completed", text);
       },
       (error: unknown) => {

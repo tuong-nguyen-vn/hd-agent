@@ -7,6 +7,7 @@ import { validateToolArguments } from "@earendil-works/pi-ai";
 import type { JsonObject } from "@earendil-works/pi-ai";
 import { Jobs } from "../../shared/Jobs";
 import registerSubagent, { setRunSubagentForTests } from "./index";
+import { setCompletionNotifierForTests } from "./notifications";
 import { subagentSchema } from "./schema";
 import type { SubagentDetails } from "./subagent";
 
@@ -24,6 +25,7 @@ function validate(args: unknown): void {
 
 afterEach(() => {
   setRunSubagentForTests(undefined);
+  setCompletionNotifierForTests(undefined);
   Jobs.resetForTests();
 });
 
@@ -167,6 +169,10 @@ describe("background subagents", () => {
 
   test("returns a job id immediately and notifies on completion", async () => {
     const { sent, tool } = captureTool();
+    const notifications: unknown[][] = [];
+    setCompletionNotifierForTests((async (...args: unknown[]) => {
+      notifications.push(args);
+    }) as never);
     let release: ((v: ReturnType<typeof fakeResult>) => void) | undefined;
     const gate = new Promise<ReturnType<typeof fakeResult>>((resolve) => {
       release = resolve;
@@ -198,6 +204,8 @@ describe("background subagents", () => {
     const msg = sent[0]!.content as { customType: string; content: string };
     expect(msg.customType).toBe("subagent-report");
     expect(msg.content).toContain("deep findings");
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]![3]).toBe(1);
   });
 
   test("reports failures through the job and a follow-up message", async () => {
@@ -253,6 +261,41 @@ describe("background subagents", () => {
     expect(Jobs.get(job.id)?.status).toBe("cancelled");
     // Cancelled jobs are not reported as failed to the parent.
     expect(sent).toHaveLength(0);
+  });
+
+  test("completion notifier receives the originating session for each job", async () => {
+    const { tool } = captureTool();
+    const sessions: string[] = [];
+    setCompletionNotifierForTests(((
+      _pi: ExtensionAPI,
+      sessionFile: string | undefined
+    ) => {
+      sessions.push(sessionFile ?? "missing");
+    }) as never);
+    setRunSubagentForTests((async () => fakeResult("done")) as never);
+
+    const ctx = {
+      ...toolCtx,
+      sessionManager: { getSessionFile: () => "/sessions/chat.jsonl" },
+    } as ExtensionContext;
+    await tool().execute(
+      "call-1",
+      { prompt: "first", background: true },
+      undefined,
+      undefined,
+      ctx
+    );
+    await tool().execute(
+      "call-2",
+      { prompt: "second", background: true },
+      undefined,
+      undefined,
+      ctx
+    );
+    await Bun.sleep(0);
+    await Bun.sleep(0);
+
+    expect(sessions).toEqual(["/sessions/chat.jsonl", "/sessions/chat.jsonl"]);
   });
 
   test("foreground calls still wait for the result", async () => {
