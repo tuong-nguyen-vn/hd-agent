@@ -18,19 +18,24 @@ type Harness = {
   readonly handlers: Map<string, Handler>;
   readonly commands: Map<string, { handler: Function }>;
   readonly ctx: ExtensionContext;
+  readonly widgetStates: Array<{ id: string; empty: boolean }>;
+  reviewVisible(): boolean;
   emit(event: string, data?: unknown): void;
 };
 
 function harness(branch: readonly SessionEntry[] = []): Harness {
   const handlers = new Map<string, Handler>();
   const commands = new Map<string, { handler: Function }>();
+  const widgetStates: Array<{ id: string; empty: boolean }> = [];
 
   const ctx = {
     cwd: "/work",
     hasUI: true,
     ui: {
       theme: { fg: (_c: string, t: string) => t },
-      setWidget: (): void => {},
+      setWidget: (id: string, factory?: unknown): void => {
+        widgetStates.push({ id, empty: factory === undefined });
+      },
       notify: (): void => {},
       custom: (): Promise<undefined> => Promise.resolve(undefined),
     },
@@ -54,6 +59,13 @@ function harness(branch: readonly SessionEntry[] = []): Harness {
     handlers,
     commands,
     ctx,
+    widgetStates,
+    reviewVisible(): boolean {
+      const review = widgetStates
+        .filter((w) => w.id === "pim-activity-review")
+        .at(-1);
+      return review !== undefined && !review.empty;
+    },
     emit(event: string, data?: unknown): void {
       handlers.get(event)?.(data as never, ctx);
     },
@@ -132,6 +144,32 @@ describe("activity-summary wiring", () => {
 
     await h.commands.get("activity")!.handler("on", h.ctx);
     expect(ActivityLine.getText() !== undefined).toBe(true);
+  });
+
+  test("clicking the caption shows then hides the inline review", () => {
+    const h = harness([msgEntry(user("Đọc code và tóm tắt"), "m1")]);
+    h.emit("session_start", { type: "session_start", reason: "startup" });
+    expect(h.reviewVisible()).toBe(false);
+
+    ActivityLine.open();
+    expect(h.reviewVisible()).toBe(true);
+
+    ActivityLine.open();
+    expect(h.reviewVisible()).toBe(false);
+
+    ActivityLine.open();
+    expect(h.reviewVisible()).toBe(true);
+  });
+
+  test("typing hides the review without needing a second click", () => {
+    const h = harness([msgEntry(user("Đọc code và tóm tắt"), "m1")]);
+    h.emit("session_start", { type: "session_start", reason: "startup" });
+
+    ActivityLine.open();
+    expect(h.reviewVisible()).toBe(true);
+
+    h.emit("input", { type: "input", text: "x" });
+    expect(h.reviewVisible()).toBe(false);
   });
 
   test("session_shutdown hides the button", () => {
