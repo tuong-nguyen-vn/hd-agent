@@ -5,6 +5,7 @@ import type {
 import { type Static, Type } from "typebox";
 import { JournalLine } from "../../shared/JournalLine";
 import { Tools } from "../../shared/Tools";
+import { buildAuditPrompt, sampleForAudit } from "./audit";
 import { JournalIndexer, type JournalSearchResult } from "./indexer";
 import { isMemoryEnabled, setMemoryEnabled } from "./state";
 
@@ -70,7 +71,7 @@ export default function (pi: ExtensionAPI): void {
       .indexSessions()
       .catch(() => {
         ctx.ui.notify(
-          "Journal indexing failed; memory may be stale",
+          "Usage: /memory [on|off|recall <query>|audit [topic]]",
           "warning"
         );
       });
@@ -112,7 +113,7 @@ export default function (pi: ExtensionAPI): void {
 
   pi.registerCommand("memory", {
     description:
-      "Memory journal: /memory [on|off] toggles indexing, /memory recall <query> searches past prompts",
+      "Memory journal: /memory [on|off] toggles indexing, /memory recall <query> searches past prompts, /memory audit [topic] analyzes recurring patterns",
     handler: async (args, ctx) => {
       const parts = args.trim().split(/\s+/).filter(Boolean);
       const sub = parts[0]?.toLowerCase() ?? "";
@@ -121,6 +122,24 @@ export default function (pi: ExtensionAPI): void {
         setMemoryEnabled(sub === "on");
         refreshIndicator(ctx);
         ctx.ui.notify(`Memory indexing ${sub === "on" ? "on" : "off"}`, "info");
+        return;
+      }
+
+      if (sub === "audit") {
+        const topic = parts.slice(1).join(" ").trim() || undefined;
+        const samples = sampleForAudit(
+          (q, l) => getIndexer().search(q, l, ctx.cwd),
+          (l) => getIndexer().recent(l),
+          topic
+        );
+        if (samples.length === 0) {
+          ctx.ui.notify(
+            "Journal is empty — nothing to audit yet. Memory indexes your prompts as you work.",
+            "info"
+          );
+          return;
+        }
+        pi.sendUserMessage(buildAuditPrompt(samples, topic));
         return;
       }
 

@@ -101,6 +101,38 @@ export class JournalIndexer {
     }));
   }
 
+  public recent(limit = 200, since?: string): JournalSearchResult[] {
+    const rows = since
+      ? (this.db
+          .query(
+            `SELECT text, timestamp, cwd, session_file FROM prompts
+             WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?`
+          )
+          .all(since, limit) as Array<{
+          text: string;
+          timestamp: string;
+          cwd: string;
+          session_file: string;
+        }>)
+      : (this.db
+          .query(
+            `SELECT text, timestamp, cwd, session_file FROM prompts
+             ORDER BY timestamp DESC LIMIT ?`
+          )
+          .all(limit) as Array<{
+          text: string;
+          timestamp: string;
+          cwd: string;
+          session_file: string;
+        }>);
+    return rows.map((r) => ({
+      text: r.text,
+      timestamp: r.timestamp,
+      cwd: r.cwd,
+      sessionFile: r.session_file,
+    }));
+  }
+
   public async indexSessions(): Promise<{ indexed: number }> {
     const files = listSessionFiles(this.sessionsRoot);
     let indexed = 0;
