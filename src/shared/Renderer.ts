@@ -95,7 +95,7 @@ class ToolTitle implements Component {
     }
   }
 
-  public render(width: number): string[] {
+  public render(width: number): readonly string[] {
     this.lastRenderAt = Date.now();
     if (this.spinnerActive && this.spinnerTimer === undefined) {
       this.startSpinner();
@@ -395,7 +395,7 @@ export class Renderer {
     let cachedWidth: number | undefined;
     let cachedLines: string[] | undefined;
     return {
-      render(width: number): string[] {
+      render(width: number): readonly string[] {
         if (cachedLines && cachedWidth === width) {
           return cachedLines;
         }

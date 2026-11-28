@@ -80,7 +80,7 @@ class MarkdownTitle implements Component {
     this.invalidate();
   }
 
-  public render(width: number): string[] {
+  public render(width: number): readonly string[] {
     if (this.cachedLines && this.cachedWidth === width) {
       return this.cachedLines;
     }
@@ -172,7 +172,7 @@ class SubagentStatusView implements Component {
     this.invalidate();
   }
 
-  public render(width: number): string[] {
+  public render(width: number): readonly string[] {
     if (this.cachedLines && this.cachedWidth === width) {
       return this.cachedLines;
     }
@@ -362,7 +362,7 @@ class SubagentResult implements Component {
     }
   }
 
-  public render(width: number): string[] {
+  public render(width: number): readonly string[] {
     // Copy: statusView returns its cached array, which must not be mutated.
     const lines = [...this.statusView.render(width)];
     if (this.bodyComponent) {
@@ -431,7 +431,7 @@ function makePrefixedMarkdownBlock(args: MarkdownBlockArgs): Component {
   let cachedWidth: number | undefined;
   let cachedLines: string[] | undefined;
   return {
-    render(width: number): string[] {
+    render(width: number): readonly string[] {
       if (cachedLines && cachedWidth === width) {
         return cachedLines;
       }

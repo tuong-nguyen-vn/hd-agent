@@ -23,7 +23,7 @@ function cellKey(): string {
 export class StableImage extends Image {
   private renderedCellKey: string | undefined;
 
-  public override render(width: number): string[] {
+  public override render(width: number): readonly string[] {
     this.renderedCellKey = cellKey();
     return super.render(width);
   }
