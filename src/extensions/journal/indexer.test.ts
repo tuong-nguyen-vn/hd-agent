@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, appendFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  mkdirSync,
+  appendFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { JournalIndexer } from "./indexer";
@@ -36,10 +42,7 @@ function userPrompt(id: string, text: string, ts = "2026-11-28T10:00:00Z") {
 }
 
 function indexer(): JournalIndexer {
-  return new JournalIndexer(
-    join(work, "index.db"),
-    join(work, "sessions")
-  );
+  return new JournalIndexer(join(work, "index.db"), join(work, "sessions"));
 }
 
 describe("JournalIndexer", () => {
@@ -93,7 +96,10 @@ describe("JournalIndexer", () => {
     const { indexed } = await idx.indexSessions();
     expect(indexed).toBe(1);
     // Complete the partial line, simulating the writer finishing it.
-    appendFileSync(file, 'age":{"role":"user","content":[{"type":"text","text":"completed later"}]}}\n');
+    appendFileSync(
+      file,
+      'age":{"role":"user","content":[{"type":"text","text":"completed later"}]}}\n'
+    );
     const second = await idx.indexSessions();
     expect(second.indexed).toBe(1);
     expect(idx.search("completed")).toHaveLength(1);
@@ -133,11 +139,16 @@ describe("JournalIndexer", () => {
     ]);
     const idx = indexer();
     await idx.indexSessions();
-    appendFileSync(file, sessionEntry(userPrompt("u2", "đọc lại bảng lương tháng mười một")));
+    appendFileSync(
+      file,
+      sessionEntry(userPrompt("u2", "đọc lại bảng lương tháng mười một"))
+    );
     const after = await idx.indexSessions();
     expect(after.indexed).toBe(1);
     expect(idx.search("lương")).toHaveLength(1);
-    expect(idx.search("lương")[0]?.text).toBe("đọc lại bảng lương tháng mười một");
+    expect(idx.search("lương")[0]?.text).toBe(
+      "đọc lại bảng lương tháng mười một"
+    );
     idx.close();
   });
 
@@ -148,7 +159,10 @@ describe("JournalIndexer", () => {
         type: "message",
         id: "a1",
         timestamp: "t",
-        message: { role: "assistant", content: [{ type: "text", text: "reply" }] },
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "reply" }],
+        },
       },
       {
         type: "message",

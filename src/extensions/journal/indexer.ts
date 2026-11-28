@@ -20,7 +20,14 @@ type FileState = {
 };
 
 function defaultSessionsRoot(): string {
-  return join(homedir(), ".pi", "agent", "sessions");
+  return (
+    process.env["HD_MEMORY_SESSIONS_ROOT"] ??
+    join(homedir(), ".pi", "agent", "sessions")
+  );
+}
+
+function defaultDbPath(): string {
+  return process.env["HD_MEMORY_INDEX_DB"] ?? DB_PATH;
 }
 
 function openDatabase(path: string): Database {
@@ -56,7 +63,7 @@ export class JournalIndexer {
   private readonly sessionsRoot: string;
 
   public constructor(
-    dbPath: string = DB_PATH,
+    dbPath: string = defaultDbPath(),
     sessionsRoot: string = defaultSessionsRoot()
   ) {
     mkdirSync(dirname(dbPath), { recursive: true });
