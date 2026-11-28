@@ -33,6 +33,22 @@ export function resetForTests(): void {
   notifyImpl = sendCompletionNotification;
 }
 
+const TITLE_MARKER = "⚡";
+
+function setMarkedTitle(ctx: ExtensionContext, count: number): void {
+  const cwd = ctx.cwd.split("/").pop() ?? "";
+  const session = ctx.sessionManager.getSessionName();
+  const base = session ? `pi - ${session} - ${cwd}` : `pi - ${cwd}`;
+  const badge = count > 1 ? `${TITLE_MARKER}${count}` : TITLE_MARKER;
+  ctx.ui.setTitle(`${badge} ${base}`);
+}
+
+function restoreTitle(ctx: ExtensionContext): void {
+  const cwd = ctx.cwd.split("/").pop() ?? "";
+  const session = ctx.sessionManager.getSessionName();
+  ctx.ui.setTitle(session ? `pi - ${session} - ${cwd}` : `pi - ${cwd}`);
+}
+
 export default function (pi: ExtensionAPI): void {
   let agentStartedAt = 0;
   let lastInputAt = 0;
@@ -46,7 +62,10 @@ export default function (pi: ExtensionAPI): void {
     }
     ctx.ui.onTerminalInput(() => {
       lastInputAt = Date.now();
-      unseenCount = 0;
+      if (unseenCount > 0) {
+        unseenCount = 0;
+        restoreTitle(ctx);
+      }
       return undefined;
     });
   });
@@ -64,6 +83,7 @@ export default function (pi: ExtensionAPI): void {
     if (lastInputAt < agentStartedAt) {
       unseenCount += 1;
       notifyImpl(unseenCount);
+      setMarkedTitle(ctx, unseenCount);
     }
     agentStartedAt = 0;
   });

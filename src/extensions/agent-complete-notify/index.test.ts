@@ -25,10 +25,14 @@ function harness(): {
     hasUI: true,
     ui: {
       notify: (): void => {},
+      setTitle: (): void => {},
       onTerminalInput: (listener: (data: string) => unknown) => {
         inputListeners.push(listener);
         return () => {};
       },
+    },
+    sessionManager: {
+      getSessionName: () => undefined,
     },
   } as unknown as ExtensionContext;
 
