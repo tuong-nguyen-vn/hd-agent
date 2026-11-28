@@ -12,7 +12,13 @@ import {
   renderUsageReport,
 } from "./hdwebsoft-usage";
 
-export const HDWEBSOFT_PROXY_ROOT = "https://proxy-api.hdwebsoft.co";
+// The proxy root is deliberately kept out of tracked files: this repo is
+// public, so the internal endpoint is configured through the environment.
+export function getHdwebsoftProxyRoot(): string | undefined {
+  const root = process.env.HDWEBSOFT_PROXY_ROOT?.trim();
+  return root ? root.replace(/\/+$/, "") : undefined;
+}
+
 const PROVIDER_ID = "hdwebsoft-proxy";
 const USAGE_WIDGET_ID = "usage-report";
 
@@ -50,6 +56,16 @@ function startUsageSpinner(
 }
 
 export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
+  const proxyRoot = getHdwebsoftProxyRoot();
+  if (!proxyRoot) {
+    // Without the env root the provider would register dead baseUrls, so it
+    // stays out of the catalog entirely and only warns once at startup.
+    console.warn(
+      "hdwebsoft-proxy: HDWEBSOFT_PROXY_ROOT is not set — provider disabled."
+    );
+    return;
+  }
+
   pi.registerProvider(PROVIDER_ID, {
     name: "HDWEBSOFT Proxy",
     authHeader: true,
@@ -62,7 +78,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         id: "gemini-3.8-flash",
         name: "Gemini 3.8 Flash",
         api: "google-generative-ai",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1beta`,
+        baseUrl: `${proxyRoot}/v1beta`,
         reasoning: true,
         input: ["text", "image"],
         inputLimits: IMAGE_INPUT_LIMITS,
@@ -75,7 +91,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         id: "gpt-6-luna",
         name: "GPT-6 Luna",
         api: "openai-completions",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+        baseUrl: `${proxyRoot}/v1`,
         reasoning: true,
         input: ["text", "image"],
         inputLimits: IMAGE_INPUT_LIMITS,
@@ -98,7 +114,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         id: "gpt-6.1-sol",
         name: "GPT-6.1 Sol",
         api: "openai-completions",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+        baseUrl: `${proxyRoot}/v1`,
         reasoning: true,
         input: ["text", "image"],
         inputLimits: IMAGE_INPUT_LIMITS,
@@ -121,7 +137,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         id: "swe-2.1",
         name: "SWE 2.1",
         api: "openai-completions",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+        baseUrl: `${proxyRoot}/v1`,
         reasoning: true,
         input: ["text"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -146,7 +162,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         id: "swe-2",
         name: "SWE 2",
         api: "openai-completions",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+        baseUrl: `${proxyRoot}/v1`,
         reasoning: true,
         input: ["text"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -171,7 +187,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         id: "deepseek-v4-1-flash",
         name: "DeepSeek V4.1 Flash",
         api: "openai-completions",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+        baseUrl: `${proxyRoot}/v1`,
         reasoning: true,
         input: ["text"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -196,7 +212,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         id: "glm-5-3-flash",
         name: "GLM 5.3 Flash",
         api: "openai-completions",
-        baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+        baseUrl: `${proxyRoot}/v1`,
         reasoning: true,
         input: ["text", "image"],
         inputLimits: IMAGE_INPUT_LIMITS,
@@ -251,7 +267,7 @@ export function registerHdwebsoftProxy(pi: ExtensionAPI): void {
         }
         lines.push(
           ...renderUsageReport(
-            await fetchHdwebsoftUsage(HDWEBSOFT_PROXY_ROOT, resolution.apiKey),
+            await fetchHdwebsoftUsage(proxyRoot, resolution.apiKey),
             color
           )
         );
