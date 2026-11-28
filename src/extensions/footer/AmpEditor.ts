@@ -13,6 +13,7 @@ import type {
 } from "@earendil-works/pi-tui";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { ActivityLine } from "../../shared/ActivityLine";
+import { JournalLine } from "../../shared/JournalLine";
 import { Paths } from "../../shared/Paths";
 import { PromptHistory } from "../../shared/PromptHistory";
 import type { GitState } from "./git";
@@ -145,6 +146,8 @@ export class AmpEditor extends CustomEditor {
   private workingStatus: WorkingStatusIndicator | undefined;
   private activityStart = -1;
   private activityEnd = -1;
+  private journalStart = -1;
+  private journalEnd = -1;
 
   public constructor(
     tui: TUI,
@@ -158,6 +161,7 @@ export class AmpEditor extends CustomEditor {
     // The caption is updated from session events outside the editor; give
     // it a way to repaint the border when the text changes.
     ActivityLine.setRenderTrigger(() => tui.requestRender());
+    JournalLine.setRenderTrigger(() => tui.requestRender());
     // Seed prompt history from disk so up/down arrow navigation works across
     // sessions. Uses the base addToHistory() (not the override below) so this
     // replay doesn't immediately re-persist the same entries back to disk.
@@ -229,7 +233,27 @@ export class AmpEditor extends CustomEditor {
     // the cost text, then a space before the caption itself.
     this.activityStart = activity ? visibleWidth(cost) + 2 : -1;
     this.activityEnd = activity ? visibleWidth(left) - 2 : -1;
-    const right = theme.fg("muted", ` ${path}`) + git + theme.fg("muted", " ");
+    const journal = JournalLine.getText();
+    const journalText = journal ? theme.fg("dim", ` ${journal} `) : "";
+    const right =
+      journalText +
+      theme.fg("muted", ` ${path}`) +
+      git +
+      theme.fg("muted", " ");
+    // Click range for the memory indicator: it sits at the far right of the
+    // bottom border, before the path. Compute from the end since the border
+    // right-aligns the whole segment.
+    if (journal) {
+      // fitBorder places the right segment at [width-1-rightWidth, width-2]
+      // with a trailing corner cell at width-1; the journal label is the
+      // segment's first piece, before any truncation affects the path.
+      const journalWidth = visibleWidth(journalText);
+      this.journalStart = width - 1 - visibleWidth(right);
+      this.journalEnd = this.journalStart + journalWidth - 1;
+    } else {
+      this.journalStart = -1;
+      this.journalEnd = -1;
+    }
 
     return fitBorder(
       left,
@@ -247,13 +271,24 @@ export class AmpEditor extends CustomEditor {
     if (
       event.type === "click" &&
       event.button === "left" &&
-      event.y === event.height - 1 &&
-      this.activityStart >= 0 &&
-      event.x >= this.activityStart &&
-      event.x <= this.activityEnd
+      event.y === event.height - 1
     ) {
-      ActivityLine.open();
-      return { handled: true };
+      if (
+        this.activityStart >= 0 &&
+        event.x >= this.activityStart &&
+        event.x <= this.activityEnd
+      ) {
+        ActivityLine.open();
+        return { handled: true };
+      }
+      if (
+        this.journalStart >= 0 &&
+        event.x >= this.journalStart &&
+        event.x <= this.journalEnd
+      ) {
+        JournalLine.toggle();
+        return { handled: true };
+      }
     }
     return super.handleMouse(event);
   }
