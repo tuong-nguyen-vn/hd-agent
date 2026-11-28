@@ -1,5 +1,5 @@
 import type { Model } from "@earendil-works/pi-ai";
-import { HDWEBSOFT_PROXY_ROOT } from "../provider/hdwebsoft-proxy";
+import { getHdwebsoftProxyRoot } from "../provider/hdwebsoft-proxy";
 
 // gpt-5.6-sol is blocked on the hdwebsoft gateway for regular use. The
 // gateway's oracle-gate plugin only routes it upstream when the request both
@@ -20,7 +20,12 @@ const GATED_SOL_MODEL: Model<"openai-completions"> = {
   name: "GPT-5.6 Sol",
   provider: "hdwebsoft-proxy",
   api: "openai-completions",
-  baseUrl: `${HDWEBSOFT_PROXY_ROOT}/v1`,
+  // Resolved lazily: the env var is read when the subagent actually uses the
+  // model, not when this module is first imported.
+  get baseUrl() {
+    const root = getHdwebsoftProxyRoot();
+    return root ? `${root}/v1` : "";
+  },
   reasoning: true,
   input: ["text", "image"],
   cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },

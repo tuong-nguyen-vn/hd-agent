@@ -58,6 +58,8 @@ Dùng `↑`/`↓` để di chuyển, `Enter` để chọn, `Esc` hoặc `Ctrl+C`
 
 ### HDWEBSOFT (Sign in with an API key)
 
+Trước khi login, set biến môi trường `HDWEBSOFT_PROXY_ROOT` tới internal proxy endpoint (xem internal runbook/wiki — endpoint không nằm trong repo). Thiếu biến này thì provider `hdwebsoft-proxy` sẽ không được đăng ký.
+
 1. Gõ `/login`.
 2. Chọn **Sign in with an API key**.
 3. Chọn **hdwebsoft** từ danh sách provider.
@@ -334,6 +336,8 @@ Select authentication method:
 Use `↑`/`↓` to navigate, `Enter` to select, `Esc` or `Ctrl+C` to cancel.
 
 ### HDWEBSOFT (Sign in with an API key)
+
+Before logging in, set the `HDWEBSOFT_PROXY_ROOT` environment variable to the internal proxy endpoint (see the internal runbook/wiki — the endpoint is not stored in this repo). Without it the `hdwebsoft-proxy` provider is not registered.
 
 1. Run `/login`.
 2. Select **Sign in with an API key**.
