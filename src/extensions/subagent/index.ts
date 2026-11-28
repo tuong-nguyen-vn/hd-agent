@@ -14,10 +14,7 @@ import {
   runSubagent,
   type SubagentDetails,
 } from "./subagent";
-import {
-  markSessionActive,
-  notifyBackgroundCompletion,
-} from "./notifications";
+import { markSessionActive, notifyBackgroundCompletion } from "./notifications";
 
 // Deferred so the jiti compile pass runs after the session's initial paint
 // and setup instead of competing with them for the event loop.

@@ -104,6 +104,22 @@ describe("agent-complete-notify", () => {
     h.type();
     h.emit("agent_start", {});
     h.emit("agent_end", {});
+    // The count restarts at one because the acknowledged completion no
+    // longer contributes to the unread total.
+    expect(calls).toEqual([1, 1]);
+  });
+
+  test("suppresses the notification when the user typed during the run", () => {
+    const calls: number[] = [];
+    setNotifyForTests((count) => calls.push(count));
+    const h = harness();
+    h.emit("session_start", { reason: "startup" });
+    h.emit("agent_start", {});
+    h.type();
+    h.emit("agent_end", {});
+    h.emit("agent_start", {});
+    h.emit("agent_end", {});
+    // Run one was attended; run two was not.
     expect(calls).toEqual([1]);
   });
 

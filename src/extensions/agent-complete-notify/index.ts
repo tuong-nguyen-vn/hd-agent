@@ -90,18 +90,20 @@ function restoreTitle(): void {
 }
 
 export default function (pi: ExtensionAPI): void {
-  let agentStartedAt = 0;
-  let lastInputAt = 0;
+  let running = false;
+  let inputDuringRun = false;
   let unseenCount = 0;
 
   pi.on("session_start", (_event, ctx) => {
-    agentStartedAt = 0;
+    running = false;
     unseenCount = 0;
     if (!ctx.hasUI) {
       return;
     }
     ctx.ui.onTerminalInput(() => {
-      lastInputAt = performance.now();
+      if (running) {
+        inputDuringRun = true;
+      }
       if (unseenCount > 0) {
         unseenCount = 0;
         restoreTitle();
@@ -111,20 +113,21 @@ export default function (pi: ExtensionAPI): void {
   });
 
   pi.on("agent_start", () => {
-    agentStartedAt = performance.now();
+    running = true;
+    inputDuringRun = false;
   });
 
   pi.on("agent_end", (_event, ctx: ExtensionContext) => {
-    if (!ctx.hasUI || agentStartedAt === 0) {
+    if (!ctx.hasUI || !running) {
       return;
     }
+    running = false;
     // No terminal input since the run started → the user is most likely on
     // another tab/window, the exact situation Devin-style notifications cover.
-    if (lastInputAt < agentStartedAt) {
+    if (!inputDuringRun) {
       unseenCount += 1;
       notifyImpl(unseenCount);
       setMarkedTitle(ctx, unseenCount);
     }
-    agentStartedAt = 0;
   });
 }
