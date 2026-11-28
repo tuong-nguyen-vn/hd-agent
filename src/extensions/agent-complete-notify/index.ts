@@ -34,19 +34,59 @@ export function resetForTests(): void {
 }
 
 const TITLE_MARKER = "⚡";
+const METADATA_SOURCE = "user:pi-completion-marker";
 
-function setMarkedTitle(ctx: ExtensionContext, count: number): void {
-  const cwd = ctx.cwd.split("/").pop() ?? "";
-  const session = ctx.sessionManager.getSessionName();
-  const base = session ? `pi - ${session} - ${cwd}` : `pi - ${cwd}`;
-  const badge = count > 1 ? `${TITLE_MARKER}${count}` : TITLE_MARKER;
-  ctx.ui.setTitle(`${badge} ${base}`);
+function herdrBin(): string | undefined {
+  return process.env["HERDR_ENV"] === "1"
+    ? process.env["HERDR_BIN_PATH"]
+    : undefined;
 }
 
-function restoreTitle(ctx: ExtensionContext): void {
-  const cwd = ctx.cwd.split("/").pop() ?? "";
-  const session = ctx.sessionManager.getSessionName();
-  ctx.ui.setTitle(session ? `pi - ${session} - ${cwd}` : `pi - ${cwd}`);
+function spawnHerdr(args: string[]): void {
+  const bin = herdrBin();
+  if (bin) {
+    void Bun.spawn([bin, ...args], { stdout: "ignore", stderr: "ignore" });
+  }
+}
+
+function setMarkedTitle(ctx: ExtensionContext, count: number): void {
+  // Pane-local OSC titles stop at the multiplexer for unfocused tabs, so the
+  // attention marker goes through Herdr's display-only metadata instead,
+  // which rolls up to the tab bar. Outside Herdr there is no tab surface to
+  // write to; the bell is the only attention signal there.
+  const pane = process.env["HERDR_PANE_ID"];
+  if (!herdrBin() || !pane) {
+    return;
+  }
+  const badge = count > 1 ? `${TITLE_MARKER}${count}` : TITLE_MARKER;
+  spawnHerdr([
+    "pane",
+    "report-metadata",
+    pane,
+    "--source",
+    METADATA_SOURCE,
+    "--agent",
+    "pi",
+    "--title",
+    `${badge} ${ctx.sessionManager.getSessionName() ?? ctx.cwd.split("/").pop() ?? "agent"}`,
+  ]);
+}
+
+function restoreTitle(): void {
+  const pane = process.env["HERDR_PANE_ID"];
+  if (!herdrBin() || !pane) {
+    return;
+  }
+  spawnHerdr([
+    "pane",
+    "report-metadata",
+    pane,
+    "--source",
+    METADATA_SOURCE,
+    "--agent",
+    "pi",
+    "--clear-title",
+  ]);
 }
 
 export default function (pi: ExtensionAPI): void {
@@ -61,17 +101,17 @@ export default function (pi: ExtensionAPI): void {
       return;
     }
     ctx.ui.onTerminalInput(() => {
-      lastInputAt = Date.now();
+      lastInputAt = performance.now();
       if (unseenCount > 0) {
         unseenCount = 0;
-        restoreTitle(ctx);
+        restoreTitle();
       }
       return undefined;
     });
   });
 
   pi.on("agent_start", () => {
-    agentStartedAt = Date.now();
+    agentStartedAt = performance.now();
   });
 
   pi.on("agent_end", (_event, ctx: ExtensionContext) => {
