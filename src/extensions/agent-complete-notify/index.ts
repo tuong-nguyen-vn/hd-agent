@@ -5,6 +5,9 @@ import type {
 
 function sendCompletionNotification(count: number): void {
   const title = count === 1 ? "Agent finished" : `Agent finished ${count} runs`;
+  // Always ring the terminal bell so tab-aware terminals (Ghostty, iTerm2)
+  // mark this tab; the Herdr toast is an additional, host-level signal.
+  process.stdout.write("\x07");
   if (process.env["HERDR_ENV"] === "1" && process.env["HERDR_BIN_PATH"]) {
     const command = [
       process.env["HERDR_BIN_PATH"],
@@ -15,9 +18,7 @@ function sendCompletionNotification(count: number): void {
       "done",
     ];
     void Bun.spawn(command, { stdout: "ignore", stderr: "ignore" });
-    return;
   }
-  process.stdout.write("\x07");
 }
 
 let notifyImpl: (count: number) => void = sendCompletionNotification;

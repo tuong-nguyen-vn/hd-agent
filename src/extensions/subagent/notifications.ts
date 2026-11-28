@@ -48,6 +48,7 @@ function sendNotification(
 ): void {
   const title =
     count === 1 ? "Agent task finished" : `${count} agent tasks finished`;
+  process.stdout.write("\x07");
   if (process.env["HERDR_ENV"] === "1" && process.env["HERDR_BIN_PATH"]) {
     const command = [
       process.env["HERDR_BIN_PATH"],
@@ -60,9 +61,7 @@ function sendNotification(
       "done",
     ];
     void Bun.spawn(command, { stdout: "ignore", stderr: "ignore" });
-    return;
   }
-  process.stdout.write("\x07");
 }
 
 export function resetNotificationsForTests(): void {
